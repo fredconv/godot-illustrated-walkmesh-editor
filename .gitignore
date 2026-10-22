@@ -1,0 +1,37 @@
+# Godot 4 generated editor and import cache
+.godot/
+
+# Local editor and user-specific settings
+.editor_settings-*
+.vscode/
+.idea/
+*.sublime-workspace
+
+# Temporary files, logs, and crash dumps
+*.tmp
+*.temp
+*.log
+*.dmp
+*.stackdump
+crash.*
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local secrets and environment configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.*
+
+# Third-party starter addons not yet audited for redistribution
+/addons/gdUnit4/
+/addons/godot_mcp/
+/addons/phantom-camera-main/
+
+# Godot-generated import sidecars
+*.import
