@@ -42,4 +42,5 @@ Status labels reflect verified implementation, not planned work. At repository i
 
 - The local starter folder is a Godot project declaring Godot 4.7.
 - No Godot executable is currently discoverable through PATH or the checked common install folders, so engine validation is pending.
+- The repository and `main`/`develop` branches exist on GitHub; initial source publication is complete.
 - An IWE plugin has not yet been implemented.
