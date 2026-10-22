@@ -2,10 +2,12 @@
 extends ItemList
 
 
-func refresh(regions: Array[IWERegion], selected_id: String) -> void:
+func refresh(regions: Array[IWERegion], selected_id: String, group_id: String = "") -> void:
 	clear()
-	for index in regions.size():
-		var region := regions[index]
+	for region in regions:
+		if not group_id.is_empty() and region.group_id != group_id:
+			continue
+		var index := item_count
 		var item_label := region.name
 		if not region.subtraction_polygons.is_empty():
 			item_label += "  (%d cutouts)" % region.subtraction_polygons.size()

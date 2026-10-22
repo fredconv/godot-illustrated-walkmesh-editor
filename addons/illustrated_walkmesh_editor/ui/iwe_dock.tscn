@@ -30,6 +30,16 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Import image"
 
+[node name="CreateGroupButton" type="Button" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "New group"
+
+[node name="GroupOption" type="OptionButton" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
 [node name="ZoomOutButton" type="Button" parent="Toolbar"]
 unique_name_in_owner = true
 layout_mode = 2

@@ -3,8 +3,11 @@ extends VBoxContainer
 
 const DOCUMENT_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_document.gd")
 const REGION_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region.gd")
+const GROUP_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region_group.gd")
 
 @onready var _import_button: Button = %ImportButton
+@onready var _create_group_button: Button = %CreateGroupButton
+@onready var _group_option: OptionButton = %GroupOption
 @onready var _zoom_out_button: Button = %ZoomOutButton
 @onready var _zoom_in_button: Button = %ZoomInButton
 @onready var _zoom_label: Label = %ZoomLabel
@@ -37,6 +40,8 @@ var _undo_redo: EditorUndoRedoManager
 var _undo_context: Node
 var _pending_document_path := ""
 var _pending_image_source := ""
+var _selected_group_id := ""
+var _has_illustration := false
 
 
 func set_document(document: Resource, undo_redo: EditorUndoRedoManager, undo_context: Node) -> void:
@@ -45,11 +50,13 @@ func set_document(document: Resource, undo_redo: EditorUndoRedoManager, undo_con
 	_undo_context = undo_context
 	if is_node_ready():
 		_canvas.set_undo_context(_undo_context)
-		_canvas.set_document(_document)
+		_replace_document(_document)
 
 
 func _ready() -> void:
 	_import_button.pressed.connect(_file_dialog.popup_centered)
+	_create_group_button.pressed.connect(_create_group)
+	_group_option.item_selected.connect(_group_selected)
 	_file_dialog.file_selected.connect(_load_illustration)
 	_zoom_out_button.pressed.connect(_change_zoom.bind(1.0 / 1.2))
 	_zoom_in_button.pressed.connect(_change_zoom.bind(1.2))
@@ -87,7 +94,11 @@ func _ready() -> void:
 	_canvas.set_undo_context(_undo_context)
 	_canvas.set_undo_redo(_undo_redo)
 	_canvas.set_document(_document)
+	if _document != null and not _document.groups.is_empty():
+		_selected_group_id = _document.groups[0].id
 	_sync_selection("")
+	_refresh_group_options()
+	_refresh_status()
 
 
 func _load_illustration(path: String) -> void:
@@ -97,9 +108,12 @@ func _load_illustration(path: String) -> void:
 		return
 	var texture := ImageTexture.create_from_image(image)
 	_canvas.set_texture(texture)
+	_has_illustration = true
 	_document.set_illustration(path, image.get_size())
 	_pending_image_source = path
+	_refresh_group_options()
 	_refresh_regions()
+	_refresh_status()
 
 
 func _change_zoom(factor: float) -> void:
@@ -130,7 +144,9 @@ func _new_document() -> void:
 
 
 func _replace_document(document: Resource) -> void:
+	_stop_tools()
 	_document = document
+	_migrate_document_groups()
 	_canvas.set_document(_document)
 	_pending_image_source = ""
 	if not _document.illustration_path.is_empty() and not _document.document_path.is_empty():
@@ -138,10 +154,18 @@ func _replace_document(document: Resource) -> void:
 	var texture := _load_external_texture(_pending_image_source)
 	if texture:
 		_canvas.set_texture(texture)
+		_has_illustration = true
 	else:
 		_canvas.set_texture(null)
+		_has_illustration = false
+	_selected_group_id = ""
+	if not _document.groups.is_empty() and _selected_group_id.is_empty():
+		_selected_group_id = _document.groups[0].id
 	_canvas.set_regions(_document.regions)
-	_region_list.clear()
+	_refresh_group_options()
+	_refresh_regions()
+	_update_workflow_controls()
+	_refresh_status()
 
 
 func _save_document(path: String) -> void:
@@ -191,27 +215,19 @@ func _open_document(path: String) -> void:
 	if loaded == null or not loaded is DOCUMENT_SCRIPT:
 		push_error("IWE: Could not load an IWE document at %s" % path)
 		return
-	_document = loaded
-	_document.document_path = path
-	_canvas.set_document(_document)
-	var image_path := _resolve_document_asset_path(_document.illustration_path, path)
-	if not image_path.is_empty():
-		var texture := _load_external_texture(image_path)
-		if texture:
-			_canvas.set_texture(texture)
-			_pending_image_source = image_path
-		else:
-			_canvas.set_texture(null)
-			push_warning("IWE: Illustration could not be loaded from %s" % image_path)
-	else:
-		_canvas.set_texture(null)
-	_refresh_regions()
+	loaded.document_path = path
+	_replace_document(loaded)
+	if not _has_illustration:
+		push_warning("IWE: Import an illustration before creating regions.")
 
 
 func _create_region(points: PackedVector2Array) -> void:
+	if not _can_create_region():
+		return
 	var region: IWERegion = REGION_SCRIPT.new()
 	region.id = REGION_SCRIPT._new_id()
 	region.name = "Region %d" % (_document.regions.size() + 1)
+	region.group_id = _selected_group_id
 	region.points = points
 	_undo_redo.create_action("Create IWE region", UndoRedo.MERGE_DISABLE, _undo_context)
 	_undo_redo.add_do_method(self, "_add_region", region)
@@ -257,8 +273,13 @@ func _remove_region(region_id: String) -> void:
 
 
 func _select_region(region_id: String) -> void:
+	var selected := _find_region(region_id)
+	if selected != null and selected.group_id != _selected_group_id:
+		_selected_group_id = selected.group_id
+		_refresh_group_options()
 	_canvas.select_region(region_id)
 	_refresh_regions(region_id)
+	_update_workflow_controls()
 
 
 func _region_changed(_region_id: String, _before: PackedVector2Array, _after: PackedVector2Array) -> void:
@@ -308,8 +329,9 @@ func _refresh_regions(selected_id: String = "") -> void:
 		var current: IWERegion = _canvas.get_selected_region()
 		if current:
 			selected = current.id
-	_region_list.refresh(_document.regions, selected)
+	_region_list.refresh(_document.regions, selected, _selected_group_id)
 	_canvas.set_regions(_document.regions, selected)
+	_update_workflow_controls()
 
 
 func _set_draw_mode(enabled: bool) -> void:
@@ -326,6 +348,7 @@ func _sync_selection(region_id: String) -> void:
 	_rename_button.disabled = region_id.is_empty()
 	_visibility_button.disabled = region_id.is_empty()
 	_sync_point_selection(-1)
+	_update_workflow_controls()
 	_refresh_status()
 	if not region_id.is_empty():
 		_select_button.button_pressed = true
@@ -334,6 +357,9 @@ func _sync_selection(region_id: String) -> void:
 
 
 func _set_polygon_mode(enabled: bool) -> void:
+	if enabled and not _can_create_region():
+		_draw_button.button_pressed = false
+		enabled = false
 	if enabled:
 		_subtract_button.button_pressed = false
 		_select_button.button_pressed = false
@@ -373,7 +399,7 @@ func _set_subtract_mode(enabled: bool) -> void:
 		_canvas.set_drawing(false)
 		_canvas.set_vertex_editing(false)
 		var region: IWERegion = _canvas.get_selected_region()
-		if region == null or region.locked:
+		if region == null or region.locked or not _has_illustration or _selected_group_id.is_empty():
 			_subtract_button.button_pressed = false
 			_refresh_status()
 			return
@@ -452,6 +478,8 @@ func _set_region_visibility(region_id: String, value: bool, create_action: bool 
 
 
 func _find_region(region_id: String) -> IWERegion:
+	if _document == null:
+		return null
 	for region in _document.regions:
 		if region.id == region_id:
 			return region
@@ -507,7 +535,131 @@ func _refresh_status() -> void:
 		var subtract_status := "  •  %d cutouts" % region.subtraction_polygons.size()
 		_status_label.text = "%s  •  %s  •  %d points%s%s" % [mode, region.name, region.points.size(), subtract_status, point_status]
 	else:
-		_status_label.text = "%s  •  Select a region or start a polygon" % mode
+		if not _has_illustration:
+			_status_label.text = "Import an illustration to begin"
+		elif _selected_group_id.is_empty():
+			_status_label.text = "Create a group before drawing polygons"
+		else:
+			_status_label.text = "%s  •  Select a region or start a polygon" % mode
+
+
+func _can_create_region() -> bool:
+	return _has_illustration and _document != null and not _selected_group_id.is_empty() and _find_group(_selected_group_id) != null
+
+
+func _create_group() -> void:
+	if not _has_illustration:
+		return
+	var group: IWERegionGroup = GROUP_SCRIPT.create_group("Group %d" % (_document.groups.size() + 1))
+	_undo_redo.create_action("Create IWE group", UndoRedo.MERGE_DISABLE, _undo_context)
+	_undo_redo.add_do_method(self, "_add_group", group)
+	_undo_redo.add_undo_method(self, "_remove_group", group.id)
+	_undo_redo.commit_action()
+
+
+func _add_group(group: IWERegionGroup) -> void:
+	_stop_tools()
+	_document.add_group(group)
+	_selected_group_id = group.id
+	_refresh_group_options()
+	_canvas.select_region("")
+	_refresh_regions()
+	_refresh_status()
+
+
+func _remove_group(group_id: String) -> void:
+	_stop_tools()
+	_document.remove_group(group_id)
+	if _selected_group_id == group_id:
+		_selected_group_id = _document.groups[0].id if not _document.groups.is_empty() else ""
+	_refresh_group_options()
+	_refresh_regions()
+	_refresh_status()
+
+
+func _group_selected(index: int) -> void:
+	if index < 0 or index >= _document.groups.size():
+		return
+	_selected_group_id = _document.groups[index].id
+	_stop_tools()
+	_canvas.select_region("")
+	_select_button.button_pressed = true
+	_draw_button.button_pressed = false
+	_subtract_button.button_pressed = false
+	_points_button.button_pressed = false
+	_canvas.set_drawing(false)
+	_refresh_regions()
+	_refresh_status()
+
+
+func _refresh_group_options() -> void:
+	if not is_node_ready():
+		return
+	_group_option.clear()
+	var selected_index := -1
+	if _document == null:
+		_create_group_button.disabled = true
+		_group_option.disabled = true
+		return
+	for index in _document.groups.size():
+		var group: IWERegionGroup = _document.groups[index]
+		_group_option.add_item(group.name)
+		_group_option.set_item_metadata(index, group.id)
+		if group.id == _selected_group_id:
+			selected_index = index
+	if selected_index >= 0:
+		_group_option.select(selected_index)
+	_create_group_button.disabled = not _has_illustration
+	_group_option.disabled = not _has_illustration or _document.groups.is_empty()
+
+
+func _find_group(group_id: String) -> IWERegionGroup:
+	if _document == null:
+		return null
+	for group in _document.groups:
+		if group.id == group_id:
+			return group
+	return null
+
+
+func _migrate_document_groups() -> void:
+	if _document.groups.is_empty() and not _document.regions.is_empty():
+		var legacy_group: IWERegionGroup = GROUP_SCRIPT.create_group("Imported regions")
+		_document.groups.append(legacy_group)
+		for region in _document.regions:
+			region.group_id = legacy_group.id
+	elif not _document.groups.is_empty():
+		for region in _document.regions:
+			if _find_group(region.group_id) == null:
+				region.group_id = _document.groups[0].id
+	_selected_group_id = _document.groups[0].id if not _document.groups.is_empty() else ""
+
+
+func _update_workflow_controls() -> void:
+	if not is_node_ready() or _document == null:
+		return
+	var has_selected_region: bool = _canvas.get_selected_region() != null
+	var can_draw := _can_create_region()
+	_draw_button.disabled = not can_draw
+	_subtract_button.disabled = not can_draw or not has_selected_region
+	_select_button.disabled = not _has_illustration
+	_points_button.disabled = not _has_illustration or not has_selected_region
+	_add_point_button.disabled = not _has_illustration or not has_selected_region
+	_create_group_button.disabled = not _has_illustration
+	_group_option.disabled = not _has_illustration or _document.groups.is_empty()
+
+
+func _stop_tools() -> void:
+	if not is_node_ready():
+		return
+	_draw_button.set_pressed_no_signal(false)
+	_subtract_button.set_pressed_no_signal(false)
+	_points_button.set_pressed_no_signal(false)
+	_add_point_button.set_pressed_no_signal(false)
+	_select_button.set_pressed_no_signal(true)
+	_canvas.set_drawing(false)
+	_canvas.set_vertex_editing(false)
+	_canvas.set_boolean_subtract_mode(false)
 
 
 func _sync_point_selection(index: int) -> void:

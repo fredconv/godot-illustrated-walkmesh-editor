@@ -3,6 +3,7 @@ class_name IWERegion
 extends Resource
 
 @export var id := ""
+@export var group_id := ""
 @export var name := "Region"
 @export var points := PackedVector2Array()
 ## Each polygon removes walkable space from this region. The source polygons stay editable.

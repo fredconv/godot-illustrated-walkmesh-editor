@@ -4,6 +4,7 @@ extends Resource
 
 @export_file("*.png", "*.jpg", "*.jpeg", "*.webp") var illustration_path := ""
 @export var image_size := Vector2i.ZERO
+@export var groups: Array[IWERegionGroup] = []
 @export var regions: Array[IWERegion] = []
 @export var document_path := ""
 
@@ -15,6 +16,14 @@ func set_illustration(path: String, size: Vector2i) -> void:
 
 func add_region(region: IWERegion) -> void:
 	regions.append(region)
+
+
+func add_group(group: IWERegionGroup) -> void:
+	groups.append(group)
+
+
+func remove_group(group_id: String) -> void:
+	groups = groups.filter(func(group: IWERegionGroup) -> bool: return group.id != group_id)
 
 
 func remove_region(region_id: String) -> void:

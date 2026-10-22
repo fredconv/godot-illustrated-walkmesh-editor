@@ -23,7 +23,7 @@ Status: image import/display, zoom and pan, `.tres` save/open, image copy beside
 - Region resources, polygon editing, validation, selection, and undo/redo.
 - Group hierarchy and variable-width path authoring.
 
-Status: polygon editing, selection, and undo/redo exist. Hierarchical groups and variable-width paths remain planned.
+Status: polygon editing, selection, undo/redo, and flat region groups exist. Nested groups and variable-width paths remain planned.
 
 ## Phase 3 — Boolean geometry
 

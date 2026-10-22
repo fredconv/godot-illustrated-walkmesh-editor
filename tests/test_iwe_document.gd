@@ -2,6 +2,7 @@ extends GdUnitTestSuite
 
 const DOCUMENT_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_document.gd")
 const REGION_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region.gd")
+const GROUP_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region_group.gd")
 const CANVAS_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/ui/iwe_canvas.gd")
 const UNDO_STUB := preload("res://tests/undo_history_stub.gd")
 
@@ -12,9 +13,12 @@ func test_document_serializes_illustration_coordinates() -> void:
 	var region: Resource = REGION_SCRIPT.new()
 	region.id = "region_test"
 	region.name = "Test region"
+	var group: Resource = GROUP_SCRIPT.create_group("Test group")
+	region.group_id = group.id
 	region.points = PackedVector2Array([Vector2(10, 20), Vector2(100, 20), Vector2(80, 90), Vector2(30, 80)])
 	region.subtraction_polygons.append(PackedVector2Array([Vector2(35, 35), Vector2(45, 35), Vector2(45, 45), Vector2(35, 45)]))
 	document.add_region(region)
+	document.add_group(group)
 	var save_error := ResourceSaver.save(document, "user://iwe_document_test.tres")
 	assert_int(save_error).is_equal(OK)
 	var loaded: Resource = ResourceLoader.load("user://iwe_document_test.tres")
@@ -25,6 +29,8 @@ func test_document_serializes_illustration_coordinates() -> void:
 	assert_str(loaded.regions[0].id).is_equal("region_test")
 	assert_vector(loaded.regions[0].points[2]).is_equal(Vector2(80, 90))
 	assert_int(loaded.regions[0].subtraction_polygons.size()).is_equal(1)
+	assert_int(loaded.groups.size()).is_equal(1)
+	assert_str(loaded.regions[0].group_id).is_equal(loaded.groups[0].id)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://iwe_document_test.tres"))
 
 
