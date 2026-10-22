@@ -13,6 +13,7 @@ func test_document_serializes_illustration_coordinates() -> void:
 	region.id = "region_test"
 	region.name = "Test region"
 	region.points = PackedVector2Array([Vector2(10, 20), Vector2(100, 20), Vector2(80, 90), Vector2(30, 80)])
+	region.subtraction_polygons.append(PackedVector2Array([Vector2(35, 35), Vector2(45, 35), Vector2(45, 45), Vector2(35, 45)]))
 	document.add_region(region)
 	var save_error := ResourceSaver.save(document, "user://iwe_document_test.tres")
 	assert_int(save_error).is_equal(OK)
@@ -23,6 +24,7 @@ func test_document_serializes_illustration_coordinates() -> void:
 	assert_int(loaded.regions.size()).is_equal(1)
 	assert_str(loaded.regions[0].id).is_equal("region_test")
 	assert_vector(loaded.regions[0].points[2]).is_equal(Vector2(80, 90))
+	assert_int(loaded.regions[0].subtraction_polygons.size()).is_equal(1)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://iwe_document_test.tres"))
 
 
@@ -35,6 +37,30 @@ func test_region_hit_testing_and_locked_state_data() -> void:
 	assert_bool(region.locked).is_true()
 	var duplicate: Resource = region.duplicate_region()
 	assert_str(duplicate.id).is_not_equal(region.id)
+
+
+func test_region_boolean_subtraction_keeps_multiple_holes() -> void:
+	var region: Resource = REGION_SCRIPT.new()
+	region.points = PackedVector2Array([Vector2(0, 0), Vector2(200, 0), Vector2(200, 200), Vector2(0, 200)])
+	region.subtraction_polygons.append(PackedVector2Array([Vector2(20, 20), Vector2(60, 20), Vector2(60, 60), Vector2(20, 60)]))
+	region.subtraction_polygons.append(PackedVector2Array([Vector2(120, 120), Vector2(180, 120), Vector2(180, 180), Vector2(120, 180)]))
+	var contours: Array[PackedVector2Array] = region.get_walkable_contours()
+	assert_int(contours.size()).is_equal(3)
+	var holes := 0
+	for contour in contours:
+		if Geometry2D.is_polygon_clockwise(contour) != Geometry2D.is_polygon_clockwise(region.points):
+			holes += 1
+	assert_int(holes).is_equal(2)
+	var serialized_region: Resource = REGION_SCRIPT.new()
+	serialized_region.points = region.points
+	serialized_region.subtraction_polygons = region.subtraction_polygons.duplicate(true)
+	var document: Resource = DOCUMENT_SCRIPT.new()
+	document.add_region(serialized_region)
+	var save_error := ResourceSaver.save(document, "user://iwe_boolean_test.tres")
+	assert_int(save_error).is_equal(OK)
+	var loaded: Resource = ResourceLoader.load("user://iwe_boolean_test.tres")
+	assert_int(loaded.regions[0].subtraction_polygons.size()).is_equal(2)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://iwe_boolean_test.tres"))
 
 
 func test_canvas_vertex_edit_supports_undo_and_redo() -> void:

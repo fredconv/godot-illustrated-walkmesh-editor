@@ -23,7 +23,7 @@ This is a starting specification. No IWE functionality is implemented as of the 
 2. Author, select, validate, and edit independent convex or concave polygons, including regions with holes and multiple levels.
 3. Organize regions in stable-ID hierarchical groups.
 4. Provide path-based region authoring, including variable width and branches where practical.
-5. Support scoped, ordered, non-destructive UNION, SUBTRACT, INTERSECT, and XOR operations.
+5. Support scoped, ordered, non-destructive UNION, SUBTRACT, INTERSECT, and XOR operations. The first subtraction milestone stores multiple editable cutout polygons on a region and derives its contours with Godot's polygon clipping API.
 6. Place and edit scale anchors and preview an interpolated scale field across compatible regions.
 7. Author blocked regions, explicit portals/connections, and foreground/background occluders.
 8. Generate runtime surfaces and physics separately, with a screen-space 2.5D mode first and an architecture that can later support a calibrated 3D mode.

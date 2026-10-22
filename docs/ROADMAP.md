@@ -1,6 +1,6 @@
 # IWE Roadmap
 
-Status labels reflect verified implementation, not planned work. At repository initialization, every feature below is planned.
+Status labels reflect verified implementation, not planned work.
 
 ## Phase 0 — Reconnaissance and reuse audit
 
@@ -16,17 +16,21 @@ Status labels reflect verified implementation, not planned work. At repository i
 - Persist/reload image-space document state.
 - Verify clean activation/deactivation in Godot.
 
-Status: image import/display, zoom and pan, `.tres` save/open, image copy beside the document, polygon creation/selection, vertex insertion/removal/movement, region rename/visibility/delete/duplicate, and editor undo/redo exist. Manual GUI verification remains recommended; automated coverage currently exercises serialization, polygon hit-testing, and vertex operation logic.
+Status: image import/display, zoom and pan, `.tres` save/open, image copy beside the document, polygon creation/selection, vertex insertion/removal/movement, region rename/visibility/delete/duplicate, and editor undo/redo exist. Manual GUI verification remains recommended.
 
 ## Phase 2 — Polygon editing and groups
 
 - Region resources, polygon editing, validation, selection, and undo/redo.
 - Group hierarchy and variable-width path authoring.
 
+Status: polygon editing, selection, and undo/redo exist. Hierarchical groups and variable-width paths remain planned.
+
 ## Phase 3 — Boolean geometry
 
 - Non-destructive scoped modifiers, holes, disconnected results, and triangulation.
 - Focused geometry tests before integration into the editor.
+
+Status: a selected region can now hold multiple editable subtraction polygons. Godot's clipping API derives contours with hole winding; union/intersection/XOR, robust overlapping cutout merging, and triangulation remain planned.
 
 ## Phase 4 — Scale calibration
 
@@ -45,5 +49,5 @@ Status: image import/display, zoom and pan, `.tres` save/open, image copy beside
 - The local starter folder is a Godot project declaring Godot 4.7.
 - Godot 4.7 is installed locally at a non-PATH location and is used for headless validation.
 - The repository and `main`/`develop` branches exist on GitHub; initial source publication is complete.
-- IWE document and polygon editing are implemented on `develop`; 5 GdUnit4 headless tests pass (0 failures).
+- IWE document, polygon editing, and subtractive cutouts are implemented on `feature/region-editing`; GdUnit4 headless validation is run for the active feature branch.
 - Enabling the plugin in a headless editor completed without IWE script errors. Pre-existing Phantom Camera missing-icon errors remain in this starter project.

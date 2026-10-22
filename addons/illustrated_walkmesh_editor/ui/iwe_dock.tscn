@@ -64,6 +64,12 @@ layout_mode = 2
 toggle_mode = true
 text = "Points"
 
+[node name="SubtractButton" type="Button" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Boolean −"
+
 [node name="AddPointButton" type="Button" parent="Toolbar"]
 unique_name_in_owner = true
 layout_mode = 2

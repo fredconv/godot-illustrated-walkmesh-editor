@@ -12,6 +12,7 @@ const REGION_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iw
 @onready var _save_button: Button = %SaveButton
 @onready var _open_button: Button = %OpenButton
 @onready var _draw_button: Button = %DrawButton
+@onready var _subtract_button: Button = %SubtractButton
 @onready var _select_button: Button = %SelectButton
 @onready var _points_button: Button = %PointsButton
 @onready var _add_point_button: Button = %AddPointButton
@@ -55,6 +56,7 @@ func _ready() -> void:
 	_canvas.zoom_requested.connect(_change_zoom)
 	_canvas.set_undo_redo(_undo_redo)
 	_canvas.region_created.connect(_create_region)
+	_canvas.subtraction_created.connect(_create_subtraction)
 	_canvas.region_selected.connect(_select_region)
 	_canvas.region_changed.connect(_region_changed)
 	_canvas.add_vertex_requested.connect(_canvas.add_selected_vertex)
@@ -67,6 +69,7 @@ func _ready() -> void:
 	_open_dialog.file_selected.connect(_open_document)
 	_image_copy_dialog.dir_selected.connect(_copy_image_into_document)
 	_draw_button.toggled.connect(_set_polygon_mode)
+	_subtract_button.toggled.connect(_set_subtract_mode)
 	_select_button.toggled.connect(_set_select_mode)
 	_points_button.toggled.connect(_set_points_mode)
 	_add_point_button.toggled.connect(_set_add_vertex_mode)
@@ -216,6 +219,31 @@ func _create_region(points: PackedVector2Array) -> void:
 	_undo_redo.commit_action()
 
 
+func _create_subtraction(region_id: String, points: PackedVector2Array) -> void:
+	var region := _find_region(region_id)
+	if region == null or region.locked:
+		return
+	if Geometry2D.intersect_polygons(region.points, points).is_empty():
+		push_warning("IWE: The subtraction polygon must overlap the selected region.")
+		return
+	var before: Array[PackedVector2Array] = region.subtraction_polygons.duplicate(true)
+	var after: Array[PackedVector2Array] = before.duplicate()
+	after.append(points.duplicate())
+	_undo_redo.create_action("Subtract polygon from IWE region", UndoRedo.MERGE_DISABLE, _undo_context)
+	_undo_redo.add_do_method(self, "_set_region_subtractions", region_id, after)
+	_undo_redo.add_undo_method(self, "_set_region_subtractions", region_id, before)
+	_undo_redo.commit_action()
+
+
+func _set_region_subtractions(region_id: String, polygons: Array[PackedVector2Array]) -> void:
+	var region := _find_region(region_id)
+	if region == null:
+		return
+	region.subtraction_polygons = polygons.duplicate(true)
+	_canvas.queue_redraw()
+	_refresh_regions(region_id)
+
+
 func _add_region(region: IWERegion) -> void:
 	_document.add_region(region)
 	_canvas.set_regions(_document.regions, region.id)
@@ -307,6 +335,7 @@ func _sync_selection(region_id: String) -> void:
 
 func _set_polygon_mode(enabled: bool) -> void:
 	if enabled:
+		_subtract_button.button_pressed = false
 		_select_button.button_pressed = false
 		_points_button.button_pressed = false
 		_canvas.set_vertex_editing(false)
@@ -316,6 +345,7 @@ func _set_polygon_mode(enabled: bool) -> void:
 
 func _set_select_mode(enabled: bool) -> void:
 	if enabled:
+		_subtract_button.button_pressed = false
 		_draw_button.button_pressed = false
 		_points_button.button_pressed = false
 		_canvas.set_vertex_editing(false)
@@ -325,11 +355,29 @@ func _set_select_mode(enabled: bool) -> void:
 
 func _set_points_mode(enabled: bool) -> void:
 	if enabled:
+		_subtract_button.button_pressed = false
 		_draw_button.button_pressed = false
 		_select_button.button_pressed = false
 		_add_point_button.button_pressed = false
 		_canvas.set_drawing(false)
 	_canvas.set_vertex_editing(enabled)
+	_refresh_status()
+
+
+func _set_subtract_mode(enabled: bool) -> void:
+	if enabled:
+		_draw_button.button_pressed = false
+		_select_button.button_pressed = false
+		_points_button.button_pressed = false
+		_add_point_button.button_pressed = false
+		_canvas.set_drawing(false)
+		_canvas.set_vertex_editing(false)
+		var region: IWERegion = _canvas.get_selected_region()
+		if region == null or region.locked:
+			_subtract_button.button_pressed = false
+			_refresh_status()
+			return
+	_canvas.set_boolean_subtract_mode(enabled)
 	_refresh_status()
 
 
@@ -447,6 +495,8 @@ func _refresh_status() -> void:
 		mode = "Polygon"
 	elif _points_button.button_pressed:
 		mode = "Points"
+	elif _subtract_button.button_pressed:
+		mode = "Boolean −"
 	elif _add_point_button.button_pressed:
 		mode = "Add point"
 	var region: IWERegion = _canvas.get_selected_region()
@@ -454,7 +504,8 @@ func _refresh_status() -> void:
 		var point_status := ""
 		if _canvas.has_method("get_selected_vertex_index") and _canvas.get_selected_vertex_index() >= 0:
 			point_status = "  •  point %d selected" % (_canvas.get_selected_vertex_index() + 1)
-		_status_label.text = "%s  •  %s  •  %d points%s" % [mode, region.name, region.points.size(), point_status]
+		var subtract_status := "  •  %d cutouts" % region.subtraction_polygons.size()
+		_status_label.text = "%s  •  %s  •  %d points%s%s" % [mode, region.name, region.points.size(), subtract_status, point_status]
 	else:
 		_status_label.text = "%s  •  Select a region or start a polygon" % mode
 

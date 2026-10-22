@@ -3,6 +3,7 @@ extends Control
 
 signal zoom_requested(factor: float)
 signal region_created(points: PackedVector2Array)
+signal subtraction_created(region_id: String, points: PackedVector2Array)
 signal region_selected(region_id: String)
 signal region_changed(region_id: String, before: PackedVector2Array, after: PackedVector2Array)
 signal selection_changed(region_id: String)
@@ -18,6 +19,7 @@ var _dragging := false
 var _drawing := false
 var _vertex_editing := false
 var _add_vertex_mode := false
+var _boolean_subtract_mode := false
 var _regions: Array[IWERegion] = []
 var _selected_id := ""
 var _selected_vertex := -1
@@ -57,6 +59,7 @@ func set_regions(regions: Array[IWERegion], selected_id: String = "") -> void:
 
 func set_drawing(enabled: bool) -> void:
 	_drawing = enabled
+	_boolean_subtract_mode = false
 	_vertex_editing = false
 	_add_vertex_mode = false
 	_draft.clear()
@@ -67,6 +70,7 @@ func set_drawing(enabled: bool) -> void:
 
 func set_vertex_editing(enabled: bool) -> void:
 	_vertex_editing = enabled
+	_boolean_subtract_mode = false
 	_drawing = false
 	_add_vertex_mode = false
 	_draft.clear()
@@ -83,6 +87,17 @@ func set_add_vertex_mode(enabled: bool) -> void:
 	draw_mode_changed.emit(false)
 	vertex_mode_changed.emit(false)
 	add_vertex_mode_changed.emit(enabled)
+	queue_redraw()
+
+
+func set_boolean_subtract_mode(enabled: bool) -> void:
+	_boolean_subtract_mode = enabled
+	_drawing = enabled
+	_vertex_editing = false
+	_add_vertex_mode = false
+	_draft.clear()
+	draw_mode_changed.emit(false)
+	vertex_mode_changed.emit(false)
 	queue_redraw()
 
 
@@ -129,6 +144,16 @@ func _draw() -> void:
 			elif region.id == _selected_id and index == _selected_vertex:
 				draw_circle(display_points[index], HANDLE_RADIUS, Color.WHITE)
 				draw_circle(display_points[index], 4.0, Color("ffbd4a"))
+		for cutout in region.subtraction_polygons:
+			if cutout.size() < 3:
+				continue
+			for cutout_intersection in Geometry2D.intersect_polygons(region.points, cutout):
+				var cutout_display := PackedVector2Array()
+				for point in cutout_intersection:
+					cutout_display.append(point * _zoom)
+				draw_colored_polygon(cutout_display, Color("ff5263", 0.38))
+				for index in cutout_display.size():
+					draw_line(cutout_display[index], cutout_display[(index + 1) % cutout_display.size()], Color("ff5263"), 2.0, true)
 	if _draft.size() > 0:
 		for index in range(1, _draft.size()):
 			draw_line(_draft[index - 1] * _zoom, _draft[index] * _zoom, Color("f6cb55"), 2.0, true)
@@ -208,7 +233,10 @@ func _handle_left_click(image_position: Vector2) -> void:
 func _finish_draft() -> void:
 	if _draft.size() < 3:
 		return
-	region_created.emit(_draft.duplicate())
+	if _boolean_subtract_mode:
+		subtraction_created.emit(_selected_id, _draft.duplicate())
+	else:
+		region_created.emit(_draft.duplicate())
 	_draft.clear()
 	queue_redraw()
 
