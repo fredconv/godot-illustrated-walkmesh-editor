@@ -1,0 +1,47 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/ui/iwe_dock.gd" id="1_dock"]
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/ui/iwe_canvas.gd" id="2_canvas"]
+
+[node name="IWEDock" type="VBoxContainer"]
+script = ExtResource("1_dock")
+
+[node name="Toolbar" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="ImportButton" type="Button" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Import image"
+
+[node name="ZoomOutButton" type="Button" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "−"
+
+[node name="ZoomLabel" type="Label" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "100%"
+
+[node name="ZoomInButton" type="Button" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+"
+
+[node name="ImageScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
+
+[node name="Canvas" type="Control" parent="ImageScroll"]
+custom_minimum_size = Vector2(320, 240)
+layout_mode = 2
+script = ExtResource("2_canvas")
+
+[node name="ImageFileDialog" type="FileDialog" parent="."]
+title = "Import illustration"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.png ; PNG Images", "*.jpg, *.jpeg ; JPEG Images", "*.webp ; WebP Images")

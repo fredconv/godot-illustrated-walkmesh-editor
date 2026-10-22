@@ -14,6 +14,8 @@
 *.dmp
 *.stackdump
 crash.*
+/reports/
+/logs/
 
 # OS metadata
 .DS_Store
@@ -28,7 +30,7 @@ Desktop.ini
 *.key
 secrets.*
 
-# Third-party starter addons not yet audited for redistribution
+# Third-party starter addons kept local and excluded from this project distribution
 /addons/gdUnit4/
 /addons/godot_mcp/
 /addons/phantom-camera-main/

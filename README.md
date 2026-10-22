@@ -17,11 +17,11 @@ The local starter project declares Godot 4.7. Plugin compatibility will be confi
 
 ## Current status
 
-No IWE editor plugin has been implemented yet. This repository currently contains the Godot project shell and project documentation.
+The first development dock is implemented: it can select and display a local illustration, and provides zoom controls and middle-button panning. Document data stores the image path and native dimensions. Polygon editing, document persistence through the UI, and runtime generation are not implemented yet.
 
 ## Repository layout
 
-- `addons/illustrated_walkmesh_editor/`: IWE editor plugin (planned).
+- `addons/illustrated_walkmesh_editor/`: IWE editor plugin.
 - `docs/`: specification, architecture, roadmap, reuse audit, and decisions.
 - `examples/`: self-contained demonstrations (planned).
 - `tests/`: automated tests (planned).
@@ -30,7 +30,7 @@ Third-party addons currently present in the local starter project are not part o
 
 ## Installation
 
-Once a release is available, copy `addons/illustrated_walkmesh_editor` into the `addons/` directory of a Godot 4.7 project, then enable **Illustrated Walkmesh Editor** under **Project > Project Settings > Plugins**. The plugin is not yet available for installation.
+For development, copy `addons/illustrated_walkmesh_editor` into the `addons/` directory of a Godot 4.7 project, then enable **Illustrated Walkmesh Editor** under **Project > Project Settings > Plugins**. The current dock is an early development build and does not yet save authored regions.
 
 ## License
 

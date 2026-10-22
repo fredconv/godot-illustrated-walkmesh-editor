@@ -16,6 +16,8 @@ Status labels reflect verified implementation, not planned work. At repository i
 - Persist/reload image-space document state.
 - Verify clean activation/deactivation in Godot.
 
+Status: a development plugin dock, image import/display, zoom controls, middle-button pan, and a serializable document resource exist. UI-level document save/reload and manual GUI verification remain open.
+
 ## Phase 2 — Polygon editing and groups
 
 - Region resources, polygon editing, validation, selection, and undo/redo.
@@ -41,6 +43,7 @@ Status labels reflect verified implementation, not planned work. At repository i
 ## Current verified progress
 
 - The local starter folder is a Godot project declaring Godot 4.7.
-- No Godot executable is currently discoverable through PATH or the checked common install folders, so engine validation is pending.
+- Godot 4.7 is installed locally at a non-PATH location and is used for headless validation.
 - The repository and `main`/`develop` branches exist on GitHub; initial source publication is complete.
-- An IWE plugin has not yet been implemented.
+- A minimal IWE plugin dock is implemented on `develop`; the GdUnit4 headless document serialization test passes (1 test, 0 failures).
+- Enabling the plugin in a headless editor completed without IWE script errors. Pre-existing Phantom Camera missing-icon errors remain in this starter project.
