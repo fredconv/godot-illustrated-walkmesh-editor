@@ -36,7 +36,7 @@ const GROUP_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe
 
 var _zoom := 1.0
 var _document: Resource
-var _undo_redo: EditorUndoRedoManager
+var _undo_redo: Object
 var _undo_context: Node
 var _pending_document_path := ""
 var _pending_image_source := ""
@@ -44,7 +44,7 @@ var _selected_group_id := ""
 var _has_illustration := false
 
 
-func set_document(document: Resource, undo_redo: EditorUndoRedoManager, undo_context: Node) -> void:
+func set_document(document: Resource, undo_redo: Object, undo_context: Node) -> void:
 	_document = document
 	_undo_redo = undo_redo
 	_undo_context = undo_context
@@ -336,7 +336,7 @@ func _refresh_regions(selected_id: String = "") -> void:
 
 func _set_draw_mode(enabled: bool) -> void:
 	if _draw_button.button_pressed != enabled:
-		_draw_button.button_pressed = enabled
+		_draw_button.set_pressed_no_signal(enabled)
 
 
 func _sync_selection(region_id: String) -> void:

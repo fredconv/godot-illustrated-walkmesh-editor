@@ -4,7 +4,9 @@ const DOCUMENT_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/
 const REGION_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region.gd")
 const GROUP_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region_group.gd")
 const CANVAS_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/ui/iwe_canvas.gd")
+const DOCK_SCENE := preload("res://addons/illustrated_walkmesh_editor/ui/iwe_dock.tscn")
 const UNDO_STUB := preload("res://tests/undo_history_stub.gd")
+const DOCK_UNDO_STUB := preload("res://tests/dock_undo_stub.gd")
 
 
 func test_document_serializes_illustration_coordinates() -> void:
@@ -43,6 +45,64 @@ func test_region_hit_testing_and_locked_state_data() -> void:
 	assert_bool(region.locked).is_true()
 	var duplicate: Resource = region.duplicate_region()
 	assert_str(duplicate.id).is_not_equal(region.id)
+
+
+func test_dock_requires_image_and_group_then_creates_polygon() -> void:
+	var dock: Control = DOCK_SCENE.instantiate()
+	var document: Resource = DOCUMENT_SCRIPT.new()
+	var undo_history: RefCounted = DOCK_UNDO_STUB.new()
+	var undo_context := Node.new()
+	dock.set_document(document, undo_history, undo_context)
+	var scene_tree := Engine.get_main_loop() as SceneTree
+	scene_tree.root.add_child(dock)
+	scene_tree.root.add_child(undo_context)
+	await scene_tree.process_frame
+	var draw_button: Button = dock.get_node("%DrawButton")
+	var create_group_button: Button = dock.get_node("%CreateGroupButton")
+	assert_bool(create_group_button.disabled).is_true()
+	assert_bool(draw_button.disabled).is_true()
+	dock._create_group()
+	assert_int(document.groups.size()).is_equal(0)
+
+	var image := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	dock._canvas.set_texture(ImageTexture.create_from_image(image))
+	dock._has_illustration = true
+	dock._refresh_group_options()
+	dock._update_workflow_controls()
+	assert_bool(create_group_button.disabled).is_false()
+	assert_bool(draw_button.disabled).is_true()
+	dock._create_group()
+	assert_int(document.groups.size()).is_equal(1)
+	assert_bool(draw_button.disabled).is_false()
+	var group_id: String = document.groups[0].id
+
+	var canvas: Control = dock._canvas
+	draw_button.button_pressed = true
+	for point in [Vector2(10, 10), Vector2(50, 10), Vector2(50, 50), Vector2(10, 10)]:
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.pressed = true
+		click.position = point
+		canvas._gui_input(click)
+	assert_int(document.regions.size()).is_equal(1)
+	assert_int(document.regions[0].points.size()).is_equal(3)
+	assert_str(document.regions[0].group_id).is_equal(group_id)
+	dock._undo()
+	assert_int(document.regions.size()).is_equal(0)
+	dock._redo()
+	assert_int(document.regions.size()).is_equal(1)
+	var selected_region := false
+	canvas.selection_changed.connect(func(region_id: String) -> void: selected_region = region_id == document.regions[0].id)
+	dock.get_node("%SelectButton").button_pressed = true
+	var selection_click := InputEventMouseButton.new()
+	selection_click.button_index = MOUSE_BUTTON_LEFT
+	selection_click.pressed = true
+	selection_click.position = Vector2(30, 20)
+	canvas._gui_input(selection_click)
+	assert_str(canvas.get_selected_region().id).is_equal(document.regions[0].id)
+	dock.queue_free()
+	undo_context.queue_free()
+	await scene_tree.process_frame
 
 
 func test_region_boolean_subtraction_keeps_multiple_holes() -> void:
