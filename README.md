@@ -17,7 +17,7 @@ The local starter project declares Godot 4.7. Plugin compatibility will be confi
 
 ## Current status
 
-The first development dock is implemented: it can select and display a local illustration, and provides zoom controls and middle-button panning. Document data stores the image path and native dimensions. Polygon editing, document persistence through the UI, and runtime generation are not implemented yet.
+The current development dock supports illustration import, polygon creation and selection, vertex editing, region management, undo/redo, and saving/reopening a document. Runtime navigation generation and boolean operations are not implemented yet.
 
 ## Repository layout
 
@@ -30,7 +30,18 @@ Third-party addons currently present in the local starter project are not part o
 
 ## Installation
 
-For development, copy `addons/illustrated_walkmesh_editor` into the `addons/` directory of a Godot 4.7 project, then enable **Illustrated Walkmesh Editor** under **Project > Project Settings > Plugins**. The current dock is an early development build and does not yet save authored regions.
+For development, copy `addons/illustrated_walkmesh_editor` into the `addons/` directory of a Godot 4.7 project, then enable **Illustrated Walkmesh Editor** under **Project > Project Settings > Plugins**.
+
+### Editor controls
+
+- **Select** is the default mode. Click a filled region or its entry in the list. Click near a vertex to select it; **− Point** removes that vertex when the polygon has more than three points.
+- **Points** enables vertex handles and drag-to-move. **+ Point** enters a one-click mode: click an edge to insert a vertex. Press Escape to cancel.
+- **Polygon** starts a new region. Click to add vertices, click near the first point or press Enter to finish, and Escape to cancel.
+- **Delete**, **Duplicate**, **Rename selected region**, and **Hide/Show region** act on the selected region. Region changes can be undone/redone.
+- Use the middle mouse button to pan and the wheel or zoom buttons to zoom.
+- **Save** writes an IWE `.tres` document. If needed, choose the folder where IWE should save a copy of the background; the image is stored beside the document under `assets/` and referenced relatively. **Open** restores the image and regions together.
+
+The document stores polygon vertices in the source image's pixel coordinates, independently of viewport zoom. Self-intersecting polygon validation, boolean operations, groups, and runtime navigation generation are future work.
 
 ## License
 
