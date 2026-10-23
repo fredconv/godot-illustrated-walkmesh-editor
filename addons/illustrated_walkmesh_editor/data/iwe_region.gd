@@ -8,6 +8,8 @@ extends Resource
 @export var points := PackedVector2Array()
 ## Each polygon removes walkable space from this region. The source polygons stay editable.
 @export var subtraction_polygons: Array[PackedVector2Array] = []
+## User-facing names aligned by index with subtraction_polygons.
+@export var subtraction_names := PackedStringArray()
 @export var color := Color("45d483")
 @export var visible := true
 @export var locked := false

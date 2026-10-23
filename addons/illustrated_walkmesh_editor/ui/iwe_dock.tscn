@@ -1,147 +1,415 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/ui/iwe_dock.gd" id="1_dock"]
 [ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/ui/iwe_canvas.gd" id="2_canvas"]
 [ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/ui/iwe_region_list.gd" id="3_list"]
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/ui/iwe_perspective_preview.gd" id="4_perspective"]
 
 [node name="IWEDock" type="VBoxContainer"]
 script = ExtResource("1_dock")
 
-[node name="Toolbar" type="HFlowContainer" parent="."]
+[node name="DocumentToolbar" type="HFlowContainer" parent="."]
 layout_mode = 2
 
-[node name="NewButton" type="Button" parent="Toolbar"]
+[node name="NewButton" type="Button" parent="DocumentToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "New"
 
-[node name="SaveButton" type="Button" parent="Toolbar"]
+[node name="SaveButton" type="Button" parent="DocumentToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Save"
 
-[node name="OpenButton" type="Button" parent="Toolbar"]
+[node name="OpenButton" type="Button" parent="DocumentToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Open"
 
-[node name="ImportButton" type="Button" parent="Toolbar"]
+[node name="ImportButton" type="Button" parent="DocumentToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Import image"
 
-[node name="CreateGroupButton" type="Button" parent="Toolbar"]
+[node name="CreateGroupButton" type="Button" parent="DocumentToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "New group"
 
-[node name="GroupOption" type="OptionButton" parent="Toolbar"]
+[node name="GroupOption" type="OptionButton" parent="DocumentToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ZoomOutButton" type="Button" parent="Toolbar"]
+[node name="ZoomOutButton" type="Button" parent="DocumentToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "−"
 
-[node name="ZoomLabel" type="Label" parent="Toolbar"]
+[node name="ZoomLabel" type="Label" parent="DocumentToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "100%"
 
-[node name="ZoomInButton" type="Button" parent="Toolbar"]
+[node name="ZoomInButton" type="Button" parent="DocumentToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "+"
 
-[node name="DrawButton" type="Button" parent="Toolbar"]
-unique_name_in_owner = true
-layout_mode = 2
-toggle_mode = true
-text = "Polygon"
-
-[node name="SelectButton" type="Button" parent="Toolbar"]
-unique_name_in_owner = true
-layout_mode = 2
-toggle_mode = true
-button_pressed = true
-text = "Select"
-
-[node name="PointsButton" type="Button" parent="Toolbar"]
-unique_name_in_owner = true
-layout_mode = 2
-toggle_mode = true
-text = "Points"
-
-[node name="SubtractButton" type="Button" parent="Toolbar"]
-unique_name_in_owner = true
-layout_mode = 2
-toggle_mode = true
-text = "Boolean −"
-
-[node name="AddPointButton" type="Button" parent="Toolbar"]
-unique_name_in_owner = true
-layout_mode = 2
-toggle_mode = true
-text = "+ Point"
-
-[node name="RemovePointButton" type="Button" parent="Toolbar"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "− Point"
-
-[node name="VisibilityButton" type="Button" parent="Toolbar"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Hide region"
-
-[node name="UndoButton" type="Button" parent="Toolbar"]
+[node name="UndoButton" type="Button" parent="DocumentToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Undo"
 
-[node name="RedoButton" type="Button" parent="Toolbar"]
+[node name="RedoButton" type="Button" parent="DocumentToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Redo"
 
-[node name="DeleteButton" type="Button" parent="Toolbar"]
+[node name="PerspectiveButton" type="Button" parent="DocumentToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Delete"
+toggle_mode = true
+text = "Perspective"
 
-[node name="DuplicateButton" type="Button" parent="Toolbar"]
+[node name="Workspace" type="HSplitContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = 240
+
+[node name="Sidebar" type="ScrollContainer" parent="Workspace"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="SidebarContent" type="VBoxContainer" parent="Workspace/Sidebar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HierarchyTitle" type="Label" parent="Workspace/Sidebar/SidebarContent"]
+layout_mode = 2
+text = "Groups and regions"
+
+[node name="RegionList" type="Tree" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 190)
+layout_mode = 2
+size_flags_vertical = 0
+hide_root = true
+select_mode = 0
+allow_reselect = true
+script = ExtResource("3_list")
+
+[node name="RenameRegionButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Duplicate"
+text = "Rename selected region"
 
-[node name="ImageScroll" type="ScrollContainer" parent="."]
+[node name="RenameGroupButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Rename selected group"
+
+[node name="RenameCutoutButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Rename selected cutout"
+
+[node name="DuplicateButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Duplicate region"
+
+[node name="DeleteButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Delete region"
+
+[node name="VisibilityButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Hide region"
+
+[node name="ToolsSeparator" type="HSeparator" parent="Workspace/Sidebar/SidebarContent"]
+layout_mode = 2
+
+[node name="ToolsTitle" type="Label" parent="Workspace/Sidebar/SidebarContent"]
+layout_mode = 2
+text = "Tools"
+
+[node name="SelectButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "Select / move region"
+
+[node name="DrawButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Draw polygon"
+
+[node name="PointsButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Edit points"
+
+[node name="SubtractButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Boolean − (cutout)"
+
+[node name="AddPointButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Add point to edge"
+
+[node name="RemovePointButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Remove selected point"
+
+[node name="TemplateSeparator" type="HSeparator" parent="Workspace/Sidebar/SidebarContent"]
+layout_mode = 2
+
+[node name="TemplateTitle" type="Label" parent="Workspace/Sidebar/SidebarContent"]
+layout_mode = 2
+text = "Scale template"
+
+[node name="TemplateModeButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Place / move height template"
+tooltip_text = "Click to place a height reference; drag it to reposition"
+
+[node name="TemplateHeightLabel" type="Label" parent="Workspace/Sidebar/SidebarContent"]
+layout_mode = 2
+text = "Apparent character height (image px)"
+
+[node name="TemplateHeightInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 1.0
+max_value = 10000.0
+step = 1.0
+value = 160.0
+tooltip_text = "Artist-chosen height in illustration pixels; represents apparent scale"
+
+[node name="DeleteTemplateButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Delete selected template"
+
+[node name="PerspectiveSeparator" type="HSeparator" parent="Workspace/Sidebar/SidebarContent"]
+layout_mode = 2
+
+[node name="PerspectivePanel" type="VBoxContainer" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="PerspectiveTitle" type="Label" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+layout_mode = 2
+text = "Perspective calibration"
+
+[node name="FovLabel" type="Label" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+layout_mode = 2
+text = "Field of view (degrees)"
+
+[node name="CameraFovInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 1.0
+max_value = 120.0
+step = 0.5
+value = 45.0
+
+[node name="FloorLabel" type="Label" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+layout_mode = 2
+text = "Virtual floor height"
+
+[node name="FloorHeightInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -10000.0
+max_value = 10000.0
+step = 1.0
+
+[node name="CharacterHeightLabel" type="Label" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+layout_mode = 2
+text = "Known character height (world units)"
+
+[node name="CharacterHeightInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 1.0
+max_value = 10000.0
+step = 1.0
+value = 180.0
+
+[node name="CameraPositionLabel" type="Label" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+layout_mode = 2
+text = "Camera position (X / Y / Z)"
+
+[node name="CameraPositionInputs" type="HFlowContainer" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+layout_mode = 2
+
+[node name="CameraPositionXInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel/CameraPositionInputs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 0)
+layout_mode = 2
+min_value = -10000.0
+max_value = 10000.0
+step = 1.0
+
+[node name="CameraPositionYInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel/CameraPositionInputs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 0)
+layout_mode = 2
+min_value = -10000.0
+max_value = 10000.0
+step = 1.0
+
+[node name="CameraPositionZInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel/CameraPositionInputs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 0)
+layout_mode = 2
+min_value = -10000.0
+max_value = 10000.0
+step = 1.0
+
+[node name="CameraRotationLabel" type="Label" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+layout_mode = 2
+text = "Camera rotation (X / Y / Z degrees)"
+
+[node name="CameraRotationInputs" type="HFlowContainer" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+layout_mode = 2
+
+[node name="CameraRotationXInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel/CameraRotationInputs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 0)
+layout_mode = 2
+min_value = -89.0
+max_value = 89.0
+step = 0.5
+
+[node name="CameraRotationYInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel/CameraRotationInputs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 0)
+layout_mode = 2
+min_value = -180.0
+max_value = 180.0
+step = 0.5
+
+[node name="CameraRotationZInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel/CameraRotationInputs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 0)
+layout_mode = 2
+min_value = -180.0
+max_value = 180.0
+step = 0.5
+
+[node name="PerspectiveTopViewButton" type="CheckButton" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Top view"
+
+[node name="ExportPerspectiveButton" type="Button" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Export perspective scene"
+
+[node name="PerspectiveHint" type="Label" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+layout_mode = 2
+text = "Click the preview to place a height reference. Reprojection uses image-space points and a flat virtual floor."
+autowrap_mode = 2
+
+[node name="ExportSeparator" type="HSeparator" parent="Workspace/Sidebar/SidebarContent"]
+layout_mode = 2
+
+[node name="ExportTitle" type="Label" parent="Workspace/Sidebar/SidebarContent"]
+layout_mode = 2
+text = "Scene export"
+
+[node name="Export2DButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Export 2D scene"
+
+[node name="Scale2DLabel" type="Label" parent="Workspace/Sidebar/SidebarContent"]
+layout_mode = 2
+text = "2D units per pixel"
+
+[node name="Scale2DInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.01
+max_value = 1000.0
+step = 0.01
+value = 1.0
+tooltip_text = "2D scale: world units per illustration pixel"
+
+[node name="Export3DButton" type="Button" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Export 3D stage"
+
+[node name="Scale3DLabel" type="Label" parent="Workspace/Sidebar/SidebarContent"]
+layout_mode = 2
+text = "3D units per pixel"
+
+[node name="Scale3DInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.001
+max_value = 1000.0
+step = 0.001
+value = 0.01
+tooltip_text = "3D scale: world units per illustration pixel"
+
+[node name="AddCameraInput" type="CheckButton" parent="Workspace/Sidebar/SidebarContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Add camera"
+tooltip_text = "Include a framing camera in the generated scene"
+button_pressed = true
+
+[node name="CanvasArea" type="VBoxContainer" parent="Workspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ImageScroll" type="ScrollContainer" parent="Workspace/CanvasArea"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 3
 vertical_scroll_mode = 3
 
-[node name="RegionList" type="ItemList" parent="."]
+[node name="PerspectivePreview" type="SubViewportContainer" parent="Workspace/CanvasArea"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 88)
+visible = false
 layout_mode = 2
-script = ExtResource("3_list")
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("4_perspective")
 
-[node name="StatusLabel" type="Label" parent="."]
+[node name="Canvas" type="Control" parent="Workspace/CanvasArea/ImageScroll"]
+custom_minimum_size = Vector2(320, 240)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("2_canvas")
+
+[node name="StatusLabel" type="Label" parent="Workspace/CanvasArea"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Select  •  Select a region or start a polygon"
-
-[node name="RenameRegionButton" type="Button" parent="."]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Rename selected region"
-
-[node name="Canvas" type="Control" parent="ImageScroll"]
-custom_minimum_size = Vector2(320, 240)
-layout_mode = 2
-script = ExtResource("2_canvas")
+autowrap_mode = 2
 
 [node name="ImageFileDialog" type="FileDialog" parent="."]
 title = "Import illustration"
@@ -166,3 +434,10 @@ unique_name_in_owner = true
 file_mode = 0
 access = 2
 filters = PackedStringArray("*.tres ; IWE Document")
+
+[node name="ExportSceneDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Export IWE scene"
+file_mode = 4
+access = 2
+filters = PackedStringArray("*.tscn ; Godot Scene")

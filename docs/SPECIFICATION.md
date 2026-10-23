@@ -4,7 +4,7 @@
 
 Illustrated Walkmesh Editor (IWE) is intended to let an artist author playable navigation over a painted illustration. The immediate product target is an image-space 2.5D workflow; the art remains the visual source of truth and the plugin does not claim to recover real 3D geometry automatically.
 
-This is a starting specification. No IWE functionality is implemented as of the initial repository setup.
+This specification began as the initial target; current implementation status is tracked in `ROADMAP.md` and `README.md`.
 
 ## Core concepts
 
@@ -14,6 +14,8 @@ This is a starting specification. No IWE functionality is implemented as of the 
 - **Group:** hierarchical organizational node with visibility and lock state.
 - **Modifier:** ordered, non-destructive operation over explicitly scoped geometry. Boolean operations must preserve original inputs.
 - **Scale anchor:** image-space point with a desired apparent character height. It encodes artistic scale, not unique physical depth.
+
+The scale-template workflow stores an image-space ground position and apparent height in pixels, draws a simple standing silhouette, and exports a corresponding upright capsule in a 3D stage. The perspective workflow stores field of view, camera transform, virtual floor height, and known character height. It intersects each image coordinate's camera ray with that flat floor, then uses those coordinates for the warped illustration mesh, walkable polygons, cutouts, and height templates. A top-down orthographic camera is included for inspection. The stage does not recover terrain elevation, hidden depth, or automatic depth interpolation; changing calibration means exporting the stage again.
 - **Blocked region, connection, and occluder:** separate concepts from walkable area and generated collision.
 - **Generated output:** derived navigation/collision/runtime data, kept separate from editable source data.
 
@@ -38,4 +40,4 @@ This is a starting specification. No IWE functionality is implemented as of the 
 
 ## Near-term acceptance criteria
 
-The first useful alpha should load and unload cleanly as an editor plugin, display an image in a dock, preserve image-space coordinates through zoom/pan, and save/reload its authored data. Later milestones add polygon authoring and validated geometry operations.
+The first useful alpha should load and unload cleanly as an editor plugin, display an image in a dock, preserve image-space coordinates through zoom/pan, and save/reload its authored data. Polygon authoring and Boolean subtraction are implemented. The current exporter builds standalone 2D, flat top-down 3D, and camera-calibrated flat-floor scenes with derived navigation regions; it does not infer terrain elevation or hidden depth from a single image.

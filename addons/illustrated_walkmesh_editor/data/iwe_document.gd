@@ -6,6 +6,9 @@ extends Resource
 @export var image_size := Vector2i.ZERO
 @export var groups: Array[IWERegionGroup] = []
 @export var regions: Array[IWERegion] = []
+@export var scale_anchors: Array[IWEScaleAnchor] = []
+@export_range(1.0, 10000.0, 1.0) var default_template_height_px := 160.0
+@export var perspective_calibration: IWEPerspectiveCalibration = IWEPerspectiveCalibration.new()
 @export var document_path := ""
 
 
