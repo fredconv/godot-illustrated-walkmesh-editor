@@ -60,8 +60,11 @@ jobs:
       - name: Import resources and build the class cache
         shell: pwsh
         run: |
-          & $env:GODOT_BIN --headless --import --path .
-          if ($LASTEXITCODE -ne 0) { Write-Error "Godot import failed with exit code $LASTEXITCODE"; exit $LASTEXITCODE }
+          # Keep the full output: the import exit code alone did not explain the failure.
+          & $env:GODOT_BIN --headless --import --path . *> godot-import.log
+          $importCode = $LASTEXITCODE
+          Get-Content godot-import.log | Select-Object -Last 80
+          Write-Output "Godot --import exit code: $importCode"
           # GdUnit4 classes must be registered before the test run; fail early with a clear message otherwise.
           if (-not (Select-String -Path .godot/global_script_class_cache.cfg -Pattern 'GdUnitTestCIRunner' -Quiet)) {
             Write-Error "GdUnit4 classes are not in the class cache: the addon was not enabled or imported."
@@ -74,10 +77,12 @@ jobs:
           & $env:GODOT_BIN --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd --add "res://tests" --ignoreHeadlessMode
           if ($LASTEXITCODE -ne 0) { Write-Error "Test suite failed with exit code $LASTEXITCODE"; exit $LASTEXITCODE }
 
-      - name: Upload GdUnit4 reports
+      - name: Upload GdUnit4 reports and import log
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: gdunit-reports
-          path: reports/
+          path: |
+            reports/
+            godot-import.log
           if-no-files-found: ignore
