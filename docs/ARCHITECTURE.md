@@ -24,7 +24,7 @@ addons/illustrated_walkmesh_editor/
     └── iwe_walkmesh_character.gd  IWEWalkmeshCharacter (CharacterBody3D): click and keyboard movement
 ```
 
-Tests live in the project-level `tests/` folder (GdUnit4), not inside the addon. Current suite: 28 headless tests, all passing.
+Tests live in the project-level `tests/` folder (GdUnit4), not inside the addon. Current suite: 29 headless tests, all passing.
 
 ### 1.1 Data model facts
 

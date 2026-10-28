@@ -71,6 +71,17 @@ func test_save_creates_missing_folder_and_reopen_restores_anchors() -> void:
 	dock.queue_free()
 
 
+func test_region_tree_has_a_column_before_items_are_added() -> void:
+	# A tree without columns crashed the editor when selecting a cutout item (cell index 0).
+	var dock := _make_dock()
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	assert_int(dock._region_list.columns).is_greater_equal(1)
+	var item: TreeItem = dock._region_list.create_item()
+	item.set_text(0, "probe")
+	item.select(0)
+	dock.queue_free()
+
+
 func test_save_dialog_is_a_save_dialog_and_starts_in_project() -> void:
 	var dock := _make_dock()
 	await (Engine.get_main_loop() as SceneTree).process_frame

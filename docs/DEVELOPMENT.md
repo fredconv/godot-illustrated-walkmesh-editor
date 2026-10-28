@@ -43,7 +43,7 @@ From the project root, with the Godot 4.7.1 executable on your path or reference
 godot --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd --add "res://tests" --ignoreHeadlessMode
 ```
 
-A successful run prints `Exit code: 0` and reports the number of test cases (currently 28). Reports are written to `reports/`, which is ignored by Git.
+A successful run prints `Exit code: 0` and reports the number of test cases (currently 29). Reports are written to `reports/`, which is ignored by Git.
 
 The same command runs in continuous integration (`.github/workflows/tests.yml`), which downloads the pinned versions of Godot and GdUnit4.
 
