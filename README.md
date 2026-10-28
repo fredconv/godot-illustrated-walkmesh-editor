@@ -27,17 +27,39 @@ Illustrated Walkmesh Editor is a Godot 4 editor plugin that turns a painted back
 
 ## Features
 
-These features are implemented and covered by automated tests. For what is still missing, see the [roadmap](docs/ROADMAP.md).
+Three levels, so you know what you can rely on today. The [roadmap](docs/ROADMAP.md) has the order of work.
+
+### Available
+
+Implemented and covered by automated tests. Most were also checked in the editor; the 2D export has so far been tested headless only.
 
 - **Illustration.** Import a PNG, JPG, or WebP image, then pan and zoom. Authored geometry is stored in image pixels, so zoom never changes it.
-- **Walkable polygons.** Draw, select, move, and edit polygons vertex by vertex. Add or remove points, duplicate, rename, hide, and delete. Every edit supports undo and redo.
-- **Groups and cutouts.** Organize regions into groups. Cut holes (lakes, rocks) into a region with named cutouts.
-- **Touching zones.** Two walkable zones that share an edge form one walkable network. The character crosses the shared edge without a wall, and the zones are not merged.
-- **Perspective calibration.** Place character height references at different depths, then fit the camera to them. The illustration is warped onto a flat virtual floor.
-- **Scene export.** Export a standalone 2D scene, a flat 3D stage, or a calibrated perspective stage. Each export contains navigation regions; the perspective stage also gets collision walls on the walkable outlines.
-- **Test character.** The exported perspective stage can include a character that walks on click or with the keyboard, stays inside walkable areas, and is drawn at the size the calibrated camera gives its position.
-- **Save and reopen.** Save an IWE document as a `.tres` file. The illustration is copied next to it, and the file reopens with all regions, cutouts, and references.
+- **Walkable polygons.** Draw, select, move, and edit polygons vertex by vertex. Add or remove points, duplicate, rename, hide, and delete. Edits support undo and redo.
+- **Groups and cutouts.** Organize regions into flat groups. Cut holes (lakes, rocks) into a region with named cutouts.
+- **Touching zones.** Two walkable zones that share an edge form one walkable network. The shared edge has no wall, and the zones are not merged.
+- **Scene export.** Export a standalone 2D scene or a flat 3D stage. Each export contains one navigation region per walkable zone. The 3D stage nests them under their groups.
+- **Save and reopen.** Save an IWE document as a `.tres` file. The illustration is copied next to it, and reopening restores regions, cutouts, and templates.
 - **Floating window.** Open the illustration editor in a large separate window.
+
+### Experimental
+
+Implemented and tested headless, but the editor interaction has not been checked end to end. Expect rough edges and possible changes.
+
+- **Perspective calibration.** Place character height references at different depths, then fit the camera to them. The illustration is warped onto a flat virtual floor. This does not infer terrain height or hidden depth.
+- **Perspective export.** The calibrated stage gets collision walls on the outer outlines of walkable zones. Shared edges stay open.
+- **Test character.** The perspective stage can include a character that walks on click or with the keyboard, stays inside walkable areas, and is drawn at the size the calibrated camera gives its position.
+
+### Planned
+
+Not implemented. Do not rely on these yet.
+
+- Boolean union, intersection, and XOR operations.
+- Explicit connections between regions (bridges with a width and a direction).
+- Region types: connection, collision only, special.
+- The **Layer Manager**: layers, groups of layers, visibility, lock, and opacity.
+- Visual layers: transparent PNG elements, transforms, background and foreground.
+- Depth occlusion and parallax for visual layers. An occlusion study is in `prototypes/occlusion/`.
+- Nested groups and assisted calibration.
 
 ## Example scene
 

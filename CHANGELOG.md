@@ -25,6 +25,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 - The save button opened an *Open* dialog instead of a *Save* dialog (wrong `file_mode`).
+- Selecting a cutout in the region tree could abort the engine: the tree was rebuilt inside its own selection callback. Selection no longer rebuilds the tree, and interaction signals are deferred. See `docs/REGION_TREE_FIX.md`.
 
 ## [0.1.0-dev] — development snapshot
 
