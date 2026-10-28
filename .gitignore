@@ -44,3 +44,6 @@ secrets.*
 
 # Godot-generated import sidecars
 *.import
+
+# Local notes for the AI assistant (machine-specific paths); kept out of the repository
+/MCP-CONNECTIONS-FOR-CLAUDE.md
