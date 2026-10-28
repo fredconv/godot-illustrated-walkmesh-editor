@@ -21,6 +21,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Walls are no longer generated along edges shared with another walkable zone. Touching zones form a continuous walkable network without being merged.
 - Save dialog opens inside the project and creates the target folder when it does not exist.
 - User-facing labels in the window are in English.
+- README restructured after a MIT-licensed reference project: what the plugin does, a screenshot, documentation links, a numbered installation section, and credits. New FAQ in `docs/FAQ.md`.
 
 ### Fixed
 - The save button opened an *Open* dialog instead of a *Save* dialog (wrong `file_mode`).
