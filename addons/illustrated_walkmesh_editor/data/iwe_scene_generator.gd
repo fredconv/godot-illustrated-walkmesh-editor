@@ -3,6 +3,14 @@ extends RefCounted
 
 const REGION_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region.gd")
 const PERSPECTIVE_PROJECTOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_perspective_projector.gd")
+const CHARACTER_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/runtime/iwe_walkmesh_character.gd")
+
+## Render layers used by perspective stages. The game camera shows the illustration as a
+## screen-aligned backdrop (exact pixels, including sky above the horizon); the top camera
+## shows the floor-warped copy instead.
+const LAYER_FLOOR_ILLUSTRATION := 1 << 1
+const LAYER_CAMERA_BACKDROP := 1 << 2
+const PERSPECTIVE_CAMERA_FAR := 2000.0
 
 
 static func build_2d_scene(document: Resource, texture: Texture2D, world_scale: float = 1.0, add_camera: bool = false) -> Node2D:
@@ -130,7 +138,7 @@ static func build_3d_scene(document: Resource, texture: Texture2D, world_scale: 
 	return root
 
 
-static func build_perspective_scene(document: Resource, texture: Texture2D, calibration: IWEPerspectiveCalibration, world_scale: float = 0.01) -> Node3D:
+static func build_perspective_scene(document: Resource, texture: Texture2D, calibration: IWEPerspectiveCalibration, world_scale: float = 0.01, add_player: bool = false) -> Node3D:
 	if document == null or texture == null or calibration == null or document.image_size.x <= 0 or document.image_size.y <= 0 or world_scale <= 0.0:
 		return null
 	var viewport_size := calibration.reference_viewport_size
@@ -155,16 +163,29 @@ static func build_perspective_scene(document: Resource, texture: Texture2D, cali
 	game_camera.fov = calibration.field_of_view_degrees
 	game_camera.position = calibration.camera_position
 	game_camera.rotation_degrees = calibration.camera_rotation_degrees
+	# Camera clip distances are measured in world units (Godot orthonormalizes camera transforms).
+	game_camera.near = 0.05
+	game_camera.far = PERSPECTIVE_CAMERA_FAR
+	game_camera.cull_mask = 0xFFFFF & ~LAYER_FLOOR_ILLUSTRATION
 	game_camera.current = true
 	camera_rig.add_child(game_camera)
 	game_camera.owner = root
+	var backdrop := _make_camera_backdrop(document.image_size, viewport_size, calibration, texture)
+	game_camera.add_child(backdrop)
+	backdrop.owner = root
 	var top_camera := Camera3D.new()
 	top_camera.name = "TopCamera"
 	top_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	top_camera.keep_aspect = Camera3D.KEEP_WIDTH
-	top_camera.size = float(document.image_size.x) * world_scale
-	top_camera.position = Vector3(float(document.image_size.x) * 0.5, maxf(calibration.camera_position.y, float(document.image_size.y)) + 10.0, float(document.image_size.y) * 0.5)
-	top_camera.look_at_from_position(top_camera.position, Vector3(float(document.image_size.x) * 0.5, calibration.floor_height, float(document.image_size.y) * 0.5), Vector3.FORWARD)
+	var floor_bounds := _projected_floor_bounds(document, viewport_size, calibration)
+	var floor_center := floor_bounds.get_center()
+	var reference_aspect := float(viewport_size.x) / float(viewport_size.y)
+	top_camera.size = maxf(floor_bounds.size.x, floor_bounds.size.y * reference_aspect) * 1.1 * world_scale
+	var top_height := maxf(calibration.camera_position.y, calibration.floor_height) + maxf(floor_bounds.size.x, floor_bounds.size.y)
+	top_camera.position = Vector3(floor_center.x, top_height, floor_center.y)
+	top_camera.look_at_from_position(top_camera.position, Vector3(floor_center.x, calibration.floor_height, floor_center.y), Vector3.FORWARD)
+	top_camera.far = maxf((top_height - calibration.floor_height) * world_scale * 2.0, 100.0)
+	top_camera.cull_mask = 0xFFFFF & ~LAYER_CAMERA_BACKDROP
 	camera_rig.add_child(top_camera)
 	top_camera.owner = root
 	var image_plane := MeshInstance3D.new()
@@ -177,6 +198,8 @@ static func build_perspective_scene(document: Resource, texture: Texture2D, cali
 	image_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
 	image_plane.material_override = image_material
 	image_plane.position.y = calibration.floor_height
+	image_plane.layers = LAYER_FLOOR_ILLUSTRATION
+	image_plane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	template.add_child(image_plane)
 	image_plane.owner = root
 	var navigation := Node3D.new()
@@ -193,14 +216,13 @@ static func build_perspective_scene(document: Resource, texture: Texture2D, cali
 	for region in document.regions:
 		if not region.visible or region.points.size() < 3:
 			continue
-		var projected_region := _make_projected_navigation_region(region, document.image_size, viewport_size, calibration)
+		var projected_region := _make_projected_navigation_region(region, document.image_size, viewport_size, calibration, document.regions)
 		if projected_region == null:
 			continue
 		var parent: Node3D = group_nodes.get(region.group_id, navigation)
 		parent.add_child(projected_region)
 		projected_region.owner = root
-		for child in projected_region.get_children():
-			child.owner = root
+		_assign_owner_recursive(projected_region, root)
 	for anchor_index in document.scale_anchors.size():
 		var anchor: IWEScaleAnchor = document.scale_anchors[anchor_index]
 		var ground_point: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(anchor.position, document.image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
@@ -228,7 +250,162 @@ static func build_perspective_scene(document: Resource, texture: Texture2D, cali
 		mannequin.material_override = mannequin_material
 		anchor_node.add_child(mannequin)
 		mannequin.owner = root
+	if add_player:
+		var player := _make_player(document, calibration, viewport_size, world_scale)
+		if player:
+			root.add_child(player)
+			player.owner = root
+			for child in player.get_children():
+				child.owner = root
 	return root
+
+
+## Builds the playable character. It lives directly under the stage root (unscaled) so
+## physics shapes are not inside the pixel-to-world scaled PerspectiveStage node.
+static func _make_player(document: Resource, calibration: IWEPerspectiveCalibration, viewport_size: Vector2i, world_scale: float) -> CharacterBody3D:
+	var start: Variant = _player_start_point(document, calibration, viewport_size)
+	if start == null:
+		return null
+	var height := maxf(calibration.character_height_units, 2.0) * world_scale
+	var player := CharacterBody3D.new()
+	player.name = "Player"
+	player.set_script(CHARACTER_SCRIPT)
+	player.position = Vector3(start.x, calibration.floor_height, start.z) * world_scale
+	player.set("move_speed", height * 1.5)
+	# Walls sit on the boundary, so the character's centre stops one radius inside them. The
+	# navigation snap tolerance must exceed that radius or the character gets pulled to the edge.
+	player.set("snap_tolerance", height * 0.16 * 3.0)
+	var shape := CapsuleShape3D.new()
+	shape.radius = height * 0.16
+	shape.height = height
+	var collision := CollisionShape3D.new()
+	collision.name = "CollisionShape3D"
+	collision.shape = shape
+	collision.position.y = height * 0.5
+	player.add_child(collision)
+	var capsule := CapsuleMesh.new()
+	capsule.radius = height * 0.16
+	capsule.height = height
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = Color("4aa3ff")
+	var visual := MeshInstance3D.new()
+	visual.name = "Visual"
+	visual.mesh = capsule
+	visual.material_override = material
+	visual.position.y = height * 0.5
+	player.add_child(visual)
+	return player
+
+
+## Start on the first scale anchor that lies on a walkable region, otherwise at the centre
+## of the largest navigation polygon of the first visible region.
+static func _player_start_point(document: Resource, calibration: IWEPerspectiveCalibration, viewport_size: Vector2i) -> Variant:
+	var visible_regions: Array = document.regions.filter(func(region: Resource) -> bool: return region.visible and region.points.size() >= 3)
+	for anchor in document.scale_anchors:
+		for region in visible_regions:
+			if _region_contains(region, anchor.position):
+				return PERSPECTIVE_PROJECTOR.image_point_to_floor(anchor.position, document.image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
+	for region in visible_regions:
+		var mesh := _make_navigation_mesh(region)
+		var vertices := mesh.get_vertices()
+		var best := Vector2.ZERO
+		var best_area := -1.0
+		for polygon_index in mesh.get_polygon_count():
+			var polygon := mesh.get_polygon(polygon_index)
+			var points := PackedVector2Array()
+			for vertex_index in polygon:
+				points.append(Vector2(vertices[vertex_index].x, vertices[vertex_index].z))
+			var area := absf(_polygon_area(points))
+			if area > best_area:
+				best_area = area
+				best = _polygon_centroid(points)
+		if best_area > 0.0:
+			var projected: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(best, document.image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
+			if projected != null:
+				return projected
+	return null
+
+
+static func _region_contains(region: Resource, image_point: Vector2) -> bool:
+	var inside := false
+	for contour in region.get_walkable_contours():
+		if Geometry2D.is_point_in_polygon(image_point, contour):
+			inside = not inside
+	return inside
+
+
+static func _polygon_area(points: PackedVector2Array) -> float:
+	var area := 0.0
+	for index in points.size():
+		area += points[index].cross(points[(index + 1) % points.size()])
+	return area * 0.5
+
+
+static func _polygon_centroid(points: PackedVector2Array) -> Vector2:
+	var center := Vector2.ZERO
+	for point in points:
+		center += point
+	return center / maxf(points.size(), 1)
+
+
+## A quad parented to the perspective camera that shows the illustration exactly as the
+## reference viewport frames it. It sits far away so every 3D object draws in front of it.
+static func _make_camera_backdrop(image_size: Vector2i, viewport_size: Vector2i, calibration: IWEPerspectiveCalibration, texture: Texture2D) -> MeshInstance3D:
+	# Camera children are placed in world units, so this distance must stay inside the camera's far plane.
+	var distance := PERSPECTIVE_CAMERA_FAR * 0.9
+	var fit_scale: float = PERSPECTIVE_PROJECTOR.image_scale_in_viewport(image_size, viewport_size)
+	var units_per_viewport_pixel := 2.0 * distance * tan(deg_to_rad(clampf(calibration.field_of_view_degrees, 1.0, 179.0)) * 0.5) / float(viewport_size.y)
+	var quad := QuadMesh.new()
+	quad.size = Vector2(image_size) * fit_scale * units_per_viewport_pixel
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_texture = texture
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	var backdrop := MeshInstance3D.new()
+	backdrop.name = "IllustrationBackdrop"
+	backdrop.mesh = quad
+	backdrop.material_override = material
+	backdrop.position = Vector3(0.0, 0.0, -distance)
+	backdrop.layers = LAYER_CAMERA_BACKDROP
+	backdrop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return backdrop
+
+
+## Floor-space (x, z) bounds of everything authored: walkable regions and anchors. Falls
+## back to the projected lower half of the image when nothing is authored yet.
+static func _projected_floor_bounds(document: Resource, viewport_size: Vector2i, calibration: IWEPerspectiveCalibration) -> Rect2:
+	var image_points := PackedVector2Array()
+	for region in document.regions:
+		if region.visible:
+			image_points.append_array(region.points)
+	for anchor in document.scale_anchors:
+		image_points.append(anchor.position)
+	if image_points.is_empty():
+		var size := Vector2(document.image_size)
+		image_points = PackedVector2Array([Vector2(0, size.y * 0.5), Vector2(size.x, size.y * 0.5), size, Vector2(0, size.y)])
+	var bounds := Rect2()
+	var has_point := false
+	for point in image_points:
+		var projected: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(point, document.image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
+		if projected == null:
+			continue
+		var floor_point := Vector2(projected.x, projected.z)
+		if has_point:
+			bounds = bounds.expand(floor_point)
+		else:
+			bounds = Rect2(floor_point, Vector2.ZERO)
+			has_point = true
+	if not has_point:
+		return Rect2(Vector2(calibration.camera_position.x, calibration.camera_position.z) - Vector2.ONE * 500.0, Vector2.ONE * 1000.0)
+	return bounds.grow(maxf(bounds.size.x, bounds.size.y) * 0.05 + 1.0)
+
+
+## Packed scenes only keep nodes whose owner is the packed root, at any depth.
+static func _assign_owner_recursive(node: Node, owner: Node) -> void:
+	for child in node.get_children():
+		child.owner = owner
+		_assign_owner_recursive(child, owner)
 
 
 static func _make_projected_image_mesh(image_size: Vector2i, viewport_size: Vector2i, calibration: IWEPerspectiveCalibration) -> ArrayMesh:
@@ -267,7 +444,7 @@ static func _make_projected_image_mesh(image_size: Vector2i, viewport_size: Vect
 	return mesh
 
 
-static func _make_projected_navigation_region(region: Resource, image_size: Vector2i, viewport_size: Vector2i, calibration: IWEPerspectiveCalibration) -> NavigationRegion3D:
+static func _make_projected_navigation_region(region: Resource, image_size: Vector2i, viewport_size: Vector2i, calibration: IWEPerspectiveCalibration, all_regions: Array = []) -> NavigationRegion3D:
 	var source_mesh := _make_navigation_mesh(region)
 	var source_vertices := source_mesh.get_vertices()
 	var projected_vertices := PackedVector3Array()
@@ -287,7 +464,105 @@ static func _make_projected_navigation_region(region: Resource, image_size: Vect
 	nav_region.navigation_mesh = navigation_mesh
 	_add_walkable_surface(nav_region, navigation_mesh)
 	_add_projected_contour_guides(nav_region, region, image_size, viewport_size, calibration)
+	_add_projected_collision(nav_region, region, navigation_mesh, image_size, viewport_size, calibration, all_regions)
 	return nav_region
+
+
+## Physics for a walkable region: a floor shaped like the walkable triangles, and invisible
+## walls along every boundary edge (outer contour and each cutout). Walls rise to the
+## character height so a character cannot step over them.
+static func _add_projected_collision(nav_region: NavigationRegion3D, region: Resource, navigation_mesh: NavigationMesh, image_size: Vector2i, viewport_size: Vector2i, calibration: IWEPerspectiveCalibration, all_regions: Array = []) -> void:
+	var body := StaticBody3D.new()
+	body.name = "Collision"
+	body.collision_layer = 1
+	body.collision_mask = 0
+	nav_region.add_child(body)
+	body.owner = nav_region.owner
+	var floor_shape := ConcavePolygonShape3D.new()
+	floor_shape.backface_collision = true
+	floor_shape.set_faces(_triangulate_navigation_mesh(navigation_mesh))
+	var floor_collision := CollisionShape3D.new()
+	floor_collision.name = "Floor"
+	floor_collision.shape = floor_shape
+	body.add_child(floor_collision)
+	floor_collision.owner = nav_region.owner
+	var wall_height := maxf(calibration.character_height_units, 2.0)
+	var wall_faces := PackedVector3Array()
+	for contour in region.get_walkable_contours():
+		var floor_points := PackedVector2Array()
+		for point in contour:
+			var projected: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(point, image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
+			if projected == null:
+				return
+			floor_points.append(Vector2(projected.x, projected.z))
+		for index in floor_points.size():
+			# An edge shared with another walkable zone is a passage, not a wall.
+			if _edge_is_covered_by_other_zone(contour[index], contour[(index + 1) % contour.size()], region, all_regions):
+				continue
+			var a := floor_points[index]
+			var b := floor_points[(index + 1) % floor_points.size()]
+			var a_base := Vector3(a.x, 0.0, a.y)
+			var b_base := Vector3(b.x, 0.0, b.y)
+			var a_top := Vector3(a.x, wall_height, a.y)
+			var b_top := Vector3(b.x, wall_height, b.y)
+			wall_faces.append_array(PackedVector3Array([a_base, b_base, b_top, a_base, b_top, a_top]))
+	if wall_faces.is_empty():
+		return
+	var wall_shape := ConcavePolygonShape3D.new()
+	wall_shape.backface_collision = true
+	wall_shape.set_faces(wall_faces)
+	var wall_collision := CollisionShape3D.new()
+	wall_collision.name = "Walls"
+	wall_collision.shape = wall_shape
+	body.add_child(wall_collision)
+	wall_collision.owner = nav_region.owner
+
+
+## True when the whole edge a-b (image space) lies on another walkable zone, either on
+## its outline (shared border) or inside its walkable area (overlap). Sampling several
+## points keeps a partly shared edge a wall where it is really a boundary.
+static func _edge_is_covered_by_other_zone(a: Vector2, b: Vector2, region: Resource, all_regions: Array) -> bool:
+	for sample_t in [0.25, 0.5, 0.75]:
+		var sample: Vector2 = a.lerp(b, sample_t)
+		var covered := false
+		for other in all_regions:
+			if other == region or other.points.size() < 3 or not other.visible:
+				continue
+			if _is_on_outline(sample, other.points) or _is_walkable_in(sample, other):
+				covered = true
+				break
+		if not covered:
+			return false
+	return true
+
+
+static func _is_on_outline(point: Vector2, polygon: PackedVector2Array) -> bool:
+	for index in polygon.size():
+		var closest := Geometry2D.get_closest_point_to_segment(point, polygon[index], polygon[(index + 1) % polygon.size()])
+		if closest.distance_to(point) <= 0.5:
+			return true
+	return false
+
+
+static func _is_walkable_in(point: Vector2, zone: Resource) -> bool:
+	if not Geometry2D.is_point_in_polygon(point, zone.points):
+		return false
+	for cutout in zone.subtraction_polygons:
+		if cutout.size() >= 3 and Geometry2D.is_point_in_polygon(point, cutout):
+			return false
+	return true
+
+
+static func _triangulate_navigation_mesh(navigation_mesh: NavigationMesh) -> PackedVector3Array:
+	var vertices := navigation_mesh.get_vertices()
+	var faces := PackedVector3Array()
+	for polygon_index in navigation_mesh.get_polygon_count():
+		var polygon := navigation_mesh.get_polygon(polygon_index)
+		for index in range(1, polygon.size() - 1):
+			faces.append(vertices[polygon[0]])
+			faces.append(vertices[polygon[index]])
+			faces.append(vertices[polygon[index + 1]])
+	return faces
 
 
 static func _add_projected_contour_guides(nav_region: NavigationRegion3D, region: Resource, image_size: Vector2i, viewport_size: Vector2i, calibration: IWEPerspectiveCalibration) -> void:
@@ -308,25 +583,14 @@ static func _make_projected_contour_guide(guide_name: String, points: PackedVect
 	guide.name = _safe_node_name(guide_name)
 	if points.size() < 2:
 		return guide
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.vertex_color_use_as_albedo = true
-	material.no_depth_test = true
-	var mesh := ImmediateMesh.new()
-	mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, material)
-	mesh.surface_set_color(color)
+	var line_points := PackedVector3Array()
 	for point in points:
 		var projected: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(point, image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
 		if projected == null:
-			mesh.surface_end()
 			return guide
-		mesh.surface_add_vertex(Vector3(projected.x, 0.2, projected.z))
-	var first: Vector2 = points[0]
-	var first_projected: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(first, image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
-	if first_projected != null:
-		mesh.surface_add_vertex(Vector3(first_projected.x, 0.2, first_projected.z))
-	mesh.surface_end()
-	guide.mesh = mesh
+		line_points.append(Vector3(projected.x, 0.2, projected.z))
+	line_points.append(line_points[0])
+	_assign_line_mesh(guide, line_points, color)
 	return guide
 
 
@@ -417,19 +681,27 @@ static func _make_contour_guide(guide_name: String, points: PackedVector2Array, 
 	guide.name = _safe_node_name(guide_name)
 	if points.size() < 2:
 		return guide
+	var line_points := PackedVector3Array()
+	for point in points:
+		line_points.append(Vector3(point.x, 0.25, point.y))
+	line_points.append(line_points[0])
+	_assign_line_mesh(guide, line_points, color)
+	return guide
+
+
+## ArrayMesh line strip. Unlike ImmediateMesh, ArrayMesh surfaces are saved in .tscn files.
+static func _assign_line_mesh(guide: MeshInstance3D, line_points: PackedVector3Array, color: Color) -> void:
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = line_points
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINE_STRIP, arrays)
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.vertex_color_use_as_albedo = true
+	material.albedo_color = color
 	material.no_depth_test = true
-	var line_mesh := ImmediateMesh.new()
-	line_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, material)
-	line_mesh.surface_set_color(color)
-	for point in points:
-		line_mesh.surface_add_vertex(Vector3(point.x, 0.25, point.y))
-	line_mesh.surface_add_vertex(Vector3(points[0].x, 0.25, points[0].y))
-	line_mesh.surface_end()
-	guide.mesh = line_mesh
-	return guide
+	guide.mesh = mesh
+	guide.material_override = material
 
 
 static func _safe_node_name(value: String) -> String:

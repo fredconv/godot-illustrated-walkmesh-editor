@@ -10,6 +10,9 @@ extends Resource
 @export_range(1.0, 10000.0, 1.0) var default_template_height_px := 160.0
 @export var perspective_calibration: IWEPerspectiveCalibration = IWEPerspectiveCalibration.new()
 @export var document_path := ""
+## Version of the saved document format, independent from the plugin version.
+## Documents saved before this field existed load with the default (1).
+@export var schema_version := 1
 
 
 func set_illustration(path: String, size: Vector2i) -> void:

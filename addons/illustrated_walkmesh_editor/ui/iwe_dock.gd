@@ -49,6 +49,8 @@ const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/
 @onready var _perspective_panel: VBoxContainer = %PerspectivePanel
 @onready var _perspective_preview: SubViewportContainer = %PerspectivePreview
 @onready var _perspective_top_view_button: CheckButton = %PerspectiveTopViewButton
+@onready var _fit_references_button: Button = %FitFromReferencesButton
+@onready var _add_player_input: CheckButton = %AddPlayerInput
 @onready var _export_perspective_button: Button = %ExportPerspectiveButton
 @onready var _camera_fov_input: SpinBox = %CameraFovInput
 @onready var _floor_height_input: SpinBox = %FloorHeightInput
@@ -62,6 +64,8 @@ const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/
 @onready var _image_scroll: ScrollContainer = $Workspace/CanvasArea/ImageScroll
 @onready var _status_label: Label = %StatusLabel
 @onready var _canvas: Control = $Workspace/CanvasArea/ImageScroll/Canvas
+@onready var _canvas_window_button: Button = %CanvasWindowButton
+@onready var _canvas_area: Control = $Workspace/CanvasArea
 
 var _zoom := 1.0
 var _document: Resource
@@ -78,6 +82,9 @@ var _selected_cutout_region_id := ""
 var _selected_cutout_index := -1
 var _selected_scale_anchor_id := ""
 var _perspective_mode := false
+var _canvas_window: Window
+var _canvas_area_parent: Node
+var _canvas_area_index := 0
 
 
 func set_document(document: Resource, undo_redo: Object, undo_context: Object) -> void:
@@ -114,7 +121,7 @@ func _ready() -> void:
 	_perspective_preview.image_point_clicked.connect(_create_perspective_anchor)
 	_perspective_preview.viewport_size_changed.connect(_perspective_viewport_resized)
 	_new_button.pressed.connect(_new_document)
-	_save_button.pressed.connect(_save_dialog.popup_centered)
+	_save_button.pressed.connect(_show_save_dialog)
 	_save_dialog.file_selected.connect(_save_document)
 	_open_button.pressed.connect(_open_dialog.popup_centered)
 	_open_dialog.file_selected.connect(_open_document)
@@ -131,7 +138,9 @@ func _ready() -> void:
 	_template_height_input.value_changed.connect(_set_selected_template_height)
 	_delete_template_button.pressed.connect(_delete_selected_template)
 	_perspective_button.toggled.connect(_set_perspective_mode)
+	_canvas_window_button.toggled.connect(_set_canvas_window)
 	_perspective_top_view_button.toggled.connect(_perspective_preview.set_top_view)
+	_fit_references_button.pressed.connect(_fit_camera_to_references)
 	_export_perspective_button.pressed.connect(_begin_export.bind(4))
 	_camera_fov_input.value_changed.connect(_set_calibration_fov)
 	_floor_height_input.value_changed.connect(_set_calibration_floor)
@@ -278,6 +287,62 @@ func _apply_calibration_value(property_name: StringName, value: Variant) -> void
 	_refresh_perspective_preview()
 
 
+## Solves the camera from the height references and records it as one undoable step.
+func _fit_camera_to_references() -> void:
+	if _document == null or _document.perspective_calibration == null or not _has_illustration:
+		return
+	var before: IWEPerspectiveCalibration = _document.perspective_calibration.duplicate()
+	var after: IWEPerspectiveCalibration = before.duplicate()
+	var error := after.fit_to_scale_anchors(_document.scale_anchors, _document.image_size)
+	if not error.is_empty():
+		_status_label.text = "Fit failed: %s" % error
+		return
+	_undo_redo.create_action("Fit IWE perspective camera", UndoRedo.MERGE_DISABLE, _undo_context)
+	_undo_redo.add_do_method(self, "_apply_calibration_snapshot", after)
+	_undo_redo.add_undo_method(self, "_apply_calibration_snapshot", before)
+	_undo_redo.commit_action()
+	_status_label.text = "Camera fitted to %d height references." % _document.scale_anchors.size()
+
+
+func _apply_calibration_snapshot(calibration: IWEPerspectiveCalibration) -> void:
+	if _document == null:
+		return
+	_document.perspective_calibration = calibration
+	_sync_calibration_inputs()
+	_refresh_perspective_preview()
+
+
+## Moves the canvas area into a large floating window so the whole illustration fits on screen.
+## Closing the window (or toggling the button off) puts the canvas back in the dock.
+func _set_canvas_window(enabled: bool) -> void:
+	if enabled == (_canvas_window != null):
+		return
+	if enabled:
+		_canvas_window = Window.new()
+		_canvas_window.title = "IWE - Illustration Editor"
+		_canvas_window.size = Vector2i(1400, 900)
+		_canvas_window.gui_embed_subwindows = false
+		_canvas_window.theme = get_theme()
+		_canvas_window.close_requested.connect(_set_canvas_window.bind(false))
+		_canvas_area_parent = _canvas_area.get_parent()
+		_canvas_area_index = _canvas_area.get_index()
+		_canvas_area.reparent(_canvas_window, false)
+		_canvas_area.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(_canvas_window)
+		_canvas_window.popup_centered_ratio(0.9)
+	else:
+		_canvas_area.reparent(_canvas_area_parent, false)
+		_canvas_area_parent.move_child(_canvas_area, _canvas_area_index)
+		_canvas_window.queue_free()
+		_canvas_window = null
+		_canvas_window_button.set_pressed_no_signal(false)
+
+
+func _exit_tree() -> void:
+	if _canvas_window != null:
+		_set_canvas_window(false)
+
+
 func _set_perspective_mode(enabled: bool) -> void:
 	_perspective_mode = enabled
 	_perspective_button.set_pressed_no_signal(enabled)
@@ -378,7 +443,24 @@ func _copy_image_into_document(directory: String) -> void:
 	_write_document()
 
 
+func _show_save_dialog() -> void:
+	# Start inside the project, next to the current document when there is one.
+	var document_path: String = _document.document_path if _document != null else ""
+	if document_path.is_empty():
+		_save_dialog.current_dir = "res://"
+		_save_dialog.current_file = ""
+	else:
+		_save_dialog.current_dir = document_path.get_base_dir()
+		_save_dialog.current_file = document_path.get_file()
+	_save_dialog.popup_centered_ratio(0.6)
+
+
 func _write_document() -> void:
+	var directory := _pending_document_path.get_base_dir()
+	var directory_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(directory))
+	if directory_error != OK and directory_error != ERR_ALREADY_EXISTS:
+		push_error("IWE: Could not create document folder %s (%s)" % [directory, error_string(directory_error)])
+		return
 	_document.document_path = _pending_document_path
 	var error := ResourceSaver.save(_document, _pending_document_path)
 	if error != OK:
@@ -425,7 +507,7 @@ func _export_scene(path: String) -> void:
 	elif _pending_export_dimension == 3:
 		root = SCENE_GENERATOR.build_3d_scene(_document, texture, scale, _add_camera.button_pressed)
 	else:
-		root = SCENE_GENERATOR.build_perspective_scene(_document, texture, _document.perspective_calibration, scale)
+		root = SCENE_GENERATOR.build_perspective_scene(_document, texture, _document.perspective_calibration, scale, _add_player_input.button_pressed)
 	if root == null:
 		push_error("IWE: Could not build the generated scene.")
 		return

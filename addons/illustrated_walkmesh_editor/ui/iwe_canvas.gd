@@ -228,7 +228,12 @@ func _draw() -> void:
 		draw_line(foot, foot + Vector2(height * 0.13, 0.0), body_color, 2.0, true)
 		draw_circle(head_center, head_radius, body_color)
 		draw_line(foot + Vector2(-head_radius, 0.0), foot + Vector2(head_radius, 0.0), body_color, 2.0, true)
-		draw_string(ThemeDB.fallback_font, foot + Vector2(8.0, -height - 5.0), "%s · %d px" % [anchor.name, roundi(anchor.apparent_height_px)], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, body_color)
+		# A dark backing keeps the label readable over bright sky and grass.
+		var label := "%s · %d px" % [anchor.name, roundi(anchor.apparent_height_px)]
+		var label_position := foot + Vector2(8.0, -height - 5.0)
+		var label_size := ThemeDB.fallback_font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12)
+		draw_rect(Rect2(label_position + Vector2(-4.0, -label_size.y + 2.0), label_size + Vector2(8.0, 6.0)), Color(0.0, 0.0, 0.0, 0.6))
+		draw_string(ThemeDB.fallback_font, label_position, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("ffffff") if anchor.id != _selected_scale_anchor_id else Color("ffbd4a"))
 	if _add_vertex_mode and _hovered_segment >= 0:
 		var hovered := _get_selected_region()
 		if hovered and _hovered_segment < hovered.points.size():

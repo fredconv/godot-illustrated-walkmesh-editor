@@ -6,22 +6,42 @@ signal viewport_size_changed(viewport_size: Vector2i)
 
 const PROJECTOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_perspective_projector.gd")
 const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_scene_generator.gd")
+const MIN_USABLE_SIZE := 64
 
 var _viewport: SubViewport
 var _image_size := Vector2i.ZERO
 var _top_view := false
+# A hidden container shrinks its SubViewport to a few pixels; keep the last usable size so
+# calibration never adopts a degenerate reference viewport.
+var _last_valid_size := Vector2i(1280, 720)
 
 
 func _ready() -> void:
 	stretch = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	custom_minimum_size = Vector2(MIN_USABLE_SIZE * 2, MIN_USABLE_SIZE * 2)
 	_viewport = SubViewport.new()
 	_viewport.name = "PerspectiveViewport"
 	_viewport.own_world_3d = true
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_viewport.size = Vector2i(1280, 720)
 	add_child(_viewport)
+	resized.connect(_sync_viewport_size)
+	visibility_changed.connect(_sync_viewport_size, CONNECT_DEFERRED)
 	viewport_size_changed.emit(_viewport.size)
+
+
+## Stretch sizing is not reliable once the container has been hidden (its SubViewport can be
+## left at 2x2 pixels, which renders as a flat grey field). Size the viewport explicitly.
+func _sync_viewport_size() -> void:
+	if not is_instance_valid(_viewport) or not is_visible_in_tree():
+		return
+	var target := Vector2i(roundi(size.x), roundi(size.y))
+	if target.x < MIN_USABLE_SIZE or target.y < MIN_USABLE_SIZE or target == _viewport.size:
+		return
+	_viewport.size = target
+	_last_valid_size = target
+	viewport_size_changed.emit(target)
 
 
 func configure(document: Resource, texture: Texture2D, calibration: IWEPerspectiveCalibration, world_scale: float) -> void:
@@ -48,9 +68,9 @@ func is_top_view() -> bool:
 
 
 func get_viewport_size() -> Vector2i:
-	if _viewport:
-		return _viewport.size
-	return Vector2i(1280, 720)
+	if _viewport and _viewport.size.x >= MIN_USABLE_SIZE and _viewport.size.y >= MIN_USABLE_SIZE:
+		_last_valid_size = _viewport.size
+	return _last_valid_size
 
 
 func _gui_input(event: InputEvent) -> void:

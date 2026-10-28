@@ -72,6 +72,13 @@ layout_mode = 2
 toggle_mode = true
 text = "Perspective"
 
+[node name="CanvasWindowButton" type="Button" parent="DocumentToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Window"
+tooltip_text = "Open the illustration editor in a larger window"
+
 [node name="Workspace" type="HSplitContainer" parent="."]
 layout_mode = 2
 size_flags_vertical = 3
@@ -320,6 +327,16 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Top view"
 
+[node name="FitFromReferencesButton" type="Button" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Fit camera to height references"
+
+[node name="AddPlayerInput" type="CheckButton" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Add player"
+
 [node name="ExportPerspectiveButton" type="Button" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -327,7 +344,7 @@ text = "Export perspective scene"
 
 [node name="PerspectiveHint" type="Label" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
 layout_mode = 2
-text = "Click the preview to place a height reference. Reprojection uses image-space points and a flat virtual floor."
+text = "Click the preview to place a height reference. Reprojection uses image-space points and a flat virtual floor. Two or more references at different depths can fit the camera automatically."
 autowrap_mode = 2
 
 [node name="ExportSeparator" type="HSeparator" parent="Workspace/Sidebar/SidebarContent"]
@@ -419,7 +436,7 @@ filters = PackedStringArray("*.png ; PNG Images", "*.jpg, *.jpeg ; JPEG Images",
 
 [node name="DocumentFileDialog" type="FileDialog" parent="."]
 unique_name_in_owner = true
-file_mode = 0
+file_mode = 4
 access = 2
 filters = PackedStringArray("*.tres ; IWE Document")
 
