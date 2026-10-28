@@ -9,9 +9,13 @@ Illustrated Walkmesh Editor is an open-source Godot editor plugin intended to he
 - Organize regions into flat groups; nested groups and path authoring are planned.
 - Calibrate apparent character scale with artist-placed anchors.
 - Place, drag, and resize standing height templates; include them as scale capsules in exported 3D stages.
-- Preview and eventually generate runtime navigation and collision data.
+- Generate runtime navigation and collision data for the exported scenes (implemented for the perspective stage; see below).
 
-Union/intersection/XOR, occlusion, and runtime character controllers are not implemented yet.
+Not implemented yet: union, intersection and XOR operations, the Layer Manager, visual layers and PNG elements, depth occlusion, parallax, and connections as explicit regions. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Status
+
+Pre-release (`0.1.0-dev`). Expect breaking changes to the saved document format until a stable version is announced. Do not use it for production data without keeping a backup.
 
 ## Compatibility
 
@@ -66,6 +70,7 @@ I can't promise that every feature request will be implemented, but constructive
 - `addons/illustrated_walkmesh_editor/`: IWE editor plugin.
 - `docs/`: specification, architecture, roadmap, reuse audit, and decisions.
 - `examples/`: perspective demo scene and its repeatable generator.
+- `prototypes/`: standalone experiments that are not part of the plugin (transparency modes for occlusion).
 - `tests/`: GdUnit4 regression tests.
 
 Third-party addons currently present in the local starter project are not part of the distributable IWE plugin and are excluded from the initial repository until individually audited.
