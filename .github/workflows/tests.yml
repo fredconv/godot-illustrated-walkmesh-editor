@@ -32,7 +32,8 @@ jobs:
           $url = "https://github.com/godotengine/godot-builds/releases/download/$env:GODOT_VERSION-stable/Godot_v$env:GODOT_VERSION-stable_win64.exe.zip"
           Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\godot.zip"
           Expand-Archive "$env:RUNNER_TEMP\godot.zip" -DestinationPath "$env:RUNNER_TEMP\godot"
-          $exe = "$env:RUNNER_TEMP\godot\Godot_v$env:GODOT_VERSION-stable_win64.exe"
+          # The console build writes output and exit codes to the pipeline; the GUI build does not.
+          $exe = "$env:RUNNER_TEMP\godot\Godot_v$env:GODOT_VERSION-stable_win64_console.exe"
           if (-not (Test-Path $exe)) { Write-Error "Godot executable not found at $exe"; exit 1 }
           "GODOT_BIN=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
