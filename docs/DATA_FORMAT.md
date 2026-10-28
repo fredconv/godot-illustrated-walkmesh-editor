@@ -37,4 +37,17 @@ Object identity uses the stable `id` values. Display names may change freely.
 
 ## Planned changes (not yet implemented)
 
-Schema version 2 is planned with the Layer Manager and region types. It will add region types, explicit connections, layers, and visual elements. Version 1 documents will be loaded with defaults: every region walkable, no layers, no connections. The migration is not written yet; it will ship with the schema change.
+Schema version 2 is planned with the Layer Manager (see `LAYER_MANAGER_DESIGN.md`). It adds layers, visual elements, a per-region kind and explicit draw order. Nothing in this section is implemented yet, so no version 2 document exists.
+
+### Migration from version 1 to version 2
+
+- **In memory only.** Opening a version-1 document migrates it in memory. The file on disk is not modified until the author saves explicitly.
+- **Default layer.** One default layer is created, and every region references it.
+- **Preserved content.** Polygons, names, positions, cutout names and order, region order, groups, scale templates, and the perspective calibration keep their values exactly.
+- **Explicit draw order.** The current array order of regions becomes an explicit `draw_index`, so hit-testing and drawing do not change.
+- **Refusal of newer versions.** A document with a `schema_version` newer than the plugin supports is not loaded. The editor reports both versions, and the file is left unchanged.
+- **Regression tests.** A version-1 fixture is kept in `tests/fixtures/`. Tests compare fields, hit-testing order, drawing order, navigation output, and exported node order before and after migration.
+
+### Asset paths
+
+Asset paths are stored relative to the document's folder. Visual element textures live in `assets/elements/` and are named by the first 12 characters of their SHA-256 hash. Missing assets are kept in the document and reported; they are never removed automatically.

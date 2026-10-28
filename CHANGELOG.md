@@ -15,6 +15,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Repository governance: `CONTRIBUTING.md` (including the policy for AI-assisted contributions), `CODE_OF_CONDUCT.md`, `SECURITY.md`.
 - GitHub issue and pull request templates.
 - Headless test workflow `.github/workflows/tests.yml`. It installs GdUnit4 6.2.2 and Godot 4.7.1 at pinned versions. It has not yet been run on GitHub.
+- Layer Manager design proposal, `docs/LAYER_MANAGER_DESIGN.md`: architecture, schema version 2 migration guarantees, asset handling, and the transparency-technique study. Design only; no layer feature is implemented.
 
 ### Changed
 - Walls are no longer generated along edges shared with another walkable zone. Touching zones form a continuous walkable network without being merged.
