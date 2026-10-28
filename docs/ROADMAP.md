@@ -1,64 +1,89 @@
 # IWE Roadmap
 
-Status labels reflect verified implementation, not planned work.
+Status labels reflect verified implementation, not planned work. Each step ships with regression tests before the next one starts. Feature details are in `SPECIFICATION.md`; module boundaries are in `ARCHITECTURE.md`.
 
-## Phase 0 — Reconnaissance and reuse audit
+Legend: **Done** — implemented and tested · **Partial** — exists but incomplete · **Todo** — not started.
 
-- Verify Godot version and editor APIs.
-- Test available Godot MCP integration.
-- Inspect candidate projects, source, maintenance, compatibility, and licenses.
-- Record decisions and choose a compatible test framework.
+## Step 1 — Finish polygon features
 
-## Phase 1 — Minimal editor plugin
+| Item | Status | Notes |
+|---|---|---|
+| Create, select, move, vertex insert/remove/move | Done | Minimum three vertices enforced |
+| Move whole region | Done | |
+| Duplicate, rename, hide, delete | Done | |
+| Undo / redo for polygon edits | Done | Editor undo/redo |
+| Lock a region | Partial | Model and canvas respect `locked`; no UI button |
+| Region type field (walkable, connection, collision only, special) | Todo | Required before step 2 |
+| Region properties panel (type, name, colour) | Todo | |
 
-- Add plugin manifest and GDScript `EditorPlugin` entry point.
-- Add dock with image import/display, pan, and zoom.
-- Persist/reload image-space document state.
-- Verify clean activation/deactivation in Godot.
+## Step 2 — Connections and independent collision regions
 
-Status: image import/display, zoom and pan, `.tres` save/open, image copy beside the document, polygon creation/selection, vertex insertion/removal/movement, region rename/visibility/delete/duplicate, and editor undo/redo exist. Manual GUI verification remains recommended.
+| Item | Status | Notes |
+|---|---|---|
+| Touching zones on one floor are walkable | Done | Shared edges are passages; tested headlessly (`test_walkable_connections.gd`) |
+| Explicit manual connection (bridge between two regions) | Todo | Width, allowed flag, optional direction |
+| Connection only between regions that touch or are explicitly linked | Todo | Single-point contact is never a passage |
+| Collision-only region (no navigation effect) | Todo | |
+| Passage narrower than character radius is blocked | Todo | Needs physical radius setting |
+| Connections exported in 2D and 3D | Todo | |
 
-## Phase 2 — Polygon editing and groups
+## Step 3 — Layer Manager architecture
 
-- Region resources, polygon editing, validation, selection, and undo/redo.
-- Group hierarchy and variable-width path authoring.
+| Item | Status | Notes |
+|---|---|---|
+| Schema version on `IWEDocument` | Todo | Version 1 files load with defaults |
+| Layer tree resource (`IWELayer`), create/rename/delete/reorder | Todo | |
+| Nested groups | Todo | Currently flat |
+| Regions reference a layer id, not replaced by it | Todo | Navigation never reads layer order |
+| Move geometry between layers | Todo | |
+| Pure geometry module (passage and wall derivation) | Todo | Moved out of `iwe_scene_generator.gd`; behaviour unchanged |
 
-Status: polygon editing, selection, undo/redo, and flat region groups exist. Nested groups and variable-width paths remain planned.
+## Step 4 — Visual layers and PNG elements
 
-## Phase 3 — Boolean geometry
+| Item | Status | Notes |
+|---|---|---|
+| Import transparent PNG / WebP | Todo | |
+| Move, scale, rotate, pivot, flip, opacity, exact coordinates | Todo | |
+| Background and foreground layer kinds | Todo | |
+| Visual elements exported as sibling nodes | Todo | Never navigation or collision |
+| Layer visibility, lock, and opacity | Todo | |
 
-- Non-destructive scoped modifiers, holes, disconnected results, and triangulation.
-- Focused geometry tests before integration into the editor.
+## Step 5 — Occlusion, depth and parallax
 
-Status: a selected region can now hold multiple editable subtraction polygons. Godot's clipping API derives contours with hole winding; union/intersection/XOR, robust overlapping cutout merging, and triangulation remain planned.
+| Item | Status | Notes |
+|---|---|---|
+| Always-in-front mode (e.g. bridge railing) | Todo | |
+| Depth occlusion from 3D depth (house, tree) | Todo | Uses calibrated floor depth |
+| Parallax depth coefficient | Todo | |
+| Preview of occlusion during test movement | Todo | |
+| Walkable path remains walkable behind occluders | Todo | Required by the specification |
 
-## Phase 4 — Scale calibration
+## Step 6 — Calibration and exports
 
-- Scale anchors, interpolation, visualization, and character preview.
+| Item | Status | Notes |
+|---|---|---|
+| Manual calibration of camera and floor | Done | |
+| Fit camera from two or more height references | Done | |
+| Multi-position presets (Near / Middle / Far) | Partial | Templates exist; no preset workflow |
+| Assisted calibration with quality diagnostic | Todo | |
+| 2D, flat 3D, and perspective exports | Done | Saved and reloaded in tests |
+| Environment-only and navigation-only exports | Todo | |
+| Exports include layers and connections | Todo | After steps 2–5 |
 
-Initial slice implemented: place and drag image-space scale templates, adjust their artist-chosen apparent height in pixels, save them in the IWE document, and export upright 3D capsules at the same image position and apparent height. The perspective workflow also places known-height 3D capsules using floor-projected image coordinates. Reference sprites, interpolation across walkable surfaces, and heatmap visualization remain follow-up work.
+## Already completed (earlier phases)
 
-## Phase 5 — Runtime navigation
+- Illustration import, pan, zoom, and floating large window.
+- Scale templates in image space, persisted, exported in 3D.
+- Subtractive cutouts with names, derived through Godot's clipping API.
+- Perspective projection and camera views; known-height template placement.
+- Save and reopen of IWE documents, including the copy of the image beside the document.
+- Test character with mouse and keyboard, walls, and path following.
+- Automated suite: 28 headless GdUnit4 tests.
 
-- [x] Export a reusable 2D scene with the illustration and one `NavigationRegion2D` per visible region.
-- [x] Export a flat 3D stage with the image on a horizontal plane and `NavigationRegion3D` meshes.
-- [x] Let the author choose world units per source-image pixel and optionally add a framing camera.
-- [ ] Add generated collision, explicit links and levels, and a demo character/controller.
-- [x] Add a perspective-calibrated 3D workflow that projects image-space navigation onto a flat virtual floor, warps the image plane, preserves cutouts, and includes perspective/top cameras.
-- [x] Add a reusable perspective calibration demo with two walkable regions, cutouts, camera views, and near/far height references.
-- [ ] Add automatic depth interpolation and terrain-height reconstruction; calibrated output currently remains on one plane.
+## Open technical debts
 
-## Phase 6 — Occlusion and alpha release
-
-- Occluder editing, usability pass, regression coverage, packaging, and release documentation.
-
-## Current verified progress
-
-- The local starter folder is a Godot project declaring Godot 4.7.
-- Godot 4.7 is installed locally at a non-PATH location and is used for headless validation.
-- The repository and `main`/`develop` branches exist on GitHub; initial source publication is complete.
-- IWE document, polygon editing, and subtractive cutouts are implemented on `feature/region-editing`; GdUnit4 headless validation is run for the active feature branch.
-- 2D and flat 3D scene export now exist; scene save/reload, scale settings, optional cameras, hidden regions, and cutout holes are covered by GdUnit4 tests.
-- Scale templates persist in IWE documents and export to the 3D stage; automated coverage checks their position, apparent height, and save/reload.
-- Perspective projection, floor intersections, cutout preservation, camera views, known-height template placement, and demo-scene serialization pass in the GdUnit4 suite.
-- Enabling the plugin in a headless editor completed without IWE script errors. Pre-existing Phantom Camera missing-icon errors remain in this starter project.
+- No schema version on documents.
+- The dock is about 1,400 lines and mixes UI with document logic.
+- Some labels and one tooltip are still French (being cleaned up with the English pass).
+- Manual GUI verification is still needed for most interactions; headless tests cover data and generation.
+- Pre-existing Phantom Camera icon errors remain in the starter project.

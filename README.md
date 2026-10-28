@@ -21,6 +21,46 @@ The local starter project and current validation target Godot 4.7.1.
 
 The current development dock supports illustration import, flat groups, polygon creation and selection, vertex editing, region management, undo/redo, saving/reopening, and non-destructive subtraction cutouts. It exports standalone Godot 2D scenes, flat top-down 3D stages, and a perspective-calibrated 3D stage. The perspective workflow projects authored image coordinates onto a configurable flat floor using camera rays, warps the illustration onto that floor, and preserves walkable regions and cutouts. Camera field of view, transform, floor height, and top-down orthographic preview can be adjusted. Image-space scale anchors place known-height 3D capsules on the floor. This calibration does not infer real terrain height or hidden depth.
 
+## About the Project & AI-Assisted Development
+
+This project started from a personal need.
+
+As a developer and digital artist, I wanted a simple and intuitive way to turn 2D illustrations into navigable 2.5D environments in Godot, without having to manually rebuild everything in 3D.
+
+I couldn't find a tool that matched exactly what I had in mind, so I decided to create my own.
+
+While I have a background in development, I'm using AI-assisted coding tools, particularly **Claude Code**, to help design, implement, improve, and maintain this plugin.
+
+I'm not trying to hide the fact that AI is involved in its development. On the contrary, I see it as an opportunity to bring ideas to life, explore technical solutions, and learn along the way.
+
+The original idea, functional requirements, creative direction, and development priorities come from me, while AI helps turn that vision into working code.
+
+### An Open-Source Project
+
+I'm initially building this plugin for my own Godot projects, but I believe it could also be useful to other developers and artists working on similar 2.5D games.
+
+That's why I've decided to share it as an open-source project.
+
+### Feedback & Contributions Welcome
+
+This is an evolving project, and I'm always interested in hearing new ideas.
+
+If you have suggestions, discover bugs, or think of features that could improve the plugin, feel free to open a GitHub Issue or start a discussion.
+
+I'll do my best to review suggestions and, whenever possible, implement improvements with the help of Claude Code and other development tools.
+
+I can't promise that every feature request will be implemented, but constructive feedback is always appreciated.
+
+**The goal is simple: build a useful tool, share it with the community, and keep improving it together.**
+
+## Documentation
+
+- [User guide](docs/USER_GUIDE.md): what works today, step by step.
+- [Development guide](docs/DEVELOPMENT.md): setup and headless tests.
+- [Data format](docs/DATA_FORMAT.md): saved document versions and compatibility.
+- [Specification](docs/SPECIFICATION.md), [architecture](docs/ARCHITECTURE.md), [roadmap](docs/ROADMAP.md).
+- [Changelog](CHANGELOG.md), [contributing](CONTRIBUTING.md), [security](SECURITY.md).
+
 ## Repository layout
 
 - `addons/illustrated_walkmesh_editor/`: IWE editor plugin.
@@ -49,6 +89,9 @@ For development, copy `addons/illustrated_walkmesh_editor` into the `addons/` di
 - **Scale template** mode: click the image to place a standing height marker, drag it to move it, choose its apparent height in illustration pixels, and delete it with the button or Delete key. The exported 3D stage adds an upright capsule at each template's image position under `Template/ScaleTemplates`. The chosen height is an artist-authored apparent-size cue and does not determine true physical depth.
 - In perspective calibration, click the preview to place a known-height character template at that image position. The exported stage includes the upright capsule and scales it with the stage's world-units-per-pixel value. Multiple anchors are visual references; they do not yet drive automatic depth interpolation.
 - Each generated scene root is a normal Godot `Node2D` or `Node3D`: move it, rotate it, scale it, add a character, or add other nodes in the Scene dock. The flat 3D export keeps the original top-down plane. The perspective export maps the image to a calibrated flat floor; neither mode reconstructs terrain height or hidden depth.
+
+- **Fit camera to height references** (perspective panel) solves the camera pitch and height so that two or more height references at different depths appear at their authored apparent heights. It is one undoable step; field of view and yaw are kept.
+- **Add player** adds a `Player` node to the exported perspective stage. It starts on a walkable area, walks where you click on the floor, stays inside walkable polygons and outside cutouts, and is drawn at the size the calibrated camera gives its position. Keyboard control (arrows or WASD) is also available. The runtime script is `addons/illustrated_walkmesh_editor/runtime/iwe_walkmesh_character.gd`.
 
 ### Perspective demo
 

@@ -1,43 +1,226 @@
 # IWE Specification
 
-## Purpose and status
+Working name: **IWE (Illustrated Walkmesh Editor)**. The final public name is not chosen yet.
 
-Illustrated Walkmesh Editor (IWE) is intended to let an artist author playable navigation over a painted illustration. The immediate product target is an image-space 2.5D workflow; the art remains the visual source of truth and the plugin does not claim to recover real 3D geometry automatically.
+## 1. Vision
 
-This specification began as the initial target; current implementation status is tracked in `ROADMAP.md` and `README.md`.
+IWE is a Godot 4.x editor plugin that turns a 2D illustration (painted background, pixel art, isometric art) into a navigable 2.5D environment that can be reused in a 3D scene.
 
-## Core concepts
+The product is a complete chain, not just a polygon editor:
 
-- **Illustration:** source image with native pixel coordinates. Pan and zoom must not alter stored geometry.
-- **Region:** polygonal source geometry with a stable identifier, name, color, level, and editability state.
-- **Path:** optional authoring aid that can produce a region; polygonal regions remain the canonical model.
-- **Group:** hierarchical organizational node with visibility and lock state.
-- **Modifier:** ordered, non-destructive operation over explicitly scoped geometry. Boolean operations must preserve original inputs.
-- **Scale anchor:** image-space point with a desired apparent character height. It encodes artistic scale, not unique physical depth.
+> 2D illustration → polygon zones and exclusions → perspective calibration → 3D projection → testable navigation and collision → reusable Godot scene
 
-The scale-template workflow stores an image-space ground position and apparent height in pixels, draws a simple standing silhouette, and exports a corresponding upright capsule in a 3D stage. The perspective workflow stores field of view, camera transform, virtual floor height, and known character height. It intersects each image coordinate's camera ray with that flat floor, then uses those coordinates for the warped illustration mesh, walkable polygons, cutouts, and height templates. A top-down orthographic camera is included for inspection. The stage does not recover terrain elevation, hidden depth, or automatic depth interpolation; changing calibration means exporting the stage again.
-- **Blocked region, connection, and occluder:** separate concepts from walkable area and generated collision.
-- **Generated output:** derived navigation/collision/runtime data, kept separate from editable source data.
+The illustration stays the visual source of truth. IWE does not recover real 3D geometry from a single image. It produces a perspective-consistent, controllable approximation for gameplay.
 
-## Functional goals
+## 2. Core principles
 
-1. Import, display, lock, pan, and zoom an illustration with optional grid and guides.
-2. Author, select, validate, and edit independent convex or concave polygons, including regions with holes and multiple levels.
-3. Organize regions in stable-ID hierarchical groups.
-4. Provide path-based region authoring, including variable width and branches where practical.
-5. Support scoped, ordered, non-destructive UNION, SUBTRACT, INTERSECT, and XOR operations. The first subtraction milestone stores multiple editable cutout polygons on a region and derives its contours with Godot's polygon clipping API.
-6. Place and edit scale anchors and preview an interpolated scale field across compatible regions.
-7. Author blocked regions, explicit portals/connections, and foreground/background occluders.
-8. Generate runtime surfaces and physics separately, with a screen-space 2.5D mode first and an architecture that can later support a calibrated 3D mode.
-9. Provide a reproducible countryside demo and automated algorithm/data tests.
+1. **Non-destructive editing.** Source polygons, cutouts, anchors, and layers remain editable. Generated navigation, collision, and scenes are derived and can be regenerated.
+2. **Image-space authority.** Geometry is stored in source-image pixel coordinates. Pan and zoom are presentation state only.
+3. **Three separate concerns.** Layer organization, geometry and navigation, and rendering and depth are distinct systems (section 4). Their data never implies one another.
+4. **Native Godot output.** Export uses standard nodes (`NavigationRegion2D/3D`, collision shapes, `Sprite2D/3D`, cameras) so the result is editable in Godot.
+5. **Reliable serialization.** A saved project reopens with all authored data intact.
 
-## Non-goals and constraints
+## 3. Functional requirements
 
-- Automatic scene reconstruction or unique 3D depth inference from a single image.
-- Treating visual scale as equivalent to ground depth or elevation.
-- Silently connecting regions that only overlap visually.
-- Destructive modifier evaluation that discards source contours.
+### 3.1 Illustration
 
-## Near-term acceptance criteria
+- Import PNG, JPG, and WebP files supported by Godot; keep the original dimensions.
+- Pan, zoom, show or hide the image.
+- Copy the image beside the project file so the project stays portable.
+- Warn when a replacement image changes dimensions.
+- Optional opacity control while tracing (planned).
 
-The first useful alpha should load and unload cleanly as an editor plugin, display an image in a dock, preserve image-space coordinates through zoom/pan, and save/reload its authored data. Polygon authoring and Boolean subtraction are implemented. The current exporter builds standalone 2D, flat top-down 3D, and camera-calibrated flat-floor scenes with derived navigation regions; it does not infer terrain elevation or hidden depth from a single image.
+### 3.2 Polygon regions
+
+- Create convex and concave polygons; close them automatically or manually.
+- Select, move a vertex, insert a vertex on an edge, remove a vertex (minimum three), move a whole region.
+- Duplicate, rename, hide, lock, and delete regions.
+- Undo and redo for every edit.
+- Snapping to vertices and edges (planned).
+
+### 3.3 Region types
+
+Each region has a type that decides how it is used at runtime. The current implementation only has *walkable* regions and *cutouts*.
+
+| Type | Purpose | Status |
+|---|---|---|
+| Walkable | Surface the character can stand on | Partial (implicit: every region) |
+| Exclusion (cutout) | Removes area from a walkable region | Completed |
+| Connection | Explicit bridge or link between regions | To develop |
+| Collision only | Physical obstacle with no navigation effect | To develop |
+| Special | Slowdown, navigation cost, conditional access | To develop |
+
+### 3.4 Groups and Boolean operations
+
+- Flat groups exist. Nested groups are to develop.
+- Subtraction (cutouts) is completed: a region keeps several named cutouts, and contours are derived with Godot's clipping API.
+- Union, intersection, and XOR are to develop as scoped, non-destructive modifiers. IWE does not need to merge polygons into one shape: touching zones can stay separate and still form one walkable network (section 3.5).
+
+### 3.5 Connected zones
+
+The character must be able to walk from one zone to another when their polygons touch, for example *Left path → Bridge → Right path*, without the zones being merged.
+
+- Shared edges are passages, not walls. Outer edges keep their walls.
+- A contact at a single point does not create a passage.
+- Overlapping zones are connected where they overlap on the same floor.
+- Zones at different heights are not connected unless an explicit connection exists (to develop).
+- A passage narrower than the character's physical diameter is not traversable (to develop; requires the physical radius setting).
+
+Status: **Completed** for touching zones on one floor (tested headlessly). Explicit connections, width checks, and level handling are to develop.
+
+### 3.6 Calibration
+
+- Scale templates: image-space height references, stored as apparent height in pixels.
+- Perspective calibration: camera field of view, transform, virtual floor height, and known character height.
+- Fit camera to two or more height references: completed (automatic fit from anchors).
+- Manual calibration of camera and floor: completed.
+- Assisted calibration with explicit constraints and a quality diagnostic: to develop.
+- Multi-position calibration presets (Near / Middle / Far): partial (templates exist, presets do not).
+
+The calibration assumes one flat virtual floor. It does not infer terrain elevation or hidden depth.
+
+### 3.7 Layers (new system)
+
+A Photoshop-style layer manager for organizing both regions and visual elements. Full design in section 4 and `ARCHITECTURE.md`.
+
+- Create, delete, rename, duplicate, reorder, group, and nest layers.
+- Show, hide, lock, and set opacity per layer.
+- Move regions and visual elements between layers.
+- Layer order controls drawing only. It never changes navigation.
+
+Status: **To develop.** Current data has no layer model.
+
+### 3.8 Visual elements (new system)
+
+- Import transparent PNG, WebP, and other Godot-compatible textures.
+- Move, scale, rotate, pivot, flip, set opacity, and set exact coordinates.
+- Ground anchor point for depth placement.
+- Depth modes: background, foreground (always in front), depth occlusion (in front or behind the character by 3D depth), parallax (depth coefficient).
+- Visual elements never create navigation or physical collision automatically.
+
+Status: **To develop.**
+
+### 3.9 Navigation and collision
+
+- Generate `NavigationRegion2D` (2D export) and `NavigationRegion3D` (3D exports) per walkable region.
+- Connections between touching zones come from shared edges (completed for perspective export).
+- Generated collision walls on outer boundaries and cutouts (completed for perspective export).
+- Separate collision layer masks and configurable navigation parameters: to develop.
+- Test character with mouse and keyboard, walls, and path following (completed in the perspective runtime).
+- Debug overlays for contours, exclusions, connections, collisions, and templates: partial (contour and template guides exist; connection and collision overlays do not).
+
+The physical character size is a runtime setting, separate from its visual height. Perspective changes apparent size on screen; it must not change physical size.
+
+### 3.10 Export
+
+| Output | Content | Status |
+|---|---|---|
+| 2D scene | Illustration, camera (optional), walkable navigation regions | Completed |
+| 3D stage (flat) | Image plane, navigation regions, guides, top camera | Completed |
+| Perspective scene | Calibrated floor, warped image, walkable regions with walls, height templates, optional test character, cameras | Completed |
+| Environment only | Geometry and decor without navigation | To develop |
+| Navigation only | Navigation and collision data without decor | To develop |
+
+Exported scenes are standard Godot scenes. Templates are placed in a `ScaleTemplates` node in 3D. The 2D export has no templates by design.
+
+### 3.11 Save and reopen
+
+- Save an IWE document (`.tres`) containing image reference, groups, regions, cutouts, templates, and calibration: **completed**, tested.
+- Reopen a document and continue editing: **completed**, tested.
+- Schema version and migration: **to develop** (no version field yet).
+- Layers, visual elements, connections, region types, and export options in the document: **to develop**.
+- Exports never modify the source document.
+
+### 3.12 Editor interface
+
+- Workspace: Image & Regions, Perspective, 3D Preview, Test, Export.
+- Floating large window for the illustration (completed).
+- Interface in English. Most labels are English; a few remain French (to be cleaned up).
+- Undo and redo, status bar messages, and explicit error messages.
+
+## 4. Architecture of the three systems
+
+Responsibilities are split so that layer order never affects navigation.
+
+| System | Responsibility | Depends on |
+|---|---|---|
+| **Layer Manager** | Organization, visibility, lock, opacity, transforms, hierarchy, draw order | Nothing navigational |
+| **Geometry & Navigation** | Polygons, zones, exclusions, connections, collision shapes, navigation data | Image coordinates only |
+| **Rendering & Depth** | Display, perspective, occlusion, parallax, camera projection | Layer data and geometry, read-only |
+
+The character's behaviour depends on Geometry & Navigation. Rendering decides what is drawn in front of or behind it. Neither the draw order of a layer nor a visual element's transparency changes whether a zone is walkable.
+
+## 5. Status summary
+
+**Completed**
+- Image import, pan and zoom, floating window.
+- Polygon creation, vertex edit, move, duplicate, rename, hide, delete, undo and redo.
+- Flat groups.
+- Subtractive cutouts with names.
+- Scale templates (image-space, persisted, exported in 3D).
+- Perspective calibration, camera fit from templates, perspective scene export.
+- 2D and 3D exports with optional cameras.
+- Save and reopen of IWE documents.
+- Touching zones are walkable as one network (headless test).
+- Test character with mouse and keyboard, walls, path following.
+- Automated test suite: 28 headless GdUnit4 tests passing.
+
+**Partially implemented**
+- Locked regions: the model and canvas respect the lock, but no button sets it.
+- Walkable regions: implicit only, no explicit type field.
+- Multi-position calibration: templates exist, no preset workflow.
+- Debug overlays: contours and templates only.
+- Manual GUI verification: much of the editor is checked only headlessly.
+
+**To develop (in planned order, see `ROADMAP.md`)**
+- Region types (connection, collision only, special) and explicit connections.
+- Nested groups.
+- Union, intersection, XOR modifiers.
+- Layer Manager and visual elements.
+- Depth occlusion, parallax, and visual export.
+- Assisted calibration and quality diagnostics.
+- Schema version, migration, and project file extensions.
+- Environment-only and navigation-only exports.
+- Physical character radius and passage width checks.
+- Full English interface pass and project rename.
+
+## 6. Non-goals
+
+- Automatic scene reconstruction or unique 3D depth from a single image.
+- Treating visual scale as ground depth or elevation.
+- Silently connecting zones that only touch at a point or overlap at different heights.
+- Destructive evaluation of modifiers that discards source contours.
+- Bundling third-party addons without a provenance and licence check.
+
+## 7. Example
+
+A garden illustration with a main path, a river, and a bridge:
+
+```
+Walkable areas
+├── Main_Path
+├── Garden_Left
+└── Garden_Right
+Exclusions
+├── River_01
+└── Rock_01
+Connections
+└── Wooden_Bridge
+Calibration
+├── Character_Near   (1.8 m)
+├── Character_Middle (1.8 m)
+└── Character_Far    (1.8 m)
+```
+
+The three references share the same real height but different apparent sizes, according to their distance from the camera.
+
+## 8. Roadmap summary
+
+The detailed phases and their status are in `ROADMAP.md`. The planned order is:
+
+1. Finish polygon features: region types and properties, lock control.
+2. Explicit connections and independent collision regions.
+3. Layer Manager architecture: hierarchy, serialization, schema version.
+4. Visual layers: PNG import and transforms.
+5. Occlusion modes, 3D depth, and parallax.
+6. Calibration improvements and exports adapted to the layer architecture.
