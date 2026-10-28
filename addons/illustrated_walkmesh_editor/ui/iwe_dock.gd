@@ -160,8 +160,10 @@ func _ready() -> void:
 	_redo_button.pressed.connect(_redo)
 	_delete_button.pressed.connect(_delete_selected_region)
 	_duplicate_button.pressed.connect(_duplicate_selected_region)
-	_region_list.item_selected.connect(_region_item_selected)
-	_region_list.item_activated.connect(_tree_item_activated)
+	# Deferred: handlers may rebuild the tree, which must not happen while the tree is still
+	# inside its own selection or activation callback.
+	_region_list.item_selected.connect(_region_item_selected, CONNECT_DEFERRED)
+	_region_list.item_activated.connect(_tree_item_activated, CONNECT_DEFERRED)
 	_rename_button.pressed.connect(_rename_selected_region)
 	_rename_group_button.pressed.connect(_rename_selected_group)
 	_rename_cutout_button.pressed.connect(_rename_selected_cutout)

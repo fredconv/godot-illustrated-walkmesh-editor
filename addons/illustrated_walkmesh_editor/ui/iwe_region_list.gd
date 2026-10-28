@@ -2,7 +2,17 @@
 extends Tree
 
 
+## Structure signature of the last full rebuild. A selection change alone does not rebuild
+## the tree, so items that are currently inside a signal callback are never freed.
+var _structure_signature := ""
+
+
 func refresh(groups: Array[IWERegionGroup], regions: Array[IWERegion], selected_group_id: String, selected_region_id: String, selected_cutout_index: int = -1) -> void:
+	var signature := _build_signature(groups, regions)
+	if signature == _structure_signature and get_root() != null:
+		_select_matching(selected_group_id, selected_region_id, selected_cutout_index)
+		return
+	_structure_signature = signature
 	set_block_signals(true)
 	clear()
 	var root := create_item()
@@ -47,6 +57,60 @@ func refresh(groups: Array[IWERegionGroup], regions: Array[IWERegion], selected_
 		if selected_item.get_parent() != root:
 			selected_item.get_parent().set_collapsed(false)
 	set_block_signals(false)
+
+
+## Everything that changes the visible structure: group and region names and order, visibility,
+## cutout count and names. Selection is deliberately not part of it.
+func _build_signature(groups: Array[IWERegionGroup], regions: Array[IWERegion]) -> String:
+	var parts := PackedStringArray()
+	for group in groups:
+		parts.append("g|%s|%s" % [group.id, group.name])
+	for region in regions:
+		parts.append("r|%s|%s|%s|%s|%d" % [region.id, region.group_id, region.name, region.visible, region.subtraction_polygons.size()])
+		for cutout_index in region.subtraction_polygons.size():
+			var cutout_name := region.subtraction_names[cutout_index] if cutout_index < region.subtraction_names.size() else ""
+			parts.append("c|%d|%s" % [cutout_index, cutout_name])
+	return "\n".join(parts)
+
+
+## Moves the selection to the item that matches the requested group, region, or cutout,
+## without rebuilding any item. Missing targets clear the selection.
+func _select_matching(selected_group_id: String, selected_region_id: String, selected_cutout_index: int) -> void:
+	var target: TreeItem = _find_item(selected_region_id, selected_cutout_index, selected_group_id)
+	set_block_signals(true)
+	deselect_all()
+	if target:
+		target.select(0)
+		if target.get_parent() != get_root():
+			target.get_parent().set_collapsed(false)
+	set_block_signals(false)
+
+
+func _find_item(region_id: String, cutout_index: int, group_id: String) -> TreeItem:
+	var root := get_root()
+	if root == null:
+		return null
+	var group_item: TreeItem = root.get_first_child()
+	while group_item != null:
+		var group_metadata: Dictionary = group_item.get_metadata(0) if group_item.get_metadata(0) is Dictionary else {}
+		if region_id.is_empty() and group_metadata.get("id", "") == group_id:
+			return group_item
+		var region_item: TreeItem = group_item.get_first_child()
+		while region_item != null:
+			var region_metadata: Dictionary = region_item.get_metadata(0) if region_item.get_metadata(0) is Dictionary else {}
+			if region_metadata.get("id", "") == region_id:
+				if cutout_index < 0:
+					return region_item
+				var cutout_item: TreeItem = region_item.get_first_child()
+				while cutout_item != null:
+					var cutout_metadata: Dictionary = cutout_item.get_metadata(0) if cutout_item.get_metadata(0) is Dictionary else {}
+					if cutout_metadata.get("index", -1) == cutout_index:
+						return cutout_item
+					cutout_item = cutout_item.get_next()
+				return region_item
+			region_item = region_item.get_next()
+		group_item = group_item.get_next()
+	return null
 
 
 func get_selected_metadata() -> Dictionary:
