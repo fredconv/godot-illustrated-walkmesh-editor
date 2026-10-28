@@ -76,7 +76,7 @@ func _initialize() -> void:
 	var calibration: IWEPerspectiveCalibration = CALIBRATION_SCRIPT.for_image(document.image_size)
 	calibration.character_height_units = 180.0
 	calibration.floor_height = 0.0
-	var stage: Node3D = SCENE_GENERATOR.build_perspective_scene(document, texture, calibration, 0.01)
+	var stage: Node3D = SCENE_GENERATOR.build_perspective_scene(document, texture, calibration, 0.01, true)
 	if stage == null:
 		push_error("Unable to build the perspective demo stage.")
 		quit(1)
