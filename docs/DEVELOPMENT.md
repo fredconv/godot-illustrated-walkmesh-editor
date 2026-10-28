@@ -66,6 +66,23 @@ Clicking inside the real editor, drawing polygons with the mouse, and visual lay
 2. Import an illustration, draw two touching zones, and run the scene. Walk across the shared edge.
 3. Open the illustration window, place templates, save, close the project, and reopen.
 
+## Regenerating the demo scene: stale editor state
+
+`examples/perspective_calibration_demo.tscn` is written by `examples/generate_perspective_demo.gd`. Regenerating it on disk while the same scene is open in the editor is unsafe:
+
+- The editor keeps its own copy of an open scene. **Saving that tab overwrites the regenerated file** with the editor's older copy, without a warning.
+- Verified on 2026-10-29 with a copy of the demo: after an external change on disk, a save from the editor restored the previous value (`snap_tolerance` 0.5 became 0.864 again).
+- Headless save and reload preserve every value checked (`snap_tolerance`, anchor IDs), so Godot's serialization is not the cause.
+
+**Procedure**
+
+1. Close the demo tab, or make sure it has no unsaved changes.
+2. Run the generator headless (command in `prototypes/occlusion/README.md`, with `generate_perspective_demo.gd` instead).
+3. Reopen the demo scene in the editor. Do not save it before reopening.
+4. Check `Player → snap_tolerance` (expected `0.864`) before saving anything.
+
+Generated anchor IDs are random on each run, so regenerating the demo produces a noisy diff even when nothing else changed. A deterministic ID scheme for the demo generator is a planned improvement.
+
 ## Versioning
 
 - The plugin version is `version` in `addons/illustrated_walkmesh_editor/plugin.cfg`. It is currently `0.1.0-dev`.
