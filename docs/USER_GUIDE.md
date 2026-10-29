@@ -55,6 +55,7 @@ Two walkable zones that share an edge are connected: the character walks from on
 - Locking a region has no button yet. Locked regions are respected when they are locked by data.
 - The perspective calibration assumes one flat floor. It does not detect terrain height or hidden depth.
 - Scenes must be exported again after changing a region or the calibration.
+- Cutouts that together enclose a walkable island also block the island. Draw the island as its own region instead.
 - Only walkable regions and cutouts exist. Region types (connection, collision-only, special) are not implemented yet.
 
 ## Planned features

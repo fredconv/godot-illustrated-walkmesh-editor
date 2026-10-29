@@ -32,6 +32,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Fixed
 - The save button opened an *Open* dialog instead of a *Save* dialog (wrong `file_mode`).
 - The dock's `Undo` and `Redo` buttons called methods that `EditorUndoRedoManager` does not have, so they failed in the real editor (audit P0-1).
+- Overlapping cutouts were subtracted one after another, so their intersection was counted twice: the walkable area and contours were wrong, and navigation and collision received overlapping holes (audit P1-1). The cutouts are now merged into disjoint pieces first. Source cutouts are not modified and the save format is unchanged.
 - The undo history was shared across documents: after opening another document, undo or redo could add regions of the previous document to it (audit P0-2). Each document now has its own Godot `UndoRedo`, freed when the document changes.
 - Selecting a cutout in the region tree could abort the engine: the tree was rebuilt inside its own selection callback. Selection no longer rebuilds the tree, and interaction signals are deferred. See `docs/REGION_TREE_FIX.md`.
 
