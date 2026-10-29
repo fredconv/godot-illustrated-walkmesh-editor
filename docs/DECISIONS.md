@@ -62,7 +62,7 @@
 
 **Reason:** `UndoRedo.get_version()` goes up on commit and redo and down on undo, so equality with the saved version means "back at the saved state". That fails after an undo followed by a different action. A recovery copy is written for a document without a path, because `_save_external_data` runs while the editor may be closing and must not show a dialog.
 
-**Consequences:** Creating or opening a document starts clean. Importing an illustration is not undoable, so it keeps the document modified until saved. The viewport-size write of the perspective preview does not mark the document modified, because it fires during layout; that belongs to P1-4.
+**Consequences:** Creating or opening a document starts clean. Importing an illustration is not undoable, so it keeps the document modified until saved. The preview no longer writes to the document (see the 2026-10-29 reference-frame decision), so resizing the dock never changes the modified state.
 
 ## 2026-10-29 — A per-document UndoRedo instead of the editor's history
 
@@ -71,3 +71,12 @@
 **Reason:** The audit confirmed that `EditorUndoRedoManager` has no `undo()`/`redo()` methods, so the dock buttons failed, and that IWE actions went into the editor's global history, where they survived a document change and could inject regions of one document into another. Clearing the global history would also erase other tools' actions.
 
 **Consequences:** Undo is available from the dock buttons and from `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` while the illustration has focus, but not from Godot's main `Ctrl+Z` elsewhere. Creating or opening a document is not undoable. Tests drive the real `UndoRedo`; no test double reimplements the history.
+
+## 2026-10-29 — The perspective projection uses an explicit reference frame, not the panel size
+
+**Decision:** Three things are kept apart. (1) The persistent calibration, including `reference_viewport_size`, is saved with the document. (2) The projection frame is that reference viewport; only its aspect ratio affects the projection. (3) The editor display transform (`panel_fit`, `panel_to_reference`, `reference_to_panel` in `IWEPerspectiveProjector`) maps the preview panel to the frame with a centred contain-fit and is never saved. The preview panel sits in an `AspectRatioContainer` set to the frame's ratio, and the preview does not write to the document. New documents take the reference from the project's game window; the author can edit it explicitly.
+
+**Reason:** The dock used to copy its own size into the calibration, so the layout changed the projection silently. Verified numerically that the projection depends on the reference aspect only, so a stable aspect gives a stable projection at any panel size.
+
+**Consequences:** Old documents keep the reference they stored, so their projection is unchanged; no migration, no schema change. A document whose stored reference was an accident of the old dock layout keeps that shape; the author can correct it with the `Reference frame` inputs. A fixture of an old document (`tests/fixtures/iwe_document_old_panel_reference.tres`) checks that it loads and projects identically and that its file is not modified.
+

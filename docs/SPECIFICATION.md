@@ -71,7 +71,7 @@ Status: **Completed** for zones that share an exact edge on one floor (tested he
 ### 3.6 Calibration
 
 - Scale templates: image-space height references, stored as apparent height in pixels.
-- Perspective calibration: camera field of view, transform, virtual floor height, and known character height.
+- Perspective calibration: camera field of view, transform, virtual floor height, and known character height. The projection frame is an explicit reference viewport stored in the calibration (aspect ratio only); it does not depend on the dock or window size.
 - Fit camera to two or more height references: completed (automatic fit from anchors).
 - Manual calibration of camera and floor: completed.
 - Assisted calibration with explicit constraints and a quality diagnostic: to develop.
@@ -164,7 +164,7 @@ The character's behaviour depends on Geometry & Navigation. Rendering decides wh
 - Save and reopen of IWE documents.
 - Touching zones are walkable as one network (headless test).
 - Test character with mouse and keyboard, walls, path following.
-- Automated test suite: 29 headless GdUnit4 tests passing.
+- Automated test suite: 92 headless GdUnit4 tests passing.
 
 **Partially implemented**
 - Locked regions: the model and canvas respect the lock, but no button sets it.

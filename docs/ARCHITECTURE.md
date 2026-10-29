@@ -24,7 +24,9 @@ addons/illustrated_walkmesh_editor/
     └── iwe_walkmesh_character.gd  IWEWalkmeshCharacter (CharacterBody3D): click and keyboard movement
 ```
 
-Tests live in the project-level `tests/` folder (GdUnit4), not inside the addon. Current suite: 29 headless tests, all passing.
+Perspective keeps three layers apart: the persistent calibration (saved), the projection frame (the calibration's reference viewport, aspect ratio only), and the editor display transform (panel fit in `IWEPerspectiveProjector`, never saved).
+
+Tests live in the project-level `tests/` folder (GdUnit4), not inside the addon. Current suite: 92 headless tests, all passing.
 
 ### 1.1 Data model facts
 

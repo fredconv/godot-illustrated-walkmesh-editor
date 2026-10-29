@@ -19,6 +19,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Layer Manager design proposal, `docs/LAYER_MANAGER_DESIGN.md`: architecture, schema version 2 migration guarantees, asset handling, and the transparency-technique study. Design only; no layer feature is implemented.
 
 ### Changed
+- Perspective calibration no longer depends on the dock (audit P1-4). The preview panel is locked to the calibration's own reference frame, so resizing the dock, detaching the window, zooming, or changing the editor resolution cannot move the projection, and the preview never writes to the document or marks it modified. New documents take their reference frame from the project's game window instead of the panel size. Two new `Reference frame` inputs in the perspective panel change it deliberately (undoable). Saved documents keep their stored reference frame; no migration and no format change.
+- The perspective preview no longer asks Godot to resize a stretched SubViewport (it logged a warning on every layout).
 - The undo history is now `IWEDocumentHistory`, a thin class around Godot's `UndoRedo` that also remembers which state was saved. Closing a Godot scene never prompts about the IWE document.
 - Creating a new document is no longer an undoable action; it starts an empty history, like opening a document.
 - `Ctrl+Z`, `Ctrl+Shift+Z`, and `Ctrl+Y` undo and redo IWE edits while the illustration has focus. IWE edits no longer go into the editor's global history.
@@ -32,6 +34,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Test doubles `tests/dock_undo_stub.gd` and `tests/undo_history_stub.gd`. They implemented `undo()` and `redo()`, which the real editor API does not have, and hid audit P0-1. Tests now use Godot's `UndoRedo`.
 
 ### Fixed
+- The perspective calibration stored the size of the preview panel as its reference viewport and rewrote it whenever the dock was resized, so the same document projected the floor and the templates differently depending on the layout, and the change was silent (audit P1-4). Only the aspect ratio of the reference frame matters to the projection; it is now explicit and stable.
 - The save button opened an *Open* dialog instead of a *Save* dialog (wrong `file_mode`).
 - The dock's `Undo` and `Redo` buttons called methods that `EditorUndoRedoManager` does not have, so they failed in the real editor (audit P0-1).
 - Overlapping cutouts were subtracted one after another, so their intersection was counted twice: the walkable area and contours were wrong, and navigation and collision received overlapping holes (audit P1-1). The cutouts are now merged into disjoint pieces first. Source cutouts are not modified and the save format is unchanged.

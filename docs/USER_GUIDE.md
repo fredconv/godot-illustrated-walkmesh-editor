@@ -66,7 +66,7 @@ Two walkable zones that share an edge are connected: the character walks from on
 
 ## Known limitations
 
-- Resizing the dock can still change the stored perspective preview size without marking the document as modified (audit P1-4, not fixed yet).
+- The perspective projection depends on the shape (aspect ratio) of the reference frame, not on the dock. Changing the reference frame width or height changes where every image point lands on the floor; it is undoable and marks the document modified. A frame that differs in shape from the game window is reported in the status line.
 - Locking a region has no button yet. Locked regions are respected when they are locked by data.
 - The perspective calibration assumes one flat floor. It does not detect terrain height or hidden depth.
 - Scenes must be exported again after changing a region or the calibration.

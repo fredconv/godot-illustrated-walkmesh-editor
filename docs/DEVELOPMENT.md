@@ -43,7 +43,7 @@ From the project root, with the Godot 4.7.1 executable on your path or reference
 godot --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd --add "res://tests" --ignoreHeadlessMode
 ```
 
-A successful run prints `Exit code: 0` and reports the number of test cases (currently 29). Reports are written to `reports/`, which is ignored by Git.
+A successful run prints `Exit code: 0` and reports the number of test cases (currently 92). Reports are written to `reports/`, which is ignored by Git.
 
 The same command runs in continuous integration (`.github/workflows/tests.yml`), which downloads the pinned versions of Godot and GdUnit4.
 
@@ -103,6 +103,14 @@ Run this in the real editor after any change to saving, loading, or the history.
 9. Never-saved document: draw a region, close Godot, choose **Save & Quit** or run `Save All`. A file appears in the project's `user://iwe_recovery/` folder, and the label keeps its `*`.
 
 Checked in the editor for Godot 4.7.1 on 2026-10-29: steps 1 to 6 and step 8. The buttons were driven through their signals by script, not with the mouse. Steps 7 and 9 are covered by automated tests only; they have not been run by hand in the editor.
+
+### Manual check: perspective stability
+
+1. Import an illustration, switch to `Perspective`, and note the status line and a template's position in the preview.
+2. Drag the split between the canvas and the side panel, and open and close the `Window`. The preview keeps the reference aspect ratio, the projection does not move, and the label does not gain a `*`.
+3. Change `Reference frame` width: the projection changes, the label gains a `*`, and `Undo` restores it.
+
+Checked in the editor for Godot 4.7.1 on 2026-10-29 by script (split offset 170 to 650, and window detach and reattach): reference frame unchanged, floor point identical, document not modified. Not driven with the mouse.
 
 ## Versioning
 

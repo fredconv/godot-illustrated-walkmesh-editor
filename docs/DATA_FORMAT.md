@@ -23,7 +23,7 @@ The current document schema is **1**. Documents saved before the field existed l
   - `subtraction_polygons` with parallel `subtraction_names`: cutouts
 - `scale_anchors`: list of `IWEScaleAnchor` (`id`, `name`, `position`, `apparent_height_px`).
 - `default_template_height_px`.
-- `perspective_calibration`: `IWEPerspectiveCalibration` (camera position and rotation, field of view, floor height, character height, reference viewport size).
+- `perspective_calibration`: `IWEPerspectiveCalibration` (camera position and rotation, field of view, floor height, character height, reference viewport size). The reference viewport is the projection frame; only its aspect ratio affects the projection. The size of the dock panel is never stored. Documents saved before the dock stopped rewriting this value keep the value they stored; no migration is applied.
 - `document_path`.
 
 Object identity uses the stable `id` values. Display names may change freely.
