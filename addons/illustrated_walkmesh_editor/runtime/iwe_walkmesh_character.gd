@@ -1,3 +1,4 @@
+@tool
 class_name IWEWalkmeshCharacter
 extends CharacterBody3D
 ## Player controller for IWE perspective stages.
@@ -41,6 +42,13 @@ const SPEED_PRESETS := [1.0, 2.0, 5.0, 10.0]
 ## Testing multiplier, never saved and never exported: it only makes a path test shorter.
 ## Effective speed is move_speed * speed_multiplier. Set it with set_speed_multiplier().
 var speed_multiplier := 1.0
+## Set by the editor preview only. In the editor the character stays still unless this is true,
+## so a scene that contains it never moves while someone edits it. The preview walks it without
+## physics (the editor does not step the physics of a preview world): see kinematic.
+var editor_preview := false
+## Move by changing the position directly instead of move_and_slide. The walls cannot stop it;
+## the navigation path keeps it on the walkable area.
+var kinematic := false
 var _paused := false
 var _start_position := Vector3.ZERO
 var _path := PackedVector3Array()
@@ -54,6 +62,8 @@ var _navigation_settled := false
 var _last_navigation_iteration := -1
 var _stable_navigation_frames := 0
 const NAVIGATION_STABLE_FRAMES := 5
+const MAX_PATH_RETRY_FRAMES := 120
+var _path_retry_frames := 0
 
 
 func _ready() -> void:
@@ -62,7 +72,7 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not click_to_move:
+	if Engine.is_editor_hint() or not click_to_move:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var target: Variant = screen_to_floor(event.position)
@@ -82,14 +92,26 @@ func screen_to_floor(screen_position: Vector2) -> Variant:
 
 ## Walks to the closest walkable point to world_target along a navigation path.
 func move_to(world_target: Vector3) -> void:
+	_path_retry_frames = 0
+	_plan_path(world_target)
+
+
+## Asks the navigation server for the path. While the server has not synchronized its regions the
+## answer is empty, whatever its iteration counter says, so the request is kept and repeated on the
+## next physics frames (up to MAX_PATH_RETRY_FRAMES) instead of being lost.
+func _plan_path(world_target: Vector3) -> void:
 	var map := get_world_3d().navigation_map
 	if not _navigation_settled:
-		# The navigation map has not synchronized yet; retry on the next physics frame.
+		_pending_target = world_target
+		return
+	var target := NavigationServer3D.map_get_closest_point(map, world_target)
+	var planned := NavigationServer3D.map_get_path(map, global_position, target, true)
+	if planned.is_empty() and _path_retry_frames < MAX_PATH_RETRY_FRAMES:
+		_path_retry_frames += 1
 		_pending_target = world_target
 		return
 	_pending_target = null
-	var target := NavigationServer3D.map_get_closest_point(map, world_target)
-	_path = _with_corner_clearance(map, NavigationServer3D.map_get_path(map, global_position, target, true))
+	_path = _with_corner_clearance(map, planned)
 	_path_index = 0
 	_blocked_frames = 0
 
@@ -196,15 +218,17 @@ func is_moving_along_path() -> bool:
 
 
 func _physics_process(delta: float) -> void:
+	if Engine.is_editor_hint() and not editor_preview:
+		return
 	_update_navigation_settled()
 	if not _navigation_settled or _paused:
 		velocity = Vector3.ZERO
-		move_and_slide()
+		_move(delta)
 		if _paused:
 			_move_input = Vector3.ZERO
 		return
 	if _pending_target != null:
-		move_to(_pending_target)
+		_plan_path(_pending_target)
 	if keyboard_control:
 		var keyboard := _keyboard_direction()
 		if keyboard != Vector3.ZERO:
@@ -214,11 +238,18 @@ func _physics_process(delta: float) -> void:
 		direction = _path_direction(delta)
 	velocity = direction * get_effective_speed()
 	var before := global_position
-	move_and_slide()
+	_move(delta)
 	_update_blocked_state(before, direction)
 	constrain_to_walkable()
 	_face(direction, delta)
 	_move_input = Vector3.ZERO
+
+
+func _move(delta: float) -> void:
+	if kinematic:
+		global_position += velocity * delta
+	else:
+		move_and_slide()
 
 
 func _update_navigation_settled() -> void:

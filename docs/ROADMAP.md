@@ -78,7 +78,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 | Assisted calibration with quality diagnostic | Todo | The fit residual is not shown; 10.6% on the steep village scene |
 | 2D, flat 3D, and perspective exports | Done | Saved and reloaded in tests. A picture inside the project is referenced, not embedded (audit P1-8); only a picture Godot has not imported and cannot import is embedded, with a warning |
 | Test character speed: base speed, x0.1 to x10 multiplier, pause, reset | Done (character) | `IWEWalkmeshCharacter`; never saved or exported |
-| Speed controls in the dock preview | Todo | Needs an in-editor test character; the dock preview is a static render (milestone M3) |
+| Speed controls in the dock preview | Done | `Test walk` in the perspective panel: character on the preview floor, base speed, x1/x2/x5/x10, pause/resume, reset; settings are preview-only. Verified headless (13 tests) and in the real editor runtime by `tests/editor_selftest` (no mouse) |
 | Environment-only and navigation-only exports | Todo | |
 | Exports include layers and connections | Todo | After steps 2–5 |
 
@@ -90,7 +90,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 - Perspective projection and camera views; known-height template placement.
 - Save and reopen of IWE documents, including the copy of the image beside the document.
 - Test character with mouse and keyboard, walls, and path following.
-- Automated suite: 202 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
+- Automated suite: 215 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
 
 ## Open technical debts
 

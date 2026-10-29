@@ -64,6 +64,14 @@
 
 **Consequences.** Region order matters for the mesh split, not for what is walkable: the union is the same in any order (tested). The floor collision of a later zone also covers only its own part. Hidden zones and zones with fewer than three points cover nothing.
 
+## 2026-10-29 — The dock preview's test character moves without physics
+
+**Decision.** `Test walk` in the dock preview puts an `IWEWalkmeshCharacter` in the preview world with `editor_preview` and `kinematic` set: it follows the navigation path by changing its position, with no `move_and_slide`. The class is a tool script that stays still in the editor unless `editor_preview` is set, so a scene containing it never moves while someone edits that scene. Speed settings live in the preview and the dock, never in the document or an export.
+
+**Why.** The editor does not step the physics of a preview world, and the walls only matter for keyboard walking, which the preview does not offer. The navigation path already stays on the walkable area, with the corner clearance. The path request is also repeated for up to 120 frames while the navigation server has not synchronized its regions: its iteration counter can look settled before the regions are in the map, which an editor run showed once.
+
+**Consequences.** A click in test walk never tests the walls; the game build (physics, walls) is what the headless suite and F5 cover.
+
 ## 2026-10-29 — Track unsaved changes with the document's own history
 
 **Decision:** `IWEDocumentHistory` wraps `UndoRedo` and stores the version at the last successful save. A document is modified when the current version differs, when a change happened outside the history, or when the saved state became unreachable. The dock asks before New and Open, and the plugin implements `_get_unsaved_status` and `_save_external_data`.

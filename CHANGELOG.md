@@ -7,6 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Test walk in the dock preview. A character walks the preview floor when you click it, with a base speed, x1/x2/x5/x10 presets that can change during the walk, pause and resume, and reset. The settings are preview-only: not saved in the document, not exported. `tests/editor_selftest/` runs it in the real editor runtime.
+- A click-to-move request made before the navigation server has loaded its regions is repeated instead of being lost (seen in an editor run).
 - The perspective export warns about a doorway narrower than the character's diameter, naming the zone and where it is. The planner still cannot route around it, so this is a report, not a fix. Tests also pin that a cutout stays an obstacle when another zone overlaps its zone elsewhere, and that ground covered by a second zone is walkable under the union rule.
 - Portable documents (audit P1-7). Saving always copies the picture beside the document and stores a path relative to it, so moving the project folder keeps it working. The extra folder prompt is gone. Fixes Save As, which kept pointing at the first folder's picture and left the new folder without one.
 - Small exports (audit P1-8). An exported scene references a picture inside the project instead of embedding its pixels (126 KB instead of 6.4 MB on the village scene). A picture that is not imported yet is imported by the editor at export time.

@@ -28,11 +28,12 @@ The **IWE** dock appears in the right-hand dock area once the plugin is enabled.
 5. **Cut holes.** Click `Boolean − (cutout)`, select the region, and draw the hole. The cutout must overlap the region. Each cutout can be renamed.
 6. **Place height templates.** Click `Place / move height template` and click on the illustration where a character stands. Set its apparent height in pixels in the field below. Use several templates at different depths to calibrate the camera.
 7. **Calibrate the perspective.** Open the perspective panel (`Perspective`). Adjust the camera, or click `Fit camera to height references` when you have two or more templates at different depths.
-8. **Export a scene.** Use *Scene export*:
+8. **Try the stage with a test character.** In the perspective panel, turn on `Test walk`. A character appears on the floor; click the preview to send it there (clicks no longer place height references while this is on). `Base speed` is its walking speed in world units per second; `×1`, `×2`, `×5` and `×10` multiply it, and you can change them while it walks. `Pause` freezes it and `Resume` continues, `Reset position` puts it back at its start. The speed is the same at every depth, so it looks slower far away: that is the perspective, not a setting. None of this is saved in the document or written to an export.
+9. **Export a scene.** Use *Scene export*:
    - `Export 2D scene` writes a standalone 2D scene.
    - `Export 3D stage` writes a flat 3D stage.
    - `Export perspective scene` writes the calibrated 3D stage. Re-export after changing the calibration.
-9. **Save and reopen.** Click `Save`, choose a `.tres` file, and accept the copy of the illustration if it is proposed. Use `Open` to reopen the document later.
+10. **Save and reopen.** Click `Save` and choose a `.tres` file. The illustration is copied next to it in an `assets` folder, and the project can then be moved. Use `Open` to reopen the document later.
 
 ## Undo and redo
 

@@ -43,7 +43,7 @@ From the project root, with the Godot 4.7.1 executable on your path or reference
 godot --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd --add "res://tests" --ignoreHeadlessMode
 ```
 
-A successful run prints `Exit code: 0` and reports the number of test cases (currently 202). Reports are written to `reports/`, which is ignored by Git.
+A successful run prints `Exit code: 0` and reports the number of test cases (currently 215). Reports are written to `reports/`, which is ignored by Git.
 
 The same command runs in continuous integration (`.github/workflows/tests.yml`), which downloads the pinned versions of Godot and GdUnit4.
 
@@ -60,6 +60,10 @@ The suite covers:
 - Scene exports (2D, 3D, perspective) with reload checks.
 - Walking across connected walkable zones, and walls on outer edges.
 - Floating illustration window and the save/open workflow.
+
+### Editor self-test
+
+`tests/editor_selftest/run.ps1` runs the dock inside the real Godot editor (headless editor mode, on a temporary copy of the project) and exercises the test walk there. See its README. It uses no mouse.
 
 ### What headless tests cannot cover
 

@@ -107,7 +107,7 @@ Status: **To develop.**
 - Connections between touching zones come from shared edges (completed for perspective export).
 - Generated collision walls on outer boundaries and cutouts (completed for perspective export).
 - Separate collision layer masks and configurable navigation parameters: to develop.
-- Test character with mouse and keyboard, walls, and path following (completed in the perspective runtime). A testing speed multiplier (x0.1 to x10), pause, and reset are available on the character; they are never saved or exported. Controls in the dock preview are to develop.
+- Test character with mouse and keyboard, walls, and path following (completed in the perspective runtime). A testing speed multiplier (x0.1 to x10), pause, and reset are available on the character; they are never saved or exported. The dock preview has a `Test walk` mode with the same controls (base speed, x1/x2/x5/x10, pause/resume, reset); its character moves without physics, along the navigation path.
 - Debug overlays for contours, exclusions, connections, collisions, and templates: partial (contour and template guides exist; connection and collision overlays do not).
 
 The physical character size is a runtime setting, separate from its visual height. Perspective changes apparent size on screen; it must not change physical size.

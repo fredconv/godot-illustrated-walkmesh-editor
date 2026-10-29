@@ -7,6 +7,8 @@ extends SubViewportContainer
 ## concern. Nothing here writes to the document.
 
 signal image_point_clicked(image_position: Vector2)
+## The test character exists and its base speed (world units per second) is known.
+signal test_character_ready(base_speed: float)
 
 const PROJECTOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_perspective_projector.gd")
 const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_scene_generator.gd")
@@ -17,6 +19,16 @@ var _image_size := Vector2i.ZERO
 var _top_view := false
 ## The frame being shown (the calibration's reference viewport). Set by configure().
 var _reference_size := Vector2i(1280, 720)
+var _calibration: IWEPerspectiveCalibration
+var _world_scale := 0.01
+## Test walk: a character that walks the generated floor so the person can try the camera and the
+## zones. These settings belong to the preview only. They are never written to the document and
+## never reach an export.
+var _test_walk := false
+var _speed_multiplier := 1.0
+## Zero keeps the character's own base speed.
+var _base_speed := 0.0
+var _paused := false
 
 
 func _ready() -> void:
@@ -53,8 +65,10 @@ func configure(document: Resource, texture: Texture2D, calibration: IWEPerspecti
 		return
 	_image_size = document.image_size
 	_reference_size = calibration.reference_viewport_size
+	_calibration = calibration
+	_world_scale = world_scale
 	_apply_reference_aspect()
-	var stage: Node3D = SCENE_GENERATOR.build_perspective_scene(document, texture, calibration, world_scale)
+	var stage: Node3D = SCENE_GENERATOR.build_perspective_scene(document, texture, calibration, world_scale, _test_walk)
 	if stage == null:
 		return
 	stage.name = "PerspectiveStage"
@@ -62,6 +76,99 @@ func configure(document: Resource, texture: Texture2D, calibration: IWEPerspecti
 		child.free()
 	_viewport.add_child(stage)
 	_set_camera_mode(_top_view)
+	_prepare_test_character()
+
+
+## Turns the test character on or off. The stage is rebuilt by the next configure().
+func set_test_walk(enabled: bool) -> void:
+	_test_walk = enabled
+
+
+func is_test_walk() -> bool:
+	return _test_walk
+
+
+func get_test_character() -> IWEWalkmeshCharacter:
+	if not is_instance_valid(_viewport) or _viewport.get_child_count() == 0:
+		return null
+	return _viewport.get_child(0).get_node_or_null("Player") as IWEWalkmeshCharacter
+
+
+## The preview drives the character itself: no keyboard, no clicks through the viewport, and no
+## physics (the editor does not step the physics of a preview world).
+func _prepare_test_character() -> void:
+	var player := get_test_character()
+	if player == null:
+		return
+	player.editor_preview = true
+	player.kinematic = true
+	player.keyboard_control = false
+	player.click_to_move = false
+	if _base_speed > 0.0:
+		player.move_speed = _base_speed
+	player.set_speed_multiplier(_speed_multiplier)
+	if _paused:
+		player.pause()
+	test_character_ready.emit(player.move_speed)
+
+
+## Base speed in world units per second. Zero or less restores the character's own value.
+func set_base_speed(value: float) -> void:
+	_base_speed = maxf(value, 0.0)
+	var player := get_test_character()
+	if player != null and _base_speed > 0.0:
+		player.move_speed = _base_speed
+
+
+func get_base_speed() -> float:
+	var player := get_test_character()
+	return player.move_speed if player != null else _base_speed
+
+
+## Speed multiplier (x0.1 to x10). It can change while the character walks.
+func set_speed_multiplier(multiplier: float) -> void:
+	_speed_multiplier = clampf(multiplier, IWEWalkmeshCharacter.MIN_SPEED_MULTIPLIER, IWEWalkmeshCharacter.MAX_SPEED_MULTIPLIER)
+	var player := get_test_character()
+	if player != null:
+		player.set_speed_multiplier(_speed_multiplier)
+
+
+func get_speed_multiplier() -> float:
+	return _speed_multiplier
+
+
+func set_paused(paused: bool) -> void:
+	_paused = paused
+	var player := get_test_character()
+	if player == null:
+		return
+	if paused:
+		player.pause()
+	else:
+		player.resume()
+
+
+func is_paused() -> bool:
+	return _paused
+
+
+func reset_test_character() -> void:
+	var player := get_test_character()
+	if player != null:
+		player.reset_position()
+
+
+## Sends the test character to the floor point under an image pixel. False when the pixel is not
+## on the floor (above the horizon) or there is no character.
+func walk_to_image_point(image_position: Vector2) -> bool:
+	var player := get_test_character()
+	if player == null or _calibration == null:
+		return false
+	var floor_point: Variant = PROJECTOR.image_point_to_floor(image_position, _image_size, _reference_size, _calibration.camera_position, _calibration.camera_rotation_degrees, _calibration.field_of_view_degrees, _calibration.floor_height)
+	if floor_point == null:
+		return false
+	player.move_to(Vector3(floor_point.x, _calibration.floor_height, floor_point.z) * _world_scale)
+	return true
 
 
 ## The parent keeps this panel at the reference aspect ratio, so the render matches the

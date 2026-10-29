@@ -88,6 +88,12 @@ var _resource_saver := Callable(ResourceSaver, "save")
 var _recovery_stamp := Time.get_datetime_string_from_system().replace(":", "-")
 var _pending_document_path := ""
 var _pending_image_source := ""
+var _test_walk_button: CheckButton
+var _test_walk_controls: VBoxContainer
+var _base_speed_input: SpinBox
+var _speed_buttons: Array[Button] = []
+var _pause_button: Button
+var _reset_walker_button: Button
 var _selected_group_id := ""
 var _has_illustration := false
 var _pending_export_dimension := 2
@@ -198,6 +204,7 @@ func _ready() -> void:
 	_perspective_button.toggled.connect(_set_perspective_mode)
 	_canvas_window_button.toggled.connect(_set_canvas_window)
 	_perspective_top_view_button.toggled.connect(_perspective_preview.set_top_view)
+	_build_test_walk_controls()
 	_fit_references_button.pressed.connect(_fit_camera_to_references)
 	_export_perspective_button.pressed.connect(_begin_export.bind(4))
 	_camera_fov_input.value_changed.connect(_set_calibration_fov)
@@ -316,6 +323,92 @@ func _change_zoom(factor: float) -> void:
 	_zoom = clampf(_zoom * factor, 0.1, 8.0)
 	_canvas.set_zoom(_zoom)
 	_zoom_label.text = "%d%%" % roundi(_zoom * 100.0)
+
+
+## Test walk: a character on the preview floor, with its speed controls. These are tools for trying
+## the stage. Nothing here is saved in the document or written to an export.
+func _build_test_walk_controls() -> void:
+	var anchor := _perspective_top_view_button
+	var panel := anchor.get_parent()
+	_test_walk_button = CheckButton.new()
+	_test_walk_button.name = "TestWalkButton"
+	_test_walk_button.text = "Test walk"
+	_test_walk_button.tooltip_text = "Put a character on the floor and click the preview to send it there. Clicks no longer place height references while this is on."
+	_test_walk_controls = VBoxContainer.new()
+	_test_walk_controls.name = "TestWalkControls"
+	_test_walk_controls.visible = false
+	var speed_row := HBoxContainer.new()
+	var speed_label := Label.new()
+	speed_label.text = "Base speed"
+	speed_label.tooltip_text = "Walking speed in world units per second. The same at every depth: perspective makes it look slower far away."
+	speed_row.add_child(speed_label)
+	_base_speed_input = SpinBox.new()
+	_base_speed_input.name = "BaseSpeedInput"
+	_base_speed_input.min_value = 0.1
+	_base_speed_input.max_value = 100.0
+	_base_speed_input.step = 0.1
+	_base_speed_input.value = 2.5
+	_base_speed_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	speed_row.add_child(_base_speed_input)
+	_test_walk_controls.add_child(speed_row)
+	var multiplier_row := HBoxContainer.new()
+	var group := ButtonGroup.new()
+	for preset in IWEWalkmeshCharacter.SPEED_PRESETS:
+		var button := Button.new()
+		button.name = "Speed%dx" % int(preset)
+		button.text = "×%d" % int(preset)
+		button.toggle_mode = true
+		button.button_group = group
+		button.button_pressed = is_equal_approx(preset, 1.0)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.tooltip_text = "Walk %d times faster than the base speed" % int(preset)
+		button.pressed.connect(_set_test_walk_multiplier.bind(preset))
+		multiplier_row.add_child(button)
+		_speed_buttons.append(button)
+	_test_walk_controls.add_child(multiplier_row)
+	var action_row := HBoxContainer.new()
+	_pause_button = Button.new()
+	_pause_button.name = "PauseButton"
+	_pause_button.text = "Pause"
+	_pause_button.toggle_mode = true
+	_pause_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_row.add_child(_pause_button)
+	_reset_walker_button = Button.new()
+	_reset_walker_button.name = "ResetWalkerButton"
+	_reset_walker_button.text = "Reset position"
+	_reset_walker_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_row.add_child(_reset_walker_button)
+	_test_walk_controls.add_child(action_row)
+	panel.add_child(_test_walk_button)
+	panel.move_child(_test_walk_button, anchor.get_index() + 1)
+	panel.add_child(_test_walk_controls)
+	panel.move_child(_test_walk_controls, _test_walk_button.get_index() + 1)
+	_test_walk_button.toggled.connect(_set_test_walk)
+	_base_speed_input.value_changed.connect(_perspective_preview.set_base_speed)
+	_pause_button.toggled.connect(_set_test_walk_paused)
+	_reset_walker_button.pressed.connect(_perspective_preview.reset_test_character)
+	_perspective_preview.test_character_ready.connect(_on_test_character_ready)
+
+
+func _set_test_walk(enabled: bool) -> void:
+	_test_walk_controls.visible = enabled
+	_perspective_preview.set_test_walk(enabled)
+	_refresh_perspective_preview()
+	_refresh_status()
+
+
+func _set_test_walk_multiplier(multiplier: float) -> void:
+	_perspective_preview.set_speed_multiplier(multiplier)
+
+
+func _set_test_walk_paused(paused: bool) -> void:
+	_pause_button.text = "Resume" if paused else "Pause"
+	_perspective_preview.set_paused(paused)
+
+
+## Shows the character's own base speed unless the person has chosen another one.
+func _on_test_character_ready(base_speed: float) -> void:
+	_base_speed_input.set_value_no_signal(base_speed)
 
 
 func _refresh_perspective_preview() -> void:
@@ -941,6 +1034,10 @@ func _set_template_mode(enabled: bool) -> void:
 
 func _create_perspective_anchor(image_position: Vector2) -> void:
 	if _document == null:
+		return
+	if _test_walk_button != null and _test_walk_button.button_pressed:
+		# In test walk a click sends the character there instead of placing a height reference.
+		_perspective_preview.walk_to_image_point(image_position)
 		return
 	_create_scale_anchor(image_position, _document.default_template_height_px)
 
