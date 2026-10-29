@@ -81,6 +81,7 @@ var _history: IWEDocumentHistory
 ## answer started. Cleared when the user cancels or when the save fails.
 var _pending_unsaved_action := Callable()
 var _unsaved_dialog: ConfirmationDialog
+var _illustration_dialog: ConfirmationDialog
 ## How a document is written to disk. Tests replace it to simulate a failing disk without
 ## depending on the engine's own error messages.
 var _resource_saver := Callable(ResourceSaver, "save")
@@ -244,6 +245,15 @@ func _load_illustration(path: String) -> void:
 	if image.is_empty():
 		push_error("IWE: Could not load illustration at %s" % path)
 		return
+	var had_illustration: bool = _document.image_size.x > 0 and _document.image_size.y > 0
+	if had_illustration:
+		# Replacing the picture of a document that already has one never touches the authored
+		# data: regions, templates and calibration stay as they are.
+		if image.get_size() == _document.image_size:
+			_replace_illustration(path, image)
+		else:
+			_confirm_illustration_replacement(path, image)
+		return
 	var texture := ImageTexture.create_from_image(image)
 	_canvas.set_texture(texture)
 	_has_illustration = true
@@ -257,8 +267,52 @@ func _load_illustration(path: String) -> void:
 	_refresh_regions()
 	_refresh_status()
 	_refresh_perspective_preview()
-	# Importing replaces the illustration and the calibration outside the undo history.
+	# The first import creates the calibration outside the undo history.
 	_history.note_untracked_change()
+
+
+## The new picture has another size: regions and height references are placed in the pixels of
+## the current picture, so they will not line up with it. Ask first; the change can be undone.
+func _confirm_illustration_replacement(path: String, image: Image) -> void:
+	if is_instance_valid(_illustration_dialog):
+		_illustration_dialog.queue_free()
+	var current: Vector2i = _document.image_size
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "Replace illustration"
+	dialog.dialog_text = "The new illustration is %d×%d px, the current one is %d×%d px.
+
+Regions, height references and the calibration keep their values, but they are placed in the pixels of the current illustration and may no longer line up. You can undo this." % [image.get_width(), image.get_height(), current.x, current.y]
+	dialog.ok_button_text = "Replace illustration"
+	dialog.cancel_button_text = "Cancel"
+	dialog.confirmed.connect(_replace_illustration.bind(path, image))
+	_illustration_dialog = dialog
+	add_child(dialog)
+	dialog.popup_centered()
+
+
+## Swaps the picture only. Regions, groups, templates, and the calibration are not touched.
+func _replace_illustration(path: String, image: Image) -> void:
+	if _document == null:
+		return
+	var before := {"path": _document.illustration_path, "size": _document.image_size, "texture": _canvas.get_texture(), "source": _pending_image_source, "has": _has_illustration}
+	var after := {"path": path, "size": image.get_size(), "texture": ImageTexture.create_from_image(image), "source": path, "has": true}
+	_history.create_action("Replace IWE illustration")
+	_history.add_do_method(_apply_illustration_state.bind(after))
+	_history.add_undo_method(_apply_illustration_state.bind(before))
+	_history.commit_action()
+
+
+func _apply_illustration_state(state: Dictionary) -> void:
+	if _document == null:
+		return
+	_canvas.set_texture(state["texture"])
+	_has_illustration = state["has"]
+	_document.set_illustration(state["path"], state["size"])
+	_pending_image_source = state["source"]
+	_update_workflow_controls()
+	_refresh_regions()
+	_refresh_status()
+	_refresh_perspective_preview()
 
 
 func _change_zoom(factor: float) -> void:

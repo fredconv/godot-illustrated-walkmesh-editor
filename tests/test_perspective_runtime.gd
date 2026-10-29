@@ -140,6 +140,8 @@ func test_dock_fit_button_recalibrates_camera_and_undoes() -> void:
 	scene_tree.root.add_child(dock)
 	await scene_tree.process_frame
 	dock._load_illustration(ProjectSettings.globalize_path("res://assets/img/background.png"))
+	# The document already has a 400x300 picture, so a picture of another size is confirmed first.
+	dock._illustration_dialog.confirmed.emit()
 	document.scale_anchors.clear()
 	document.scale_anchors.append(SCALE_ANCHOR_SCRIPT.create_anchor(Vector2(120, 260), 120.0))
 	document.scale_anchors.append(SCALE_ANCHOR_SCRIPT.create_anchor(Vector2(300, 200), 60.0))

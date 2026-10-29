@@ -125,6 +125,10 @@ func set_boolean_subtract_mode(enabled: bool) -> void:
 	queue_redraw()
 
 
+func get_texture() -> Texture2D:
+	return _texture
+
+
 func set_texture(texture: Texture2D) -> void:
 	_texture = texture
 	_update_minimum_size()

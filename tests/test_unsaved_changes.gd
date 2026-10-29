@@ -241,7 +241,11 @@ func _mark_clean(dock: Control) -> void:
 
 
 func test_importing_an_illustration_marks_the_document_modified_until_saved() -> void:
-	var dock := _make_dock()
+	# The first import of a document has no picture yet. Replacing a picture is undoable and is
+	# covered by test_illustration_reimport.gd.
+	var document := _make_document()
+	document.image_size = Vector2i.ZERO
+	var dock := _make_dock(document)
 	await get_tree().process_frame
 	dock._load_illustration(ProjectSettings.globalize_path("res://assets/img/background.png"))
 	assert_bool(dock.is_dirty()).is_true()
