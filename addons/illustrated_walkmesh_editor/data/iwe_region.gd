@@ -28,6 +28,52 @@ func duplicate_region() -> IWERegion:
 	return copy
 
 
+## The union of two regions as one: {"ok": true, "points": outline, "cutouts": polygons, "names": names}
+## or {"ok": false, "reason": sentence}. The outline is the union of the two outlines. A point is walkable
+## in the result when it is walkable in either region, so a cutout of one region survives only where the
+## other region does not cover it (its part outside the other outline, plus its part inside a cutout of the
+## other region). Nothing is modified. Refused: regions that neither touch nor overlap, a union that would
+## leave a hole (draw a cutout instead), and a cutout that surrounds the other region.
+static func merge_result(first: IWERegion, second: IWERegion) -> Dictionary:
+	if first.points.size() < 3 or second.points.size() < 3:
+		return {"ok": false, "reason": "A region needs at least three points to be merged."}
+	var merged := Geometry2D.merge_polygons(first.points, second.points)
+	if merged.is_empty():
+		return {"ok": false, "reason": "The two regions could not be merged."}
+	if merged.size() > 1:
+		var orientation := Geometry2D.is_polygon_clockwise(merged[0])
+		for polygon in merged:
+			if Geometry2D.is_polygon_clockwise(polygon) != orientation:
+				return {"ok": false, "reason": "Merging would leave a hole between the two regions. Draw the hole as a cutout instead."}
+		return {"ok": false, "reason": "The two regions neither touch nor overlap, so they cannot be merged into one."}
+	var cutouts: Array[PackedVector2Array] = []
+	var names := PackedStringArray()
+	for pair in [[first, second], [second, first]]:
+		var own: IWERegion = pair[0]
+		var other: IWERegion = pair[1]
+		var other_holes := other._merged_cutouts()
+		for index in own.subtraction_polygons.size():
+			var cutout: PackedVector2Array = own.subtraction_polygons[index]
+			if cutout.size() < 3:
+				continue
+			var parts: Array[PackedVector2Array] = []
+			var outside := Geometry2D.clip_polygons(cutout, other.points)
+			for piece in outside:
+				if Geometry2D.is_polygon_clockwise(piece) != Geometry2D.is_polygon_clockwise(cutout):
+					return {"ok": false, "reason": "A cutout of \"%s\" surrounds the other region. Remove or reshape that cutout first." % own.name}
+				parts.append(piece)
+			for hole in other_holes:
+				for piece in Geometry2D.intersect_polygons(cutout, hole):
+					parts.append(piece)
+			var label := own.subtraction_names[index] if index < own.subtraction_names.size() and not own.subtraction_names[index].strip_edges().is_empty() else "Cutout %d" % (index + 1)
+			for part_index in parts.size():
+				if absf(_signed_area(parts[part_index])) <= 0.001:
+					continue
+				cutouts.append(parts[part_index])
+				names.append(label if parts.size() == 1 else "%s (part %d)" % [label, part_index + 1])
+	return {"ok": true, "points": merged[0], "cutouts": cutouts, "names": names}
+
+
 ## Gives every cutout an identifier and drops identifiers that have no cutout. Returns true when
 ## something changed.
 func ensure_cutout_ids() -> bool:

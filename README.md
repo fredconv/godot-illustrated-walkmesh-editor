@@ -36,10 +36,12 @@ Implemented and covered by automated tests. Most were also checked in the editor
 - **Illustration.** Import a PNG, JPG, or WebP image, then pan and zoom. Authored geometry is stored in image pixels, so zoom never changes it.
 - **Walkable polygons.** Draw, select, move, and edit polygons vertex by vertex. Add or remove points, duplicate, rename, hide, and delete. Edits support undo and redo, with a separate history per document.
 - **Groups and cutouts.** Organize regions into flat groups. Cut holes (lakes, rocks) into a region with named cutouts.
-- **Touching zones.** Two walkable zones that share an edge form one walkable network. The shared edge has no wall, and the zones are not merged. Zones that overlap without an exact shared edge are not connected yet.
+- **Touching and overlapping zones.** Zones that share an edge (in full or in part) or overlap form one walkable network: the shared part has no wall and the character walks from one to the other. Zones stay separate, or you can merge two of them into one polygon with `Merge with…` (undoable).
 - **Scene export.** Export a standalone 2D scene or a flat 3D stage. Each export contains one navigation region per walkable zone. The 3D stage nests them under their groups.
 - **Save and reopen.** Save an IWE document as a `.tres` file. The illustration is copied next to it, and reopening restores regions, cutouts, and templates.
 - **Floating window.** Open the illustration editor in a large separate window.
+- **Layers and pictures.** A Background and a Foreground layer; place transparent PNG or WebP pictures on them (position, scale, opacity, ground point), hide, lock or fade a layer, with undo. A picture can be drawn behind the character, in front of it, or by depth, so the character walks behind a fountain and in front of it. Pictures never block walking. The perspective and 2D exports include them. The picture is positioned by typing numbers; there is no mouse dragging yet.
+- **Dock in two tabs.** *Creation* (layers, regions, tools, references, camera) and *Test* (test character, export, validation), with foldable sections.
 
 ### Experimental
 
@@ -47,18 +49,18 @@ Implemented and tested headless, but the editor interaction has not been checked
 
 - **Perspective calibration.** Place character height references at different depths, then fit the camera to them. The illustration is warped onto a flat virtual floor. This does not infer terrain height or hidden depth.
 - **Perspective export.** The calibrated stage gets collision walls on the outer outlines of walkable zones. Shared edges stay open.
-- **Test character.** The perspective stage can include a character that walks on click or with the keyboard, stays inside walkable areas, and is drawn at the size the calibrated camera gives its position.
+- **Test character.** The perspective stage can include a character that walks on click or with the keyboard, stays inside walkable areas, and is drawn at the size the calibrated camera gives its position. The `Test walk` mode of the dock shows it in the preview, with a base speed and x1, x2, x5 and x10 presets, pause and reset.
+- **Calibration report.** After a fit, each height reference shows how far the camera is from it, with a warning above 5%, the horizon row, and the zones above it (which are not exported).
 
 ### Planned
 
 Not implemented. Do not rely on these yet.
 
-- Boolean union, intersection, and XOR operations.
+- Intersection and XOR operations. (Union is available as `Merge with…`.)
 - Explicit connections between regions (bridges with a width and a direction).
 - Region types: connection, collision only, special.
-- The **Layer Manager**: layers, groups of layers, visibility, lock, and opacity.
-- Visual layers: transparent PNG elements, transforms, background and foreground.
-- Depth occlusion and parallax for visual layers. An occlusion study is in `prototypes/occlusion/`.
+- Nested layers, layer ordering, rotation, pivot and flip of pictures, mouse dragging of pictures.
+- Parallax. An occlusion study is in `prototypes/occlusion/`.
 - Nested groups and assisted calibration.
 
 ## Example scene
@@ -80,7 +82,7 @@ For a full walkthrough, see the [user guide](docs/USER_GUIDE.md).
 
 ## Roadmap
 
-The planned order of work is in [`docs/ROADMAP.md`](docs/ROADMAP.md). Next are region types and explicit connections, then the Layer Manager (layers, visual PNG elements, depth occlusion, and parallax). Union, intersection, and XOR operations are planned as scoped, non-destructive modifiers.
+The planned order of work is in [`docs/ROADMAP.md`](docs/ROADMAP.md). Layers, pictures and depth occlusion are in. Next are the validation of the editor with a mouse, release preparation, then region types and explicit connections. Intersection and XOR are planned as scoped, non-destructive modifiers.
 
 ## Contributing
 

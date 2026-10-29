@@ -43,7 +43,7 @@ Status classes: **Validated** (implemented, automated tests, checked in the real
 | Cutouts (named, several per region) | Validated | merged union subtracted once (P1-1) | Cutouts that enclose an island also block the island | cutout geometry 8, e2e 02 | | Must |
 | Cutouts without stable IDs | Partial | indexed + parallel name array | Stable IDs and a reference validator (prerequisite for layers) | | | Should |
 | Union of zones in the user's sense (walk from zone to zone) | Validated | exact **full** shared edge = doorway; verified end to end across yard, crossroads and bridge | Partly shared edges and overlapping zones are both walkable (N-1 and P1-2 fixed, `test_overlapping_zones`, e2e 04) | walkable connections, e2e 04 (3 tests) | | Must |
-| Explicit union / intersection / XOR commands | Not started | | The README lists them as planned | e2e 02 pins their absence | | Optional |
+| Union command (merge two regions) | Validated headless | `merge_result` and `Merge with…`, undoable, refuses unsafe merges | Intersection and XOR are not built | `test_merge_regions` (15), e2e 02 | Use the menu with a mouse | Must (owner scope) |
 | Region types (connection, collision only, special) | Not started | every region is walkable | | | | Should |
 | Explicit connections, passage width | Not started | | | | | Should |
 

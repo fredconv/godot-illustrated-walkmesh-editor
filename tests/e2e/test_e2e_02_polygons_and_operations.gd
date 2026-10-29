@@ -111,10 +111,17 @@ func test_a_zone_overlapping_two_others_stays_a_separate_region_with_its_own_out
 	dock.queue_free()
 
 
-func test_there_is_no_explicit_union_command_yet() -> void:
-	# Union exists only as (a) the merge of overlapping cutouts and (b) edge-sharing zones being
-	# walkable as one. There is no button or method that merges two regions into one polygon.
+func test_two_regions_can_be_merged_into_one_polygon_with_the_summed_area() -> void:
+	# The yard and the crossroads share the full edge x = 500. Merging them gives one polygon.
 	var dock := await _authored_dock()
-	for method in ["_merge_regions", "_union_regions", "_merge_selected_regions"]:
-		assert_bool(dock.has_method(method)).override_failure_message("%s now exists: add a test for it" % method).is_false()
+	var yard: IWERegion = dock._document.regions[0]
+	var crossroads: IWERegion = dock._document.regions[1]
+	var expected := _area(yard.points) + _area(crossroads.points)
+	dock._select_region(yard.id)
+	assert_bool(dock.merge_selected_region_with(crossroads.id)).is_true()
+	assert_int(dock._document.regions.size()).is_equal(3)
+	assert_float(_area(yard.points)).is_equal_approx(expected, AREA_TOLERANCE)
+	dock._undo()
+	assert_int(dock._document.regions.size()).is_equal(4)
+	assert_float(_area(dock._document.regions[0].points)).is_equal_approx(_area(yard.points), AREA_TOLERANCE)
 	dock.queue_free()

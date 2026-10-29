@@ -96,6 +96,8 @@ var _speed_buttons: Array[Button] = []
 var _pause_button: Button
 var _fit_report_label: Label
 var _layer_panel: IWELayerPanel
+var _merge_button: MenuButton
+var _merge_targets: Array[String] = []
 var _dock_tabs: TabContainer
 var _sections: Dictionary = {}
 var _camera_hint_label: Label
@@ -1157,6 +1159,15 @@ func _build_dock_tabs() -> void:
 	var regions := _new_section(creation, "Regions")
 	for node_name in ["RegionList", "RenameRegionButton", "RenameGroupButton", "RenameCutoutButton", "DuplicateButton", "DeleteButton", "VisibilityButton"]:
 		regions.adopt(_side_node(node_name))
+	_merge_button = MenuButton.new()
+	_merge_button.name = "MergeButton"
+	_merge_button.text = "Merge with…"
+	_merge_button.flat = false
+	_merge_button.disabled = true
+	_merge_button.tooltip_text = "Merge the selected region with another one into a single region. They must touch or overlap."
+	_merge_button.get_popup().about_to_popup.connect(_fill_merge_menu)
+	_merge_button.get_popup().id_pressed.connect(_on_merge_target_chosen)
+	regions.content.add_child(_merge_button)
 
 	var tools := _new_section(creation, "Drawing tools")
 	for node_name in ["SelectButton", "DrawButton", "PointsButton", "SubtractButton", "AddPointButton", "RemovePointButton"]:
@@ -1646,6 +1657,75 @@ func _delete_selected_region() -> void:
 	_history.commit_action()
 
 
+## Merges the selected region with another one into a single region (the selected one keeps its
+## name, group and colour). Returns false and says why when the two cannot be merged. One undo step.
+func merge_selected_region_with(other_id: String) -> bool:
+	var first: IWERegion = _canvas.get_selected_region()
+	var second := _find_region(other_id)
+	if first == null or second == null or first == second:
+		return false
+	if first.locked or second.locked:
+		_status_label.text = "A locked region cannot be merged."
+		return false
+	var result := REGION_SCRIPT.merge_result(first, second)
+	if not result.ok:
+		_status_label.text = "Merge refused: %s" % result.reason
+		push_warning("IWE: %s" % _status_label.text)
+		return false
+	var before := {"points": first.points.duplicate(), "polygons": first.subtraction_polygons.duplicate(true), "names": first.subtraction_names.duplicate(), "ids": first.subtraction_ids.duplicate()}
+	var merged_polygons: Array[PackedVector2Array] = result.cutouts
+	var merged_ids := PackedStringArray()
+	for _cutout in merged_polygons:
+		merged_ids.append(REGION_SCRIPT.new_cutout_id())
+	var after := {"points": result.points, "polygons": merged_polygons, "names": result.names, "ids": merged_ids}
+	var removed: IWERegion = second.duplicate(true) as IWERegion
+	var removed_index: int = _document.regions.find(second)
+	_history.create_action("Merge IWE regions")
+	_history.add_do_method(_set_region_full_geometry.bind(first.id, after))
+	_history.add_do_method(_remove_region.bind(second.id))
+	_history.add_undo_method(_insert_region.bind(removed, removed_index))
+	_history.add_undo_method(_set_region_full_geometry.bind(first.id, before))
+	_history.commit_action()
+	_select_region(first.id)
+	_status_label.text = "Merged \"%s\" into \"%s\"." % [removed.name, first.name]
+	return true
+
+
+func _set_region_full_geometry(region_id: String, geometry: Dictionary) -> void:
+	var region := _find_region(region_id)
+	if region == null:
+		return
+	region.subtraction_names = geometry.names.duplicate()
+	region.subtraction_ids = geometry.ids.duplicate()
+	_canvas.set_region_geometry(region_id, geometry.points, geometry.polygons)
+	_refresh_regions(region_id)
+
+
+func _insert_region(region: IWERegion, index: int) -> void:
+	_document.regions.insert(clampi(index, 0, _document.regions.size()), region)
+	_canvas.set_regions(_document.regions, region.id)
+	_sync_selection(region.id)
+
+
+## The Merge with… menu lists every other region of the document.
+func _fill_merge_menu() -> void:
+	var popup := _merge_button.get_popup()
+	popup.clear()
+	_merge_targets.clear()
+	var selected: IWERegion = _canvas.get_selected_region()
+	if selected == null:
+		return
+	for region in _document.regions:
+		if region != selected:
+			popup.add_item(region.name, _merge_targets.size())
+			_merge_targets.append(region.id)
+
+
+func _on_merge_target_chosen(menu_id: int) -> void:
+	if menu_id >= 0 and menu_id < _merge_targets.size():
+		merge_selected_region_with(_merge_targets[menu_id])
+
+
 func _duplicate_selected_region() -> void:
 	var region: IWERegion = _canvas.get_selected_region()
 	if region == null:
@@ -1753,6 +1833,8 @@ func _sync_selection(region_id: String) -> void:
 	_rename_button.disabled = selected_kind != "region"
 	_delete_button.disabled = region_id.is_empty() or selected_kind == "cutout"
 	_duplicate_button.disabled = region_id.is_empty() or selected_kind == "cutout"
+	if _merge_button != null:
+		_merge_button.disabled = region_id.is_empty() or selected_kind == "cutout" or _document.regions.size() < 2
 	_visibility_button.disabled = region_id.is_empty() or selected_kind == "cutout"
 	_sync_point_selection(_canvas.get_selected_vertex_index())
 	_update_workflow_controls()

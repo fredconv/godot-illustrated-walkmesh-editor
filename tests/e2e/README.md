@@ -31,7 +31,7 @@ Everything is created from an empty document through the signals the canvas emit
 | Suite | Covers |
 |---|---|
 | `test_e2e_01_assets_and_import.gd` | Asset set, composite scene, empty start, first import, two documents in a row, replacing the picture |
-| `test_e2e_02_polygons_and_operations.gd` | Drawing from scratch, shared-edge union, overlapping cutouts subtracted once, a refused cutout, undo and redo of cutouts, absence of a union command |
+| `test_e2e_02_polygons_and_operations.gd` | Drawing from scratch, shared-edge union, overlapping cutouts subtracted once, a refused cutout, undo and redo of cutouts, the merge command |
 | `test_e2e_03_editing_and_persistence.gd` | Selection, vertex move, add and remove point, delete and undo, rename and hide, undoing a whole session, duplicate (known defect), save and reopen in a fresh dock |
 | `test_e2e_04_perspective_layers_and_walk.gd` | Camera fit, preview independent of the dock, perspective export, absence of a foreground layer, footprint against the foreground picture, walking around the fountain at x1, x5 and x10, the doorway, the partial-edge limitation |
 
@@ -45,7 +45,7 @@ Run them like any other test (see `docs/DEVELOPMENT.md`). Temporary output goes 
 - **Pinned known defects** (a test passes while the defect exists and must be flipped when it is fixed):
   - Duplicating a region moves its outline 16 px but not its cutouts (P1-10).
   - A bridge that touches only part of an edge is connected for navigation but the wall stays, so the character stops at the wall. Related to P1-2 and P1-3.
-  - There is no foreground layer or occlusion, and no union command.
+  - (Fixed since: layers, foreground occlusion and the union command now exist. See `tests/test_layers.gd`, `tests/render_check/` and `tests/test_merge_regions.gd`.)
 - **Measured:** the camera fit misses the two templates by 10.6% on this steeply viewed scene (bound `FIT_BOUND = 0.12` in suite 04).
 - **Found and fixed during this run:** a picture copied beside a saved document could not be reopened until the editor imported it.
 

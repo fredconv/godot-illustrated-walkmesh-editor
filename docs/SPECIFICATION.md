@@ -54,7 +54,7 @@ Each region has a type that decides how it is used at runtime. The current imple
 
 - Flat groups exist. Nested groups are to develop.
 - Subtraction (cutouts) is completed: a region keeps several named cutouts, and contours are derived with Godot's clipping API. Overlapping, nested, and edge-touching cutouts are merged before subtraction, so their intersection is removed once. **Known limitation:** two or more cutouts that together enclose a walkable island currently block the island as well; the island is not restored.
-- Union, intersection, and XOR are to develop as scoped, non-destructive modifiers. IWE does not need to merge polygons into one shape: touching zones can stay separate and still form one walkable network (section 3.5).
+- **Union** of two regions into one polygon is available (`Merge with…`, undoable): the outline is the union, and a point is walkable when it was walkable in either region, so a cutout of one region survives only where the other region does not cover it. Regions that neither touch nor overlap, a union that would leave a hole, and a cutout that surrounds the other region are refused with a message. Merging is optional: touching zones can stay separate and still form one walkable network (section 3.5). Intersection and XOR are to develop as scoped, non-destructive modifiers.
 
 ### 3.5 Connected zones
 

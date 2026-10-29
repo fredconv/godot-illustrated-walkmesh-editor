@@ -25,6 +25,7 @@ What was checked without a mouse is listed separately in the "Checked without a 
 - [ ] Close Godot with a modified document and check the quit dialog and the recovery copy.
 - [ ] Resize and detach the dock in perspective mode.
 - [ ] Open a file saved with a newer `schema_version` and read the message.
+- [ ] Regions: merge two touching regions with `Merge with…`, undo, redo; try a merge that must be refused.
 - [ ] Layers: add an image on the Foreground layer, set its ground point, switch it to behind, in front and by depth, hide and lock the layer, undo each step.
 - [ ] Layers: change the position and scale fields with the spin box arrows and with typing; check that a run of arrow clicks undoes in one step.
 - [ ] Test tab: walk the character behind the foreground fountain and in front of it with the mouse, in the editor preview and in the exported scene run with F5.
@@ -35,7 +36,7 @@ What was checked without a mouse is listed separately in the "Checked without a 
 
 Done in this work and reproducible, but not a substitute for the list above:
 
-- 271 headless GdUnit4 tests, including dock operations driven through the same signals the canvas emits.
+- 286 headless GdUnit4 tests, including dock operations driven through the same signals the canvas emits.
 - `tests/editor_selftest/run.ps1`: the dock and the test walk inside the real Godot editor runtime (headless editor).
 - `tests/render_check/run.ps1`: a real GPU render of the village stage. The character is hidden behind the foreground fountain (1 matching pixel) and shown in front of it (2,725 pixels).
 - A real render of the dock itself in a window, read by eye: the two tabs, the foldable sections, the layer panel, the speed controls. No click was made.
