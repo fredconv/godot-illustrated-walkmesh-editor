@@ -135,16 +135,25 @@ func test_the_whole_authoring_session_undoes_back_to_an_empty_illustrated_docume
 	dock.queue_free()
 
 
-func test_duplicating_a_region_with_cutouts_currently_leaves_the_cutouts_in_place() -> void:
-	# Known defect P1-10: the copy's outline is moved by 16 px but its cutouts are not, so the
-	# holes no longer sit where they were drawn. Flip this assertion when P1-10 is fixed.
+func test_duplicating_a_region_moves_its_cutouts_with_the_outline() -> void:
+	# Audit P1-10: the copy's outline moves by 16 px, and so must every cutout, and the original
+	# must keep its own.
 	var dock := await _authored_dock()
 	var crossroads: IWERegion = dock._document.regions[1]
+	var original_cutouts := crossroads.subtraction_polygons.duplicate(true)
 	dock._select_region(crossroads.id)
 	dock._duplicate_selected_region()
 	var copy: IWERegion = dock._document.regions.back()
 	assert_vector(copy.points[0] - crossroads.points[0]).is_equal(Vector2(16, 16))
-	assert_array(copy.subtraction_polygons[0]).override_failure_message("P1-10 fixed? update this test").is_equal(crossroads.subtraction_polygons[0])
+	assert_int(copy.subtraction_polygons.size()).is_equal(2)
+	for index in 2:
+		assert_int(copy.subtraction_polygons[index].size()).is_equal(original_cutouts[index].size())
+		for point_index in original_cutouts[index].size():
+			assert_vector(copy.subtraction_polygons[index][point_index] - original_cutouts[index][point_index]).is_equal_approx(Vector2(16, 16), Vector2(0.001, 0.001))
+	assert_array(crossroads.subtraction_polygons).override_failure_message("the original keeps its cutouts").is_equal(original_cutouts)
+	assert_array(copy.subtraction_names).is_equal(crossroads.subtraction_names)
+	dock._undo()
+	assert_int(dock._document.regions.size()).is_equal(4)
 	dock.queue_free()
 
 

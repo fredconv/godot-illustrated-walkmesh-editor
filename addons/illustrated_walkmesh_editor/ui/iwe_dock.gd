@@ -1013,8 +1013,15 @@ func _duplicate_selected_region() -> void:
 	if region == null:
 		return
 	var copy := region.duplicate_region()
+	var offset := Vector2(16.0, 16.0)
 	for index in copy.points.size():
-		copy.points[index] += Vector2(16.0, 16.0)
+		copy.points[index] += offset
+	# The cutouts belong to the outline: they move with it, or the holes end up in the wrong place.
+	for cutout_index in copy.subtraction_polygons.size():
+		var moved := copy.subtraction_polygons[cutout_index].duplicate()
+		for point_index in moved.size():
+			moved[point_index] += offset
+		copy.subtraction_polygons[cutout_index] = moved
 	_history.create_action("Duplicate IWE region")
 	_history.add_do_method(_add_region.bind(copy))
 	_history.add_undo_method(_remove_region.bind(copy.id))
