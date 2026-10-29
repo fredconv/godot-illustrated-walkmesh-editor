@@ -4,12 +4,15 @@ Nothing here has been done as a release step. The version is still `0.1.0-dev`, 
 
 ## Before the release (owner decisions)
 
-- [ ] Decide whether the first release is the authoring and perspective core, or also includes layers and occlusion (`PRE_RELEASE_AUDIT.md`, decision 1). This list assumes the core only.
-- [ ] Decide the UI target (`UI_REDESIGN_PROPOSAL.md`) or accept the current dock for an alpha.
+- [x] Scope decided by the owner on 2026-10-29: layers and foreground occlusion are part of the first release.
+- [x] UI direction decided by the owner on 2026-10-29: two tabs, Creation and Test, with foldable sections.
+- [ ] Final validation and the owner's explicit approval before any release step.
 
 ## Manual QA with a mouse (M12)
 
 None of these can be run by the headless suite or by the editor self-test (`tests/editor_selftest/`). Record the date and the result of each in `DEVELOPMENT.md` once done.
+
+What was checked without a mouse is listed separately in the "Checked without a mouse" section below. Nothing in this list has been performed by hand.
 
 - [ ] Draw, edit and delete polygons with the mouse; drag vertices; step through undo and redo; check spin box arrows and merged undo steps.
 - [ ] Draw a cutout, a zone overlapping another zone, and a zone touching half of another zone's edge.
@@ -22,6 +25,22 @@ None of these can be run by the headless suite or by the editor self-test (`test
 - [ ] Close Godot with a modified document and check the quit dialog and the recovery copy.
 - [ ] Resize and detach the dock in perspective mode.
 - [ ] Open a file saved with a newer `schema_version` and read the message.
+- [ ] Layers: add an image on the Foreground layer, set its ground point, switch it to behind, in front and by depth, hide and lock the layer, undo each step.
+- [ ] Layers: change the position and scale fields with the spin box arrows and with typing; check that a run of arrow clicks undoes in one step.
+- [ ] Test tab: walk the character behind the foreground fountain and in front of it with the mouse, in the editor preview and in the exported scene run with F5.
+- [ ] Dock tabs: fold and unfold each section; switch between Creation and Test with the mouse; resize and detach the dock.
+- [ ] Check that every control is reachable and not cut off at a narrow dock width (about 380 px).
+
+## Checked without a mouse
+
+Done in this work and reproducible, but not a substitute for the list above:
+
+- 271 headless GdUnit4 tests, including dock operations driven through the same signals the canvas emits.
+- `tests/editor_selftest/run.ps1`: the dock and the test walk inside the real Godot editor runtime (headless editor).
+- `tests/render_check/run.ps1`: a real GPU render of the village stage. The character is hidden behind the foreground fountain (1 matching pixel) and shown in front of it (2,725 pixels).
+- A real render of the dock itself in a window, read by eye: the two tabs, the foldable sections, the layer panel, the speed controls. No click was made.
+
+Not possible with the tools of that session: the Godot MCP and Windows desktop automation tools were not available, so no click, drag or key press was sent to a real editor window.
 
 ## Preparation (M13)
 

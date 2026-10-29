@@ -1,6 +1,8 @@
 # Layer Manager — Design Proposal (draft)
 
-Status: **design validated, implementation not started.** The architecture (§3), schema version 2 and its migration (§4), asset handling (§4.3), and the transparency prototype (§5.3) are agreed. The Layer Manager itself is not implemented yet and no step beyond S0–S1 may start without approval.
+Status: **partly implemented on 2026-10-29, in a reduced form** (see the box below). Original status line: **design validated, implementation not started.** The architecture (§3), schema version 2 and its migration (§4), asset handling (§4.3), and the transparency prototype (§5.3) are agreed. The Layer Manager itself is not implemented yet and no step beyond S0–S1 may start without approval.
+
+> **What was built.** `IWELayer` (a flat list, no nesting, no ordering control) with the two default layers, `IWEVisualElement` with three depth modes (behind, in front, by depth) and a ground point, schema version 2 with the in-memory migration, the layer panel in the dock, asset copying to `assets/elements/<hash>`, and the export of pictures (sprites in 2D, camera-facing quads in the perspective stage). **Not built:** nested layers, `kind`/`draw_index` on regions, `layer_id` on regions, the pure geometry module (S3), rotation, pivot, flip, parallax, `render_technique` per element. The decisions of section 8 stand, except that layers are not nested. See `DECISIONS.md`.
 
 ## 1. Audit of the current architecture
 

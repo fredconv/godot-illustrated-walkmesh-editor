@@ -1,4 +1,6 @@
-# UI redesign proposal (not implemented)
+# UI redesign proposal
+
+> **Decided and partly built (2026-10-29).** The owner chose two tabs, Creation and Test, each with foldable sections (point 1 below). That is built: see `DECISIONS.md`. Points 2 to 6 are not built. The text below is the original proposal.
 
 The repository holds no approved redesign target: `SPECIFICATION.md` 3.12 describes one, and the audit asks the owner whether it is the intended one (`PRE_RELEASE_AUDIT.md`, decision 3). This page is a proposal built from what the code and the new tests showed, so that a decision can be made quickly. Nothing below is built.
 

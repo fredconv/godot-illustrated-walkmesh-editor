@@ -72,6 +72,32 @@
 
 **Consequences.** A click in test walk never tests the walls; the game build (physics, walls) is what the headless suite and F5 cover.
 
+## 2026-10-29 — The first release includes layers and occlusion
+
+**Decision (owner).** The first release covers image import, region creation and editing, unions and exclusions, perspective and calibration, the reference character, background and foreground layers, foreground occlusion, movement and 3D preview, preview speed controls, and working save, load and export. Layers and occlusion are core, not post-release. The scope stays on a reliable 2.5D creation workflow.
+
+**Consequence.** The Layer Manager design is built in a reduced form: a flat list of layers, three depth modes, no nesting, no parallax, no triggers or portals. M7, M8 and M9 of the audit are done in that reduced form; M10 and the rest stay outside.
+
+## 2026-10-29 — Dock layout: two tabs of foldable sections
+
+**Decision (owner).** Two tabs, **Creation** (images and layers, regions and polygons, camera and perspective) and **Test** (reference character, movement preview, speed controls, export and validation), with foldable sections inside each. Existing functionality is kept and architecture is not changed.
+
+**Built as.** The controls that were already in the scene are moved into the sections at start-up, not recreated, so their handlers and tests are unchanged. `IWECollapsibleSection` is the only new control. Opening Test turns Perspective on, because the character needs the preview.
+
+## 2026-10-29 — Pictures are drawn as camera-facing quads placed by the depth of their ground point
+
+**Decision.** In the perspective stage each visual element is a quad attached to the game camera, at the camera distance of its ground point (depth mode *by depth*), just past the near plane (*in front*), or near the far plane (*behind*). It is scaled to cover the same pixels as on the illustration. Depth testing then hides the character behind it where the picture is opaque.
+
+**Why.** The stage already draws the illustration as a screen-aligned backdrop, so a picture that matches the illustration pixel for pixel is the one that lines up with it for any camera. A picture standing in the 3D world would need a perspective-correct warp of a flat image. A picture that matches pixels needs none.
+
+**Consequences.** A picture occludes by one depth for its whole surface (the depth of its ground point), which is right for a fountain or a tree and wrong for a long railing seen at an angle. Opaque pixels use alpha scissor (crisp, writes depth); a faded picture uses blending and does not occlude exactly. Alpha hash is not used (see the occlusion prototype). Checked on real pixels by `tests/render_check/`.
+
+## 2026-10-29 — The document format version is stamped at save, and version 1 is the stored default
+
+**Decision.** `schema_version` defaults to 1 and `prepare_for_save()` sets it to the current version (2) before a write. A file without the field loads as 1. Opening migrates in memory; the file changes only when saved.
+
+**Why.** Godot cannot tell a freshly created resource from a loaded one in `_init`, so stamping at creation would give an old file the current version. Stamping at save keeps both honest.
+
 ## 2026-10-29 — Track unsaved changes with the document's own history
 
 **Decision:** `IWEDocumentHistory` wraps `UndoRedo` and stores the version at the last successful save. A document is modified when the current version differs, when a change happened outside the history, or when the saved state became unreachable. The dock asks before New and Open, and the plugin implements `_get_unsaved_status` and `_save_external_data`.

@@ -96,6 +96,11 @@ var _speed_buttons: Array[Button] = []
 var _pause_button: Button
 var _fit_report_label: Label
 var _layer_panel: IWELayerPanel
+var _dock_tabs: TabContainer
+var _sections: Dictionary = {}
+var _camera_hint_label: Label
+var _validation_label: Label
+var _check_export_button: Button
 var _element_dialog: FileDialog
 var _pending_element_layer_id := ""
 ## Element id to the texture shown in the editor and the preview. Runtime only, never saved.
@@ -213,6 +218,7 @@ func _ready() -> void:
 	_perspective_top_view_button.toggled.connect(_perspective_preview.set_top_view)
 	_build_test_walk_controls()
 	_build_layers_ui()
+	_build_dock_tabs()
 	_fit_references_button.pressed.connect(_fit_camera_to_references)
 	_export_perspective_button.pressed.connect(_begin_export.bind(4))
 	_camera_fov_input.value_changed.connect(_set_calibration_fov)
@@ -629,6 +635,8 @@ func _set_perspective_mode(enabled: bool) -> void:
 	_perspective_mode = enabled
 	_perspective_button.set_pressed_no_signal(enabled)
 	_perspective_panel.visible = enabled
+	if _camera_hint_label != null:
+		_camera_hint_label.visible = not enabled
 	_perspective_preview.visible = enabled
 	_perspective_preview_frame.visible = enabled
 	_image_scroll.visible = not enabled
@@ -1108,6 +1116,148 @@ func _set_template_mode(enabled: bool) -> void:
 		_template_mode_button.set_pressed_no_signal(true)
 	_canvas.set_scale_anchor_mode(enabled)
 	_refresh_status()
+
+
+# ---- dock tabs ----------------------------------------------------------------------------------
+
+
+const TAB_CREATION := 0
+const TAB_TEST := 1
+
+
+func _side_node(node_name: String) -> Control:
+	return get_node_or_null("Workspace/Sidebar/SidebarContent/" + node_name) as Control
+
+
+func _new_section(page: VBoxContainer, title: String, start_expanded: bool = true) -> IWECollapsibleSection:
+	var section := IWECollapsibleSection.new(title, start_expanded)
+	page.add_child(section)
+	_sections[title] = section
+	return section
+
+
+## Two tabs, each made of foldable sections. Creation: pictures and layers, regions, drawing tools,
+## height references, camera. Test: the test character with its speed controls, export, validation.
+## The controls are the ones the scene already holds; they are moved, not recreated, so every handler
+## and every test that reaches them keeps working.
+func _build_dock_tabs() -> void:
+	var workspace: HSplitContainer = get_node("Workspace")
+	var old_sidebar: Control = workspace.get_node("Sidebar")
+	_dock_tabs = TabContainer.new()
+	_dock_tabs.name = "DockTabs"
+	_dock_tabs.custom_minimum_size = Vector2(220, 0)
+	workspace.add_child(_dock_tabs)
+	workspace.move_child(_dock_tabs, 0)
+	var creation := _tab_page("Creation")
+	var test := _tab_page("Test")
+
+	var layers := _new_section(creation, "Layers and pictures")
+	layers.adopt(_layer_panel)
+
+	var regions := _new_section(creation, "Regions")
+	for node_name in ["RegionList", "RenameRegionButton", "RenameGroupButton", "RenameCutoutButton", "DuplicateButton", "DeleteButton", "VisibilityButton"]:
+		regions.adopt(_side_node(node_name))
+
+	var tools := _new_section(creation, "Drawing tools")
+	for node_name in ["SelectButton", "DrawButton", "PointsButton", "SubtractButton", "AddPointButton", "RemovePointButton"]:
+		tools.adopt(_side_node(node_name))
+
+	var references := _new_section(creation, "Height references")
+	for node_name in ["TemplateModeButton", "TemplateHeightLabel", "TemplateHeightInput", "DeleteTemplateButton"]:
+		references.adopt(_side_node(node_name))
+
+	var camera := _new_section(creation, "Camera and perspective")
+	_camera_hint_label = Label.new()
+	_camera_hint_label.name = "CameraHint"
+	_camera_hint_label.text = "Turn on Perspective in the toolbar to see the camera and calibrate it."
+	_camera_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_camera_hint_label.visible = not _perspective_mode
+	camera.content.add_child(_camera_hint_label)
+	camera.adopt(_perspective_panel)
+
+	var walker := _new_section(test, "Test character")
+	var test_hint := Label.new()
+	test_hint.text = "Needs Perspective: the character walks on the floor of the calibrated camera."
+	test_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	walker.content.add_child(test_hint)
+	walker.adopt(_perspective_top_view_button)
+	walker.adopt(_test_walk_button)
+	walker.adopt(_test_walk_controls)
+
+	var export := _new_section(test, "Export")
+	for node_name in ["ExportPerspectiveButton", "AddPlayerInput", "Export2DButton", "Scale2DLabel", "Scale2DInput", "Export3DButton", "Scale3DLabel", "Scale3DInput", "AddCameraInput"]:
+		var node := _side_node(node_name)
+		if node == null:
+			node = _perspective_panel.get_node_or_null(node_name) as Control
+		export.adopt(node)
+
+	var validation := _new_section(test, "Validation")
+	_check_export_button = Button.new()
+	_check_export_button.name = "CheckExportButton"
+	_check_export_button.text = "Check the perspective export"
+	_check_export_button.tooltip_text = "Builds the perspective scene in memory and lists what it would drop or change, without writing a file."
+	_check_export_button.pressed.connect(_check_export)
+	validation.content.add_child(_check_export_button)
+	_validation_label = Label.new()
+	_validation_label.name = "ValidationLabel"
+	_validation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	validation.content.add_child(_validation_label)
+
+	workspace.remove_child(old_sidebar)
+	old_sidebar.queue_free()
+	_dock_tabs.tab_changed.connect(_on_dock_tab_changed)
+
+
+func _tab_page(title: String) -> VBoxContainer:
+	var scroll := ScrollContainer.new()
+	scroll.name = title
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_dock_tabs.add_child(scroll)
+	var page := VBoxContainer.new()
+	page.name = "Page"
+	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page.add_theme_constant_override("separation", 6)
+	scroll.add_child(page)
+	return page
+
+
+func get_section(title: String) -> IWECollapsibleSection:
+	return _sections.get(title)
+
+
+func select_tab(tab_index: int) -> void:
+	_dock_tabs.current_tab = tab_index
+
+
+## The Test tab needs the perspective preview, so opening it turns Perspective on.
+func _on_dock_tab_changed(tab_index: int) -> void:
+	if tab_index == TAB_TEST and not _perspective_mode and _document != null and _has_illustration:
+		_set_perspective_mode(true)
+
+
+## What the perspective export would drop or change, and broken references in the document, without
+## writing anything.
+func _check_export() -> void:
+	var lines := PackedStringArray()
+	if _document == null or not _has_illustration:
+		_validation_label.text = "Import an illustration first."
+		return
+	var texture := _load_external_texture(_pending_image_source)
+	if texture == null:
+		_validation_label.text = "The illustration could not be loaded."
+		return
+	var root: Node3D = SCENE_GENERATOR.build_perspective_scene(_document, texture, _document.perspective_calibration, _scale_3d.value, false, _export_element_textures())
+	if root == null:
+		_validation_label.text = "The perspective scene cannot be built: check the calibration."
+		return
+	lines.append_array(SCENE_GENERATOR.take_warnings(root))
+	root.free()
+	lines.append_array(_document.validate_references())
+	var report := get_fit_report()
+	if report.warn and not is_inf(report.worst):
+		lines.append("The camera misses a height reference by %.1f%%." % (report.worst * 100.0))
+	_validation_label.text = "No problem found." if lines.is_empty() else "\n".join(lines)
+	_validation_label.add_theme_color_override("font_color", Color("65d6a6") if lines.is_empty() else Color("ffb454"))
 
 
 # ---- layers and visual elements -----------------------------------------------------------------

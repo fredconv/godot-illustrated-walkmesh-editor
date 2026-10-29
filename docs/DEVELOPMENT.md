@@ -43,7 +43,7 @@ From the project root, with the Godot 4.7.1 executable on your path or reference
 godot --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd --add "res://tests" --ignoreHeadlessMode
 ```
 
-A successful run prints `Exit code: 0` and reports the number of test cases (currently 224). Reports are written to `reports/`, which is ignored by Git.
+A successful run prints `Exit code: 0` and reports the number of test cases (currently 271). Reports are written to `reports/`, which is ignored by Git.
 
 The same command runs in continuous integration (`.github/workflows/tests.yml`), which downloads the pinned versions of Godot and GdUnit4.
 
@@ -60,6 +60,10 @@ The suite covers:
 - Scene exports (2D, 3D, perspective) with reload checks.
 - Walking across connected walkable zones, and walls on outer edges.
 - Floating illustration window and the save/open workflow.
+
+### Render check
+
+`tests/render_check/run.ps1` renders the village stage with its foreground fountain in a real window (it needs a GPU, so it is not part of CI) and counts the pixels of the test character behind and in front of the fountain. See `docs/DECISIONS.md` for what it proves. Set `IWE_RENDER_OUT` to keep the screenshots.
 
 ### Editor self-test
 

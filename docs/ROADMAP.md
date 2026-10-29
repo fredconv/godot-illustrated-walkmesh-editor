@@ -52,21 +52,21 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 
 | Item | Status | Notes |
 |---|---|---|
-| Import transparent PNG / WebP | Todo | |
-| Move, scale, rotate, pivot, flip, opacity, exact coordinates | Todo | |
-| Background and foreground layer kinds | Todo | |
-| Visual elements exported as sibling nodes | Todo | Never navigation or collision |
-| Layer visibility, lock, and opacity | Todo | |
+| Import transparent PNG / WebP | Done | Copied once to `assets/elements/<hash>` at save; missing files are kept and reported |
+| Position, scale, opacity, layer, exact coordinates | Done | Typed in the layer panel, undoable. Rotation, pivot, flip and mouse dragging are not done |
+| Background and foreground layer kinds | Done | Two default layers; more can be added |
+| Visual elements exported as sibling nodes | Done | 2D sprites; camera-facing quads in the perspective stage; never navigation or collision |
+| Layer visibility, lock, and opacity | Done | A locked layer refuses edits |
 
 ## Step 5 — Occlusion, depth and parallax
 
 | Item | Status | Notes |
 |---|---|---|
-| Always-in-front mode (e.g. bridge railing) | Todo | |
-| Depth occlusion from 3D depth (house, tree) | Todo | Uses calibrated floor depth |
-| Parallax depth coefficient | Todo | |
-| Preview of occlusion during test movement | Todo | |
-| Walkable path remains walkable behind occluders | Todo | Required by the specification |
+| Always-in-front mode (e.g. bridge railing) | Done | Quad just past the camera near plane |
+| Depth occlusion from 3D depth (house, tree) | Done | Quad at the camera distance of the ground point. Verified on rendered pixels: hidden behind the fountain, shown in front |
+| Parallax depth coefficient | Not in the first release | |
+| Preview of occlusion during test movement | Done | The dock preview builds the same stage, so the test walk shows it |
+| Walkable path remains walkable behind occluders | Done | A picture adds no navigation or collision; tested with a walk behind it |
 
 ## Step 6 — Calibration and exports
 
@@ -90,7 +90,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 - Perspective projection and camera views; known-height template placement.
 - Save and reopen of IWE documents, including the copy of the image beside the document.
 - Test character with mouse and keyboard, walls, and path following.
-- Automated suite: 224 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
+- Automated suite: 271 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
 
 ## Open technical debts
 

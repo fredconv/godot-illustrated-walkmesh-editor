@@ -84,22 +84,24 @@ The calibration assumes one flat virtual floor. It does not infer terrain elevat
 
 A Photoshop-style layer manager for organizing both regions and visual elements. Full design in section 4 and `ARCHITECTURE.md`.
 
-- Create, delete, rename, duplicate, reorder, group, and nest layers.
-- Show, hide, lock, and set opacity per layer.
-- Move regions and visual elements between layers.
+- Every document has a **Background** layer and a **Foreground** layer. More layers can be added, renamed and removed (a removed layer hands its pictures to the default layer of its kind; the two default layers cannot be removed).
+- Show, hide, lock, and set opacity per layer. A locked layer refuses edits to its pictures.
+- Move a picture to another layer.
 - Layer order controls drawing only. It never changes navigation.
 
-Status: **To develop.** Current data has no layer model.
+Status: **Implemented for the first release** (a flat list of layers, schema version 2), tested headless. Not implemented: nested layers, reordering or duplicating layers, putting regions on layers. Use of the layer panel with a mouse is not yet validated.
 
 ### 3.8 Visual elements (new system)
 
-- Import transparent PNG, WebP, and other Godot-compatible textures.
-- Move, scale, rotate, pivot, flip, set opacity, and set exact coordinates.
-- Ground anchor point for depth placement.
-- Depth modes: background, foreground (always in front), depth occlusion (in front or behind the character by 3D depth), parallax (depth coefficient).
-- Visual elements never create navigation or physical collision automatically.
+- Import a transparent PNG or WebP. The picture is copied once to `assets/elements/<hash>.<ext>` beside the document when the document is saved.
+- Exact position (illustration pixels), uniform scale, opacity, layer.
+- Ground point: where the picture touches the floor. Default: bottom centre.
+- Three depth modes: **behind** the character, **in front** of it, and **by depth** (the character is hidden when it stands farther from the camera than the ground point and drawn in front when nearer: it walks behind a fountain, then in front of it).
+- Visual elements never create navigation or physical collision.
+- Exports: the perspective stage places each picture as a camera-facing quad at the camera distance of its ground point, scaled so it covers the same pixels as on the illustration, with alpha scissor (alpha blend when faded). The 2D export uses sprites: background pictures below, the others above. The flat 3D stage does not include pictures.
+- A picture whose file is missing is kept, drawn as a placeholder, and reported. A picture whose ground point is above the horizon is drawn behind the character and reported.
 
-Status: **To develop.**
+Status: **Implemented for the first release**: placement, depth modes, occlusion checked on real rendered pixels (`tests/render_check/`), headless tests. Not implemented: rotation, pivot, flip, parallax, dragging a picture with the mouse (the position is typed), several render techniques. Parallax is not part of the first release.
 
 ### 3.9 Navigation and collision
 
@@ -129,13 +131,13 @@ Exported scenes are standard Godot scenes. Templates are placed in a `ScaleTempl
 - Save an IWE document (`.tres`) containing image reference, groups, regions, cutouts, templates, and calibration: **completed**, tested.
 - Reopen a document and continue editing: **completed**, tested.
 - Unsaved-change protection: **completed**. The document shows a modified mark that follows undo and redo; New and Open ask Save, Discard Changes, or Cancel; Godot's quit dialog lists an unsaved document; a failed save keeps the document modified. A document that was never saved gets a recovery copy in `user://iwe_recovery/` when Godot asks to save. The first import of an illustration is not undoable and keeps the document modified until saved; replacing it is undoable.
-- Schema version and migration: **partial**. The field exists (default 1, omitted from files). Writing the current version, refusing a newer one, and migrating are to develop.
-- Layers, visual elements, connections, region types, and export options in the document: **to develop**.
+- Schema version and migration: **completed**. The current version is 2 (layers and visual elements). A version 1 file is migrated in memory when opened (a Background and a Foreground layer are added; nothing else changes) and written as version 2 only when the author saves. A newer or invalid version is refused with a message and the file is left untouched.
+- Layers and visual elements in the document: **completed**. Connections, region types and export options in the document: to develop.
 - Exports never modify the source document.
 
 ### 3.12 Editor interface
 
-- Workspace: Image & Regions, Perspective, 3D Preview, Test, Export.
+- **Two tabs** (decided 2026-10-29), each made of foldable sections. **Creation**: layers and pictures, regions, drawing tools, height references, camera and perspective. **Test**: the test character with its speed controls, export, validation. Opening Test turns the perspective preview on. Not done: a region properties block, a lock button, a layout checked at a narrow dock width.
 - Floating large window for the illustration (completed).
 - Interface in English. Most labels are English; a few remain French (to be cleaned up).
 - Undo and redo, status bar messages, and explicit error messages.

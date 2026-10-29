@@ -11,7 +11,13 @@ Two versions are tracked separately:
 | Plugin version | `addons/illustrated_walkmesh_editor/plugin.cfg` (`version`) | The release of the plugin code. |
 | Document schema version | `IWEDocument.schema_version` | The layout of saved documents. |
 
-The current document schema is **1**, written explicitly in every saved file. Documents saved before the field existed have no `schema_version` line and load as 1.
+The current document schema is **2**, written explicitly in every saved file. Documents saved before the field existed, and documents saved as version 1, load as 1 and are migrated in memory when opened (see below).
+
+## Version 2 additions
+
+- `layers`: list of `IWELayer` (`id`, `name`, `kind` background or foreground, `visible`, `locked`, `opacity`). Every document has the layers `layer_background` and `layer_foreground`.
+- `visual_elements`: list of `IWEVisualElement` (`id`, `name`, `layer_id`, `texture_path`, `position`, `texture_size`, `scale`, `opacity`, `depth_mode` behind, in front or by depth, `ground_anchor`). `texture_path` is relative to the document (`assets/elements/<first 12 characters of the SHA-256>.<ext>`) once saved. An unset `ground_anchor` is stored as NaN and means the bottom centre of the picture.
+- Migration from version 1: add the two default layers. Regions, groups, cutouts, templates and the calibration are not touched or reordered. The migration can be run again without effect. The file on disk is not modified until the author saves.
 
 ## Version 1 contents
 
