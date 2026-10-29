@@ -38,7 +38,7 @@ static func build_2d_scene(document: Resource, texture: Texture2D, world_scale: 
 			continue
 		var nav_region := NavigationRegion2D.new()
 		nav_region.name = "Region_%s" % _safe_node_name(region.name)
-		nav_region.navigation_polygon = _make_navigation_polygon(region)
+		nav_region.navigation_polygon = _make_navigation_polygon(region, document.regions)
 		navigation.add_child(nav_region)
 		nav_region.owner = root
 	if add_camera:
@@ -87,7 +87,7 @@ static func build_3d_scene(document: Resource, texture: Texture2D, world_scale: 
 			continue
 		var nav_region := NavigationRegion3D.new()
 		nav_region.name = _safe_node_name(region.name)
-		nav_region.navigation_mesh = _make_navigation_mesh(region)
+		nav_region.navigation_mesh = _make_navigation_mesh(region, document.regions)
 		var parent: Node3D = group_nodes.get(region.group_id, navigation)
 		parent.add_child(nav_region)
 		nav_region.owner = root
@@ -445,7 +445,7 @@ static func _make_projected_image_mesh(image_size: Vector2i, viewport_size: Vect
 
 
 static func _make_projected_navigation_region(region: Resource, image_size: Vector2i, viewport_size: Vector2i, calibration: IWEPerspectiveCalibration, all_regions: Array = []) -> NavigationRegion3D:
-	var source_mesh := _make_navigation_mesh(region)
+	var source_mesh := _make_navigation_mesh(region, all_regions)
 	var source_vertices := source_mesh.get_vertices()
 	var projected_vertices := PackedVector3Array()
 	for point in source_vertices:
@@ -636,30 +636,138 @@ static func _make_projected_contour_guide(guide_name: String, points: PackedVect
 	return guide
 
 
-static func _make_navigation_polygon(region: Resource) -> NavigationPolygon:
+static func _make_navigation_polygon(region: Resource, all_regions: Array = []) -> NavigationPolygon:
 	var navigation_polygon := NavigationPolygon.new()
 	# Exported walkable boundaries must match the authored polygons. Runtime agent
 	# clearance belongs to NavigationAgent, not this geometry conversion.
 	navigation_polygon.agent_radius = 0.0
-	for contour in region.get_walkable_contours():
+	var contours := _navigation_contours(region, all_regions)
+	var reference_is_clockwise := false
+	var largest_area := 0.0
+	for contour in contours:
+		var area := absf(_polygon_area(contour))
+		if area > largest_area:
+			largest_area = area
+			reference_is_clockwise = Geometry2D.is_polygon_clockwise(contour)
+	for contour in contours:
 		var points: PackedVector2Array = contour.duplicate()
-		var is_hole := Geometry2D.is_polygon_clockwise(points) != Geometry2D.is_polygon_clockwise(region.points)
+		var is_hole := Geometry2D.is_polygon_clockwise(points) != reference_is_clockwise
 		# Godot navigation outlines use clockwise outer contours and counter-clockwise holes.
 		if Geometry2D.is_polygon_clockwise(points) == is_hole:
 			points.reverse()
 		navigation_polygon.add_outline(points)
-	NavigationServer2D.bake_from_source_geometry_data(navigation_polygon, NavigationMeshSourceGeometryData2D.new())
+	if not contours.is_empty():
+		NavigationServer2D.bake_from_source_geometry_data(navigation_polygon, NavigationMeshSourceGeometryData2D.new())
 	return navigation_polygon
 
 
-static func _make_navigation_mesh(region: Resource) -> NavigationMesh:
+static func _make_navigation_mesh(region: Resource, all_regions: Array = []) -> NavigationMesh:
 	# Use Godot's 2D-to-flat-3D conversion to preserve the baked contours and holes.
-	var navigation_mesh := _make_navigation_polygon(region).get_navigation_mesh()
+	var navigation_mesh := _make_navigation_polygon(region, all_regions).get_navigation_mesh()
 	# get_navigation_mesh() creates a NavigationMesh with its own default radius;
 	# it does not inherit NavigationPolygon.agent_radius. Zero it explicitly to
 	# prevent the 3D bake from eroding contours a second time.
 	navigation_mesh.agent_radius = 0.0
 	return navigation_mesh
+
+
+## The contours of the area this zone contributes to navigation. Zones that overlap are drawn in
+## document order and the earlier zone keeps the shared area, so the navigation meshes never cover
+## the same ground twice. The later zone's mesh then ends exactly on the earlier zone's outline,
+## where Godot connects the two meshes along the shared border, as for touching zones. Without
+## other zones this is the zone's own walkable contours.
+static func _navigation_contours(region: Resource, all_regions: Array) -> Array[PackedVector2Array]:
+	var own_contours: Array[PackedVector2Array] = region.get_walkable_contours()
+	var earlier: Array = []
+	for other in all_regions:
+		if other == region:
+			break
+		if other.visible and other.points.size() >= 3:
+			earlier.append(other)
+	if earlier.is_empty() or own_contours.is_empty():
+		return own_contours
+	var covers: Array[PackedVector2Array] = []
+	for other in earlier:
+		covers.append_array(_convex_walkable_pieces(other))
+	var pieces := _convex_walkable_pieces(region)
+	for cover in covers:
+		var cover_bounds := _bounds_of(cover)
+		var remaining: Array[PackedVector2Array] = []
+		for piece in pieces:
+			if not _bounds_of(piece).intersects(cover_bounds):
+				remaining.append(piece)
+			else:
+				remaining.append_array(_difference(piece, cover))
+		pieces = remaining
+	return _union_of_pieces(pieces)
+
+
+## The walkable area of a zone as the polygons Godot bakes for it, without holes.
+static func _convex_walkable_pieces(region: Resource) -> Array[PackedVector2Array]:
+	var mesh := _make_navigation_mesh(region)
+	var vertices := mesh.get_vertices()
+	var pieces: Array[PackedVector2Array] = []
+	for polygon_index in mesh.get_polygon_count():
+		var piece := PackedVector2Array()
+		for vertex_index in mesh.get_polygon(polygon_index):
+			piece.append(Vector2(vertices[vertex_index].x, vertices[vertex_index].z))
+		if piece.size() >= 3:
+			pieces.append(piece)
+	return pieces
+
+
+## `piece` minus `cover`, as polygons without holes. When the cover sits strictly inside the piece
+## the clip leaves a hole; the piece is then cut in two through the cover so that each half touches it.
+static func _difference(piece: PackedVector2Array, cover: PackedVector2Array, depth: int = 0) -> Array[PackedVector2Array]:
+	var results := Geometry2D.clip_polygons(piece, cover)
+	var kept: Array[PackedVector2Array] = []
+	var has_hole := false
+	for result in results:
+		if absf(_polygon_area(result)) <= 0.01:
+			continue
+		if not kept.is_empty() and Geometry2D.is_polygon_clockwise(result) != Geometry2D.is_polygon_clockwise(kept[0]):
+			has_hole = true
+		kept.append(result)
+	if not has_hole or depth > 0:
+		return kept
+	var cut_x := _bounds_of(cover).get_center().x
+	var piece_bounds := _bounds_of(piece).grow(1.0)
+	var halves: Array[PackedVector2Array] = []
+	for half_rect in [Rect2(piece_bounds.position, Vector2(cut_x - piece_bounds.position.x, piece_bounds.size.y)), Rect2(Vector2(cut_x, piece_bounds.position.y), Vector2(piece_bounds.end.x - cut_x, piece_bounds.size.y))]:
+		var half_polygon := PackedVector2Array([half_rect.position, Vector2(half_rect.end.x, half_rect.position.y), half_rect.end, Vector2(half_rect.position.x, half_rect.end.y)])
+		for half in Geometry2D.intersect_polygons(piece, half_polygon):
+			halves.append_array(_difference(half, cover, depth + 1))
+	return halves
+
+
+## Joins pieces that touch into larger contours. Pieces that cannot be joined into one polygon
+## (the union would have a hole or stay in two parts) are kept as they are.
+static func _union_of_pieces(pieces: Array[PackedVector2Array]) -> Array[PackedVector2Array]:
+	var open: Array[PackedVector2Array] = pieces.duplicate()
+	var done: Array[PackedVector2Array] = []
+	while not open.is_empty():
+		var current: PackedVector2Array = open.pop_back()
+		var grew := true
+		while grew:
+			grew = false
+			for index in open.size():
+				if not _bounds_of(current).grow(0.01).intersects(_bounds_of(open[index])):
+					continue
+				var merged := Geometry2D.merge_polygons(current, open[index])
+				if merged.size() == 1:
+					current = merged[0]
+					open.remove_at(index)
+					grew = true
+					break
+		done.append(current)
+	return done
+
+
+static func _bounds_of(points: PackedVector2Array) -> Rect2:
+	var bounds := Rect2(points[0], Vector2.ZERO)
+	for point in points:
+		bounds = bounds.expand(point)
+	return bounds
 
 
 static func _add_authored_contour_guides(nav_region: NavigationRegion3D, region: Resource) -> void:

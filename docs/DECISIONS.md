@@ -56,6 +56,14 @@
 
 **Reason:** The public documentation and the GitHub presentation are in English.
 
+## 2026-10-29 — Overlapping zones: the earlier zone owns the shared ground
+
+**Decision.** Overlap is supported. When zones overlap, the zone that comes first in the document keeps the shared ground; each later zone's navigation mesh is its walkable area minus the walkable area of every earlier visible zone. Authored outlines, cutouts, guides and walls are not changed.
+
+**Why.** Navigation regions are linked by Godot only where their mesh edges coincide, so two meshes that overlap were never connected. Cutting the later mesh along the earlier outline turns an overlap into a shared border, which is the case that already works (touching zones, partly shared edges). Alternatives rejected: navigation links (their ends snap to the nearest polygon of either region, which is ambiguous inside an overlap) and refusing overlaps (an artist draws a bridge over a path without thinking about edges).
+
+**Consequences.** Region order matters for the mesh split, not for what is walkable: the union is the same in any order (tested). The floor collision of a later zone also covers only its own part. Hidden zones and zones with fewer than three points cover nothing.
+
 ## 2026-10-29 — Track unsaved changes with the document's own history
 
 **Decision:** `IWEDocumentHistory` wraps `UndoRedo` and stores the version at the last successful save. A document is modified when the current version differs, when a change happened outside the history, or when the saved state became unreachable. The dock asks before New and Open, and the plugin implements `_get_unsaved_status` and `_save_external_data`.

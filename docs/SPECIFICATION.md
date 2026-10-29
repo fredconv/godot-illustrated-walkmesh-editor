@@ -62,11 +62,11 @@ The character must be able to walk from one zone to another when their polygons 
 
 - Shared edges are passages, not walls. Outer edges keep their walls.
 - A contact at a single point does not create a passage.
-- **Not implemented yet:** zones that overlap without sharing an exact edge. Their walls are removed where they overlap, but the navigation regions are not linked, so click-to-move cannot cross from one to the other (audit P1-2). Until this is fixed, draw touching zones with a shared edge.
+- Zones that overlap are walkable as one. The zone drawn first keeps the shared ground and a later zone's navigation stops on its outline, so each point is covered once and Godot links the meshes along that outline. Walls are removed only where another zone covers the edge. A zone entirely inside an earlier zone adds nothing. Ground inside an earlier zone's cutout stays walkable when a later zone covers it (audit P1-2).
 - Zones at different heights are not connected unless an explicit connection exists (to develop).
 - A passage narrower than the character's physical diameter is not traversable (to develop; requires the physical radius setting).
 
-Status: **Completed** for zones that share an exact edge on one floor (tested headlessly). **To develop** for overlapping zones (see above). Explicit connections, width checks, and level handling are to develop.
+Status: **Completed** for zones that share an edge (in full or in part) or overlap, on one floor (tested headlessly and end to end). Explicit connections, width checks, and level handling are to develop.
 
 ### 3.6 Calibration
 
