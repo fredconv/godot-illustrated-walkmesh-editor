@@ -17,6 +17,13 @@ const SAVE_FOLDER := "user://iwe_stability_tests"
 const IMAGE := Vector2i(1672, 941)
 ## Numeric tolerance for floor coordinates, in floor units (the scene is 1000s of units wide).
 const TOLERANCE := 0.001
+## Relative error of the fitted camera's apparent heights, measured at the anchors on 2026-10-29
+## with the default 1280x720 reference: 2.54 % for both anchors (one above, one below). The fit is
+## a least-squares line of height against screen row, while the camera's real apparent height is
+## not exactly linear in row, so the error is a property of the fit model, not noise. 2.6 % is
+## just above that measured maximum. It is a regression bound, not a precision claim: a change that
+## makes the fit worse than this must be looked at.
+const FIT_TOLERANCE := 0.026
 const PANEL_SIZES := [Vector2(380, 900), Vector2(1200, 500), Vector2(240, 240), Vector2(900, 700)]
 const PROBE_POINTS := [Vector2(836, 700), Vector2(200, 900), Vector2(1400, 500), Vector2(836, 470)]
 
@@ -244,8 +251,8 @@ func test_template_apparent_heights_stay_coherent_when_the_panel_changes() -> vo
 		var feet: Vector2 = PROJECTOR.image_to_viewport(anchor.position, IMAGE, reference)
 		var apparent: float = calibration._apparent_height_at(feet, reference, PROJECTOR)
 		heights_before.append(apparent)
-		# The fitted camera reproduces the authored apparent height, within 3 %.
-		assert_float(apparent).override_failure_message("fitted height of %s" % anchor.position).is_equal_approx(anchor.apparent_height_px * fit_scale, anchor.apparent_height_px * fit_scale * 0.03)
+		# The fitted camera reproduces the authored apparent height within FIT_TOLERANCE.
+		assert_float(apparent).override_failure_message("fitted height of %s" % anchor.position).is_equal_approx(anchor.apparent_height_px * fit_scale, anchor.apparent_height_px * fit_scale * FIT_TOLERANCE)
 	for panel_size in PANEL_SIZES:
 		await _resize_dock(dock, panel_size)
 		for index in anchors.size():
@@ -314,6 +321,41 @@ func test_editing_the_reference_is_deliberate_undoable_and_changes_the_projectio
 	assert_vector(dock._document.perspective_calibration.reference_viewport_size).is_equal(original)
 	assert_bool(dock.is_dirty()).is_false()
 	_assert_floors_equal(_floors(dock._document.perspective_calibration), floors_before, "after undoing the edit")
+	dock.queue_free()
+
+
+## Arrow clicks and drags emit one value_changed per step. Consecutive steps must undo as one entry.
+func test_a_run_of_reference_steps_is_a_single_undo_entry() -> void:
+	var dock := await _make_dock_in_perspective_mode()
+	var original: Vector2i = dock._document.perspective_calibration.reference_viewport_size
+	for step in 5:
+		dock._set_reference_viewport_axis(float(original.x + 10 * (step + 1)), 0)
+	assert_vector(dock._document.perspective_calibration.reference_viewport_size).is_equal(Vector2i(original.x + 50, original.y))
+	dock._undo()
+	assert_vector(dock._document.perspective_calibration.reference_viewport_size).override_failure_message("one undo must restore the value before the whole run").is_equal(original)
+	assert_bool(dock._history.has_undo()).override_failure_message("the run must not leave one entry per step").is_false()
+	assert_bool(dock.is_dirty()).is_false()
+	dock.queue_free()
+
+
+## A field change between two reference steps must not be folded into them.
+func test_a_field_change_between_reference_steps_is_not_merged() -> void:
+	var dock := await _make_dock_in_perspective_mode()
+	var calibration: IWEPerspectiveCalibration = dock._document.perspective_calibration
+	var original_reference := calibration.reference_viewport_size
+	var original_fov: float = calibration.field_of_view_degrees
+	dock._set_reference_viewport_axis(float(original_reference.x + 20), 0)
+	dock._set_calibration_value("field_of_view_degrees", original_fov + 5.0)
+	dock._set_reference_viewport_axis(float(original_reference.x + 40), 0)
+	dock._undo()
+	assert_float(dock._document.perspective_calibration.field_of_view_degrees).override_failure_message("undoing the last reference step must not revert the field").is_equal_approx(original_fov + 5.0, TOLERANCE)
+	assert_vector(dock._document.perspective_calibration.reference_viewport_size).is_equal(Vector2i(original_reference.x + 20, original_reference.y))
+	dock._undo()
+	assert_float(dock._document.perspective_calibration.field_of_view_degrees).override_failure_message("the field change undoes on its own").is_equal_approx(original_fov, TOLERANCE)
+	assert_vector(dock._document.perspective_calibration.reference_viewport_size).is_equal(Vector2i(original_reference.x + 20, original_reference.y))
+	dock._undo()
+	assert_vector(dock._document.perspective_calibration.reference_viewport_size).is_equal(original_reference)
+	assert_bool(dock._history.has_undo()).is_false()
 	dock.queue_free()
 
 

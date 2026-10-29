@@ -320,7 +320,9 @@ func _set_reference_viewport_axis(value: float, axis: int) -> void:
 		return
 	var reference: Vector2i = _document.perspective_calibration.reference_viewport_size
 	reference[axis] = maxi(roundi(value), 64)
-	_set_calibration_value("reference_viewport_size", reference)
+	# Own action name: MERGE_ENDS only folds consecutive steps of the same name, so a field
+	# change in between is never merged into a reference step.
+	_set_calibration_value("reference_viewport_size", reference, "Adjust IWE reference frame", UndoRedo.MERGE_ENDS)
 
 
 func _set_camera_rotation_axis(value: float, axis: int) -> void:
@@ -331,14 +333,14 @@ func _set_camera_rotation_axis(value: float, axis: int) -> void:
 	_set_calibration_value("camera_rotation_degrees", rotation)
 
 
-func _set_calibration_value(property_name: StringName, value: Variant) -> void:
+func _set_calibration_value(property_name: StringName, value: Variant, action_name := "Adjust IWE perspective calibration", merge_mode := UndoRedo.MERGE_DISABLE) -> void:
 	if _document == null or _document.perspective_calibration == null:
 		return
 	var calibration: IWEPerspectiveCalibration = _document.perspective_calibration
 	var previous: Variant = calibration.get(property_name)
 	if previous == value:
 		return
-	_history.create_action("Adjust IWE perspective calibration")
+	_history.create_action(action_name, merge_mode)
 	_history.add_do_method(_apply_calibration_value.bind(property_name, value))
 	_history.add_undo_method(_apply_calibration_value.bind(property_name, previous))
 	_history.commit_action()

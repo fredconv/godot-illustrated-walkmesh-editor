@@ -20,8 +20,10 @@ var _saved_version: int = _undo.get_version()
 var _untracked_changes := false
 
 
-func create_action(action_name: String) -> void:
-	_undo.create_action(action_name)
+## merge_mode: UndoRedo.MERGE_ENDS folds consecutive actions with the same name into one entry
+## (the first undo and the last do are kept), so a run of small steps undoes in one go.
+func create_action(action_name: String, merge_mode: UndoRedo.MergeMode = UndoRedo.MERGE_DISABLE) -> void:
+	_undo.create_action(action_name, merge_mode)
 
 
 func add_do_method(callable: Callable) -> void:

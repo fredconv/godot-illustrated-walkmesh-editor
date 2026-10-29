@@ -280,6 +280,7 @@ layout_mode = 2
 min_value = 64.0
 max_value = 16384.0
 step = 1.0
+update_on_text_changed = false
 value = 1280.0
 
 [node name="ReferenceViewportHeightInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel/ReferenceViewportInputs"]
@@ -288,6 +289,7 @@ layout_mode = 2
 min_value = 64.0
 max_value = 16384.0
 step = 1.0
+update_on_text_changed = false
 value = 720.0
 
 [node name="CameraPositionLabel" type="Label" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
