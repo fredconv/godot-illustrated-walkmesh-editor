@@ -5,6 +5,7 @@ const DOCUMENT_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/
 const REGION_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region.gd")
 const GROUP_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region_group.gd")
 const SCALE_ANCHOR_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_scale_anchor.gd")
+const LAYER_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_layer.gd")
 const CALIBRATION_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_perspective_calibration.gd")
 const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_scene_generator.gd")
 
@@ -94,6 +95,11 @@ var _base_speed_input: SpinBox
 var _speed_buttons: Array[Button] = []
 var _pause_button: Button
 var _fit_report_label: Label
+var _layer_panel: IWELayerPanel
+var _element_dialog: FileDialog
+var _pending_element_layer_id := ""
+## Element id to the texture shown in the editor and the preview. Runtime only, never saved.
+var _element_textures: Dictionary = {}
 var _reset_walker_button: Button
 var _selected_group_id := ""
 var _has_illustration := false
@@ -206,6 +212,7 @@ func _ready() -> void:
 	_canvas_window_button.toggled.connect(_set_canvas_window)
 	_perspective_top_view_button.toggled.connect(_perspective_preview.set_top_view)
 	_build_test_walk_controls()
+	_build_layers_ui()
 	_fit_references_button.pressed.connect(_fit_camera_to_references)
 	_export_perspective_button.pressed.connect(_begin_export.bind(4))
 	_camera_fov_input.value_changed.connect(_set_calibration_fov)
@@ -234,6 +241,10 @@ func _ready() -> void:
 	_rename_group_button.pressed.connect(_rename_selected_group)
 	_rename_cutout_button.pressed.connect(_rename_selected_cutout)
 	_reset_history()
+	if _document != null:
+		_document.migrate_to_current()
+		_reload_element_textures()
+		_refresh_layers()
 	_canvas.set_document(_document)
 	if _document != null:
 		_canvas.set_scale_anchors(_document.scale_anchors, _document.default_template_height_px)
@@ -424,7 +435,7 @@ func _refresh_perspective_preview() -> void:
 	var texture := _load_external_texture(_pending_image_source)
 	if texture == null:
 		return
-	_perspective_preview.configure(_document, texture, _document.perspective_calibration, _scale_3d.value)
+	_perspective_preview.configure(_document, texture, _document.perspective_calibration, _scale_3d.value, _element_textures)
 	_perspective_preview.set_top_view(_perspective_top_view_button.button_pressed)
 	_refresh_fit_report()
 
@@ -655,6 +666,8 @@ func _replace_document(document: Resource) -> void:
 	_reset_history()
 	_set_perspective_mode(false)
 	_migrate_document_groups()
+	_document.migrate_to_current()
+	_reload_element_textures()
 	for region in _document.regions:
 		region.ensure_cutout_ids()
 	for problem in _document.validate_references():
@@ -681,6 +694,7 @@ func _replace_document(document: Resource) -> void:
 	_refresh_regions()
 	_update_workflow_controls()
 	_refresh_status()
+	_refresh_layers()
 	_refresh_perspective_preview()
 
 
@@ -742,6 +756,9 @@ func _write_document() -> bool:
 		_report_save_error("Could not create folder %s (%s)" % [directory, error_string(directory_error)])
 		return false
 	var previous_path: String = _document.document_path
+	if not _copy_elements_into_document(directory):
+		return false
+	_document.prepare_for_save()
 	_document.document_path = _pending_document_path
 	var error: int = _resource_saver.call(_document, _pending_document_path)
 	if error != OK:
@@ -867,6 +884,7 @@ func save_recovery_copy() -> String:
 	var folder := "user://iwe_recovery"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder))
 	var path := "%s/recovery_%s.tres" % [folder, _recovery_stamp]
+	_document.prepare_for_save()
 	var error := ResourceSaver.save(_document, path)
 	if error != OK:
 		push_error("IWE: Could not write the recovery copy (%s)" % error_string(error))
@@ -915,11 +933,11 @@ func _export_scene(path: String) -> void:
 	var scale := _scale_2d.value if _pending_export_dimension == 2 else _scale_3d.value
 	var root: Node
 	if _pending_export_dimension == 2:
-		root = SCENE_GENERATOR.build_2d_scene(_document, texture, scale, _add_camera.button_pressed)
+		root = SCENE_GENERATOR.build_2d_scene(_document, texture, scale, _add_camera.button_pressed, _export_element_textures())
 	elif _pending_export_dimension == 3:
 		root = SCENE_GENERATOR.build_3d_scene(_document, texture, scale, _add_camera.button_pressed)
 	else:
-		root = SCENE_GENERATOR.build_perspective_scene(_document, texture, _document.perspective_calibration, scale, _add_player_input.button_pressed)
+		root = SCENE_GENERATOR.build_perspective_scene(_document, texture, _document.perspective_calibration, scale, _add_player_input.button_pressed, _export_element_textures())
 	if root == null:
 		push_error("IWE: Could not build the generated scene.")
 		return
@@ -1090,6 +1108,300 @@ func _set_template_mode(enabled: bool) -> void:
 		_template_mode_button.set_pressed_no_signal(true)
 	_canvas.set_scale_anchor_mode(enabled)
 	_refresh_status()
+
+
+# ---- layers and visual elements -----------------------------------------------------------------
+
+
+func _build_layers_ui() -> void:
+	_layer_panel = IWELayerPanel.new()
+	var sidebar: VBoxContainer = get_node("Workspace/Sidebar/SidebarContent")
+	sidebar.add_child(_layer_panel)
+	sidebar.move_child(_layer_panel, sidebar.get_node("ToolsSeparator").get_index())
+	_element_dialog = FileDialog.new()
+	_element_dialog.name = "ElementFileDialog"
+	_element_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	_element_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_element_dialog.title = "Add a transparent picture"
+	_element_dialog.filters = PackedStringArray(["*.png, *.webp ; Pictures with transparency"])
+	_element_dialog.file_selected.connect(_import_element_from_dialog)
+	add_child(_element_dialog)
+	_layer_panel.add_image_requested.connect(_request_element_image)
+	_layer_panel.add_layer_requested.connect(_add_new_layer)
+	_layer_panel.remove_requested.connect(_remove_layer_item)
+	_layer_panel.layer_property_requested.connect(_set_layer_property)
+	_layer_panel.element_property_requested.connect(_set_element_property)
+	_layer_panel.selection_changed.connect(_on_layer_selection_changed)
+	_refresh_layers()
+
+
+func _request_element_image(layer_id: String) -> void:
+	if _document == null or not _has_illustration:
+		return
+	_pending_element_layer_id = layer_id
+	_element_dialog.popup_centered_ratio(0.6)
+
+
+func _import_element_from_dialog(path: String) -> void:
+	import_element(path, _pending_element_layer_id)
+
+
+## Places a picture on a layer, at the centre of the illustration. Returns the new element, or null when
+## the picture cannot be read. The file is copied into the document's assets folder at the next save.
+func import_element(path: String, layer_id: String = "") -> IWEVisualElement:
+	if _document == null or not _has_illustration:
+		return null
+	var image := Image.load_from_file(path if not path.begins_with("res://") else ProjectSettings.globalize_path(path))
+	if image == null or image.is_empty():
+		push_error("IWE: Could not read the picture %s" % path)
+		return null
+	var layer: IWELayer = _document.find_layer(layer_id)
+	if layer == null:
+		layer = _document.find_layer(IWELayer.FOREGROUND_ID)
+	if layer.locked:
+		push_warning("IWE: The layer %s is locked." % layer.name)
+		return null
+	var mode := IWEVisualElement.DepthMode.BEHIND if layer.kind == IWELayer.Kind.BACKGROUND else IWEVisualElement.DepthMode.DEPTH
+	var element: IWEVisualElement = IWEVisualElement.create_element(path.get_file().get_basename(), path, image.get_size(), layer.id, mode)
+	element.position = ((Vector2(_document.image_size) - Vector2(image.get_size())) * 0.5).floor()
+	var texture := ImageTexture.create_from_image(image)
+	_history.create_action("Add IWE picture")
+	_history.add_do_method(_add_element.bind(element, texture, -1))
+	_history.add_undo_method(_remove_element.bind(element.id))
+	_history.commit_action()
+	_layer_panel.select(IWELayerPanel.KIND_ELEMENT, element.id)
+	return element
+
+
+func _add_element(element: IWEVisualElement, texture: Texture2D, index: int) -> void:
+	if index < 0 or index > _document.visual_elements.size():
+		_document.visual_elements.append(element)
+	else:
+		_document.visual_elements.insert(index, element)
+	if texture != null:
+		_element_textures[element.id] = texture
+	_after_layers_changed()
+
+
+func _remove_element(element_id: String) -> void:
+	var element: IWEVisualElement = _document.find_element(element_id)
+	if element == null:
+		return
+	_document.visual_elements.erase(element)
+	_after_layers_changed()
+
+
+func _add_new_layer() -> void:
+	if _document == null:
+		return
+	var layer: IWELayer = LAYER_SCRIPT.create_layer("Layer %d" % (_document.layers.size() + 1), IWELayer.Kind.FOREGROUND)
+	_history.create_action("Add IWE layer")
+	_history.add_do_method(_insert_layer.bind(layer, -1, {}))
+	_history.add_undo_method(_delete_layer.bind(layer.id, ""))
+	_history.commit_action()
+	_layer_panel.select(IWELayerPanel.KIND_LAYER, layer.id)
+
+
+func _insert_layer(layer: IWELayer, index: int, element_layers: Dictionary) -> void:
+	if index < 0 or index > _document.layers.size():
+		_document.layers.append(layer)
+	else:
+		_document.layers.insert(index, layer)
+	for element_id in element_layers:
+		var element: IWEVisualElement = _document.find_element(element_id)
+		if element != null:
+			element.layer_id = element_layers[element_id]
+	_after_layers_changed()
+
+
+## Removes a layer. Its pictures go to the layer named by move_to_id (the default layer of the same
+## kind when empty), so deleting a layer never deletes a picture.
+func _delete_layer(layer_id: String, move_to_id: String) -> void:
+	var layer: IWELayer = _document.find_layer(layer_id)
+	if layer == null:
+		return
+	var target := move_to_id
+	if target.is_empty():
+		target = IWELayer.BACKGROUND_ID if layer.kind == IWELayer.Kind.BACKGROUND else IWELayer.FOREGROUND_ID
+	for element in _document.visual_elements:
+		if element.layer_id == layer_id:
+			element.layer_id = target
+	_document.layers.erase(layer)
+	_after_layers_changed()
+
+
+func _remove_layer_item(kind: String, id: String) -> void:
+	if _document == null:
+		return
+	if kind == IWELayerPanel.KIND_ELEMENT:
+		var element: IWEVisualElement = _document.find_element(id)
+		if element == null:
+			return
+		var layer: IWELayer = _document.find_layer(element.layer_id)
+		if layer != null and layer.locked:
+			return
+		var index: int = _document.visual_elements.find(element)
+		var texture: Texture2D = _element_textures.get(id)
+		_history.create_action("Remove IWE picture")
+		_history.add_do_method(_remove_element.bind(id))
+		_history.add_undo_method(_add_element.bind(element, texture, index))
+		_history.commit_action()
+	elif kind == IWELayerPanel.KIND_LAYER:
+		var layer: IWELayer = _document.find_layer(id)
+		if layer == null or id == IWELayer.BACKGROUND_ID or id == IWELayer.FOREGROUND_ID:
+			return
+		var target := IWELayer.BACKGROUND_ID if layer.kind == IWELayer.Kind.BACKGROUND else IWELayer.FOREGROUND_ID
+		var restore := {}
+		for element in _document.visual_elements:
+			if element.layer_id == id:
+				restore[element.id] = id
+		var layer_index: int = _document.layers.find(layer)
+		_history.create_action("Remove IWE layer")
+		_history.add_do_method(_delete_layer.bind(id, target))
+		_history.add_undo_method(_insert_layer.bind(layer, layer_index, restore))
+		_history.commit_action()
+		_layer_panel.select("", "")
+
+
+static func _same_value(first: Variant, second: Variant) -> bool:
+	if first is Vector2 and second is Vector2:
+		var both_nan: bool = is_nan(first.x) and is_nan(second.x) and is_nan(first.y) and is_nan(second.y)
+		return both_nan or first.is_equal_approx(second)
+	if first is float and second is float:
+		return is_equal_approx(first, second)
+	return first == second
+
+
+func _set_layer_property(layer_id: String, property: String, value: Variant) -> void:
+	var layer: IWELayer = _document.find_layer(layer_id) if _document != null else null
+	if layer == null or (layer.locked and property != "locked"):
+		return
+	var previous: Variant = layer.get(property)
+	if _same_value(previous, value):
+		return
+	var merge := UndoRedo.MERGE_ENDS if property == "opacity" else UndoRedo.MERGE_DISABLE
+	_history.create_action("Edit IWE layer %s" % property, merge)
+	_history.add_do_method(_apply_layer_property.bind(layer_id, property, value))
+	_history.add_undo_method(_apply_layer_property.bind(layer_id, property, previous))
+	_history.commit_action()
+
+
+func _apply_layer_property(layer_id: String, property: String, value: Variant) -> void:
+	var layer: IWELayer = _document.find_layer(layer_id)
+	if layer == null:
+		return
+	layer.set(property, value)
+	_after_layers_changed()
+
+
+func _set_element_property(element_id: String, property: String, value: Variant) -> void:
+	var element: IWEVisualElement = _document.find_element(element_id) if _document != null else null
+	if element == null:
+		return
+	var layer: IWELayer = _document.find_layer(element.layer_id)
+	if layer != null and layer.locked:
+		return
+	if property == "layer_id" and _document.find_layer(value) == null:
+		return
+	var previous: Variant = element.get(property)
+	if _same_value(previous, value):
+		return
+	var merge := UndoRedo.MERGE_ENDS if property in ["position", "scale", "opacity", "ground_anchor", "name"] else UndoRedo.MERGE_DISABLE
+	_history.create_action("Edit IWE picture %s" % property, merge)
+	_history.add_do_method(_apply_element_property.bind(element_id, property, value))
+	_history.add_undo_method(_apply_element_property.bind(element_id, property, previous))
+	_history.commit_action()
+
+
+func _apply_element_property(element_id: String, property: String, value: Variant) -> void:
+	var element: IWEVisualElement = _document.find_element(element_id)
+	if element == null:
+		return
+	element.set(property, value)
+	_after_layers_changed()
+
+
+func _on_layer_selection_changed(kind: String, id: String) -> void:
+	_canvas.set_visual_elements(_document.layers, _document.visual_elements, _element_textures, id if kind == IWELayerPanel.KIND_ELEMENT else "")
+
+
+## Everything that shows layers follows a change: the list, the canvas and, in perspective mode, the preview.
+func _after_layers_changed() -> void:
+	_refresh_layers()
+	if _perspective_mode:
+		_refresh_perspective_preview()
+
+
+func _refresh_layers() -> void:
+	if _layer_panel == null or _document == null:
+		return
+	_layer_panel.refresh(_document)
+	var selected: Dictionary = _layer_panel.get_selected()
+	_canvas.set_visual_elements(_document.layers, _document.visual_elements, _element_textures, selected.id if selected.kind == IWELayerPanel.KIND_ELEMENT else "")
+
+
+## Loads the pictures of the document. A picture that cannot be found is reported and kept in the
+## document: it shows as a placeholder, and nothing is removed.
+func _reload_element_textures() -> void:
+	_element_textures.clear()
+	for element in _document.visual_elements:
+		var path := _element_source_path(element)
+		var texture := _load_external_texture(path)
+		if texture == null:
+			push_warning("IWE: The picture of \"%s\" is missing (%s)." % [element.name, path])
+			continue
+		_element_textures[element.id] = texture
+
+
+## Where the picture of an element is on disk: relative paths are relative to the document.
+func _element_source_path(element: IWEVisualElement, document_path: String = "") -> String:
+	var base: String = _document.document_path if document_path.is_empty() else document_path
+	if element.texture_path.is_absolute_path() or element.texture_path.begins_with("res://") or element.texture_path.begins_with("user://") or base.is_empty():
+		return element.texture_path
+	return _resolve_document_asset_path(element.texture_path, base)
+
+
+func _element_is_beside_document(element: IWEVisualElement) -> bool:
+	return element.texture_path.begins_with("assets/elements/")
+
+
+## Copies the pictures of the elements next to the document (assets/elements/<hash>.<ext>), once each,
+## and stores their paths relative to it. A picture that is already there is reused. Returns false
+## and reports the problem when a copy fails.
+func _copy_elements_into_document(document_folder: String) -> bool:
+	for element in _document.visual_elements:
+		if _element_is_beside_document(element):
+			continue
+		var source: String = element.texture_path
+		if source.begins_with("res://") or source.begins_with("user://"):
+			source = ProjectSettings.globalize_path(source)
+		if not FileAccess.file_exists(source):
+			push_warning("IWE: The picture of \"%s\" is missing, so it is not copied (%s)." % [element.name, source])
+			continue
+		var folder := document_folder.path_join("assets").path_join("elements")
+		var folder_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder))
+		if folder_error != OK and folder_error != ERR_ALREADY_EXISTS:
+			_report_save_error("Could not create the elements folder (%s)" % error_string(folder_error))
+			return false
+		var file_name := "%s.%s" % [FileAccess.get_sha256(source).substr(0, 12), source.get_extension().to_lower()]
+		var destination := folder.path_join(file_name)
+		if not FileAccess.file_exists(destination):
+			var copy_error := DirAccess.copy_absolute(source, ProjectSettings.globalize_path(destination))
+			if copy_error != OK:
+				_report_save_error("Could not copy the picture of \"%s\" (%s)" % [element.name, error_string(copy_error)])
+				return false
+		element.texture_path = "assets/elements/%s" % file_name
+	return true
+
+
+## The pictures for an exported scene: a picture inside the project is referenced by its path.
+func _export_element_textures() -> Dictionary:
+	var textures := {}
+	for element in _document.visual_elements:
+		var texture := _texture_for_export(_element_source_path(element))
+		if texture != null:
+			textures[element.id] = texture
+	return textures
 
 
 func _create_perspective_anchor(image_position: Vector2) -> void:
@@ -1571,7 +1883,7 @@ func _load_external_texture(path: String) -> Texture2D:
 		# it on its next scan, and never in a plain folder), so read the file itself.
 		path = ProjectSettings.globalize_path(path)
 	var image := Image.load_from_file(path)
-	if image.is_empty():
+	if image == null or image.is_empty():
 		return null
 	return ImageTexture.create_from_image(image)
 

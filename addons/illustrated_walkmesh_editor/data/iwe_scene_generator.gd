@@ -13,9 +13,12 @@ const LAYER_CAMERA_BACKDROP := 1 << 2
 const PERSPECTIVE_CAMERA_FAR := 2000.0
 ## Metadata key a perspective export uses to hand its warnings to the caller. See take_warnings.
 const WARNINGS_META := "iwe_export_warnings"
+## Distance, in world units, of an element that is always in front of the character. Just past the
+## camera near plane.
+const ELEMENT_IN_FRONT_DISTANCE := 0.1
 
 
-static func build_2d_scene(document: Resource, texture: Texture2D, world_scale: float = 1.0, add_camera: bool = false) -> Node2D:
+static func build_2d_scene(document: Resource, texture: Texture2D, world_scale: float = 1.0, add_camera: bool = false, element_textures: Dictionary = {}) -> Node2D:
 	if document == null or texture == null or document.image_size.x <= 0 or document.image_size.y <= 0 or world_scale <= 0.0:
 		return null
 	var root := Node2D.new()
@@ -31,6 +34,7 @@ static func build_2d_scene(document: Resource, texture: Texture2D, world_scale: 
 	illustration.texture = texture
 	template.add_child(illustration)
 	illustration.owner = root
+	_add_2d_visual_elements(document, template, root, element_textures)
 	var navigation := Node2D.new()
 	navigation.name = "WalkableRegions"
 	template.add_child(navigation)
@@ -142,6 +146,119 @@ static func build_3d_scene(document: Resource, texture: Texture2D, world_scale: 
 	return root
 
 
+## Visual elements in a flat 2D scene: sprites above the illustration, background elements first. A
+## flat scene has no character to compare depths with, so an element that depends on depth is drawn in
+## front, like a foreground one.
+static func _add_2d_visual_elements(document: Resource, template: Node2D, root: Node, element_textures: Dictionary) -> void:
+	if document.visual_elements.is_empty():
+		return
+	var container := Node2D.new()
+	container.name = "VisualElements"
+	template.add_child(container)
+	container.owner = root
+	for layer in document.layers:
+		if not layer.visible:
+			continue
+		for element in document.visual_elements:
+			var texture: Texture2D = element_textures.get(element.id)
+			if element.layer_id != layer.id or texture == null:
+				continue
+			var sprite := Sprite2D.new()
+			sprite.name = _safe_node_name(element.name)
+			sprite.centered = false
+			sprite.texture = texture
+			sprite.position = element.position
+			sprite.scale = element.scale
+			sprite.modulate = Color(1.0, 1.0, 1.0, layer.opacity * element.opacity)
+			sprite.z_index = 1 if element.depth_mode == IWEVisualElement.DepthMode.BEHIND else 100
+			sprite.set_meta("iwe_element_id", element.id)
+			sprite.set_meta("iwe_depth_mode", element.depth_mode)
+			container.add_child(sprite)
+			sprite.owner = root
+
+
+## Distance from the game camera, in world units, at which an element quad is placed. The quad
+## faces the camera and is scaled so that it covers the same pixels as the picture does on the
+## illustration, wherever it is. Depth does the rest: the character is drawn behind the quad when it is
+## farther than this distance and in front of it when nearer. Returns a negative value when the
+## element ground anchor has no floor under it.
+static func _element_depth(element: Resource, calibration: IWEPerspectiveCalibration, image_size: Vector2i, viewport_size: Vector2i, world_scale: float) -> float:
+	match element.depth_mode:
+		IWEVisualElement.DepthMode.BEHIND:
+			return PERSPECTIVE_CAMERA_FAR * 0.8
+		IWEVisualElement.DepthMode.IN_FRONT:
+			return ELEMENT_IN_FRONT_DISTANCE
+	var floor_point: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(element.get_effective_ground_anchor(), image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
+	if floor_point == null:
+		return -1.0
+	var camera_basis := Basis.from_euler(Vector3(deg_to_rad(calibration.camera_rotation_degrees.x), deg_to_rad(calibration.camera_rotation_degrees.y), deg_to_rad(calibration.camera_rotation_degrees.z)))
+	var local: Vector3 = camera_basis.inverse() * (floor_point - calibration.camera_position)
+	return clampf(-local.z * world_scale, ELEMENT_IN_FRONT_DISTANCE * 2.0, PERSPECTIVE_CAMERA_FAR * 0.8)
+
+
+## One material for every element, so the editor preview and the export cannot disagree. An element at
+## full opacity is cut out (alpha scissor: crisp edges, writes depth, so occlusion is exact); a faded
+## one is blended.
+static func _element_material(texture: Texture2D, opacity: float) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_texture = texture
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	if opacity >= 0.999:
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+		material.alpha_scissor_threshold = 0.5
+	else:
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		material.albedo_color = Color(1.0, 1.0, 1.0, opacity)
+	return material
+
+
+static func _add_perspective_visual_elements(document: Resource, game_camera: Camera3D, root: Node, calibration: IWEPerspectiveCalibration, viewport_size: Vector2i, world_scale: float, element_textures: Dictionary, warnings: PackedStringArray) -> void:
+	if document.visual_elements.is_empty():
+		return
+	var container := Node3D.new()
+	container.name = "VisualElements"
+	game_camera.add_child(container)
+	container.owner = root
+	var fit_scale: float = PERSPECTIVE_PROJECTOR.image_scale_in_viewport(document.image_size, viewport_size)
+	var half_tan := tan(deg_to_rad(clampf(calibration.field_of_view_degrees, 1.0, 179.0)) * 0.5)
+	var aspect := float(viewport_size.x) / float(viewport_size.y)
+	for layer in document.layers:
+		if not layer.visible:
+			continue
+		for element in document.visual_elements:
+			if element.layer_id != layer.id:
+				continue
+			var texture: Texture2D = element_textures.get(element.id)
+			if texture == null:
+				warnings.append("Element \"%s\" was not exported: its picture could not be loaded." % element.name)
+				continue
+			var depth := _element_depth(element, calibration, document.image_size, viewport_size, world_scale)
+			var depth_mode: int = element.depth_mode
+			if depth < 0.0:
+				warnings.append("Element \"%s\" stands on ground at or above the horizon, so it is drawn behind the character instead of by depth." % element.name)
+				depth = PERSPECTIVE_CAMERA_FAR * 0.8
+				depth_mode = IWEVisualElement.DepthMode.BEHIND
+			var rect: Rect2 = element.get_rect()
+			var screen: Vector2 = PERSPECTIVE_PROJECTOR.image_to_viewport(rect.get_center(), document.image_size, viewport_size)
+			var half_height := depth * half_tan
+			var quad := QuadMesh.new()
+			quad.size = rect.size * fit_scale * (2.0 * half_height / float(viewport_size.y))
+			var instance := MeshInstance3D.new()
+			instance.name = _safe_node_name(element.name)
+			instance.mesh = quad
+			instance.material_override = _element_material(texture, layer.opacity * element.opacity)
+			instance.position = Vector3(((screen.x / viewport_size.x) * 2.0 - 1.0) * half_height * aspect, (1.0 - (screen.y / viewport_size.y) * 2.0) * half_height, -depth)
+			instance.layers = LAYER_CAMERA_BACKDROP
+			instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			instance.set_meta("iwe_element_id", element.id)
+			instance.set_meta("iwe_depth_mode", depth_mode)
+			instance.set_meta("iwe_depth_world_units", depth)
+			container.add_child(instance)
+			instance.owner = root
+
+
 ## Warnings recorded while a scene was built (geometry that could not be exported), one sentence
 ## each. The list is removed from the scene so that it is not saved with it. Empty when nothing
 ## was dropped.
@@ -153,7 +270,7 @@ static func take_warnings(root: Node) -> PackedStringArray:
 	return warnings
 
 
-static func build_perspective_scene(document: Resource, texture: Texture2D, calibration: IWEPerspectiveCalibration, world_scale: float = 0.01, add_player: bool = false) -> Node3D:
+static func build_perspective_scene(document: Resource, texture: Texture2D, calibration: IWEPerspectiveCalibration, world_scale: float = 0.01, add_player: bool = false, element_textures: Dictionary = {}) -> Node3D:
 	if document == null or texture == null or calibration == null or document.image_size.x <= 0 or document.image_size.y <= 0 or world_scale <= 0.0:
 		return null
 	var viewport_size := calibration.reference_viewport_size
@@ -190,6 +307,7 @@ static func build_perspective_scene(document: Resource, texture: Texture2D, cali
 	var backdrop := _make_camera_backdrop(document.image_size, viewport_size, calibration, texture)
 	game_camera.add_child(backdrop)
 	backdrop.owner = root
+	_add_perspective_visual_elements(document, game_camera, root, calibration, viewport_size, world_scale, element_textures, warnings)
 	var top_camera := Camera3D.new()
 	top_camera.name = "TopCamera"
 	top_camera.projection = Camera3D.PROJECTION_ORTHOGONAL

@@ -22,6 +22,11 @@ signal scale_anchor_height_requested(anchor_id: String, factor: float)
 signal scale_anchor_delete_requested(anchor_id: String)
 
 var _texture: Texture2D
+## Transparent pictures drawn over the illustration (read only here: the dock owns them).
+var _layers: Array[IWELayer] = []
+var _visual_elements: Array[IWEVisualElement] = []
+var _element_textures: Dictionary = {}
+var _selected_element_id := ""
 var _zoom := 1.0
 var _dragging := false
 var _drawing := false
@@ -125,6 +130,16 @@ func set_boolean_subtract_mode(enabled: bool) -> void:
 	queue_redraw()
 
 
+## Shows the layers' elements on the illustration. textures maps an element id to its Texture2D; an
+## element without a texture is drawn as an outlined placeholder so a missing file is visible.
+func set_visual_elements(layers: Array[IWELayer], elements: Array[IWEVisualElement], textures: Dictionary, selected_id: String = "") -> void:
+	_layers = layers
+	_visual_elements = elements
+	_element_textures = textures
+	_selected_element_id = selected_id
+	queue_redraw()
+
+
 func get_texture() -> Texture2D:
 	return _texture
 
@@ -183,12 +198,38 @@ func _update_minimum_size() -> void:
 	update_minimum_size()
 
 
+func _draw_visual_elements() -> void:
+	for layer in _layers:
+		if not layer.visible:
+			continue
+		for element in _visual_elements:
+			if element.layer_id != layer.id:
+				continue
+			var rect := element.get_rect()
+			var display_rect := Rect2(rect.position * _zoom, rect.size * _zoom)
+			var opacity := layer.opacity * element.opacity
+			var texture: Texture2D = _element_textures.get(element.id)
+			if texture != null:
+				draw_texture_rect(texture, display_rect, false, Color(1.0, 1.0, 1.0, opacity))
+			else:
+				draw_rect(display_rect, Color("ff5263", 0.15), true)
+				draw_rect(display_rect, Color("ff5263"), false, 2.0)
+				draw_string(ThemeDB.fallback_font, display_rect.position + Vector2(6, 18), "%s (picture missing)" % element.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("ff5263"))
+			if element.id == _selected_element_id:
+				draw_rect(display_rect, Color("ffbd4a"), false, 2.0)
+				if element.depth_mode == IWEVisualElement.DepthMode.DEPTH:
+					var anchor := element.get_effective_ground_anchor() * _zoom
+					draw_circle(anchor, 6.0, Color("ffbd4a"))
+					draw_line(anchor - Vector2(10, 0), anchor + Vector2(10, 0), Color.BLACK, 2.0)
+
+
 func _draw() -> void:
 	if _texture:
 		draw_texture_rect(_texture, Rect2(Vector2.ZERO, Vector2(_texture.get_size()) * _zoom), false)
 	else:
 		draw_rect(Rect2(Vector2.ZERO, size), Color("252a33"), true)
 		draw_string(ThemeDB.fallback_font, Vector2(16, 32), "Import an illustration to begin", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("c5ccd8"))
+	_draw_visual_elements()
 	for region in _regions:
 		if not region.visible or region.points.size() < 3:
 			continue

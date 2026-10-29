@@ -6,23 +6,69 @@ extends Resource
 @export var image_size := Vector2i.ZERO
 @export var groups: Array[IWERegionGroup] = []
 @export var regions: Array[IWERegion] = []
+## Version 2: visual layers and the transparent pictures placed on them. Empty in a version 1 file.
+@export var layers: Array[IWELayer] = []
+@export var visual_elements: Array[IWEVisualElement] = []
 @export var scale_anchors: Array[IWEScaleAnchor] = []
 @export_range(1.0, 10000.0, 1.0) var default_template_height_px := 160.0
 @export var perspective_calibration: IWEPerspectiveCalibration = IWEPerspectiveCalibration.new()
 @export var document_path := ""
-## Version of the saved document format, independent from the plugin version. Every document
-## starts at CURRENT_SCHEMA_VERSION (set in _init), so a save always writes it. The stored default
-## is 0 because Godot leaves a property out of the file when it equals the default: a default of 1
-## would hide the version of every version-1 file. A file without the field is a version-1 file
-## saved before the field existed, and loads as 1.
-@export var schema_version := 0
+## Version of the saved document format, independent from the plugin version. A file without the
+## field is a version-1 file saved before the field existed, so 1 is the stored default and a file
+## that lacks the field loads as 1. Godot leaves a property out of the file when it equals its
+## default, so a save of version 1 omits it and a save of version 2 writes it. prepare_for_save()
+## stamps the current version.
+@export var schema_version := 1
 
 ## The document format this plugin writes and understands.
-const CURRENT_SCHEMA_VERSION := 1
+## Version 2 added layers and visual elements (docs/DATA_FORMAT.md).
+const CURRENT_SCHEMA_VERSION := 2
 
 
-func _init() -> void:
+## Brings an older document up to the current format, in memory only. The file on disk is not
+## touched until the author saves. Repeatable: running it again changes nothing. Regions, groups,
+## cutouts, templates and the calibration are never modified or reordered.
+func migrate_to_current() -> void:
+	ensure_default_layers()
+	if schema_version < CURRENT_SCHEMA_VERSION:
+		schema_version = CURRENT_SCHEMA_VERSION
+
+
+## Every document has a Background layer and a Foreground layer. Adds the ones that are missing
+## (by their fixed identifiers) and gives elements without a layer to the foreground.
+func ensure_default_layers() -> void:
+	var has_background := false
+	var has_foreground := false
+	for layer in layers:
+		has_background = has_background or layer.id == IWELayer.BACKGROUND_ID
+		has_foreground = has_foreground or layer.id == IWELayer.FOREGROUND_ID
+	if not has_background:
+		layers.insert(0, IWELayer.create_default_background())
+	if not has_foreground:
+		layers.append(IWELayer.create_default_foreground())
+	for element in visual_elements:
+		if find_layer(element.layer_id) == null:
+			element.layer_id = IWELayer.FOREGROUND_ID
+
+
+## Call before writing the document to disk.
+func prepare_for_save() -> void:
+	migrate_to_current()
 	schema_version = CURRENT_SCHEMA_VERSION
+
+
+func find_layer(layer_id: String) -> IWELayer:
+	for layer in layers:
+		if layer.id == layer_id:
+			return layer
+	return null
+
+
+func find_element(element_id: String) -> IWEVisualElement:
+	for element in visual_elements:
+		if element.id == element_id:
+			return element
+	return null
 
 
 ## Empty when the plugin can open a document of this version, otherwise the reason it cannot. A
@@ -67,6 +113,24 @@ func validate_references() -> PackedStringArray:
 			if cutout_ids.has(cutout_id):
 				problems.append("Cutout identifier \"%s\" is used more than once." % cutout_id)
 			cutout_ids[cutout_id] = true
+	var layer_ids := {}
+	for layer in layers:
+		if layer.id.is_empty():
+			problems.append("A layer has no identifier.")
+		elif layer_ids.has(layer.id):
+			problems.append("Layer identifier \"%s\" is used by more than one layer." % layer.id)
+		layer_ids[layer.id] = true
+	var element_ids := {}
+	for element in visual_elements:
+		if element.id.is_empty():
+			problems.append("Element \"%s\" has no identifier." % element.name)
+		elif element_ids.has(element.id):
+			problems.append("Element identifier \"%s\" is used by more than one element." % element.id)
+		element_ids[element.id] = true
+		if not layer_ids.has(element.layer_id):
+			problems.append("Element \"%s\" is on a layer that does not exist (%s)." % [element.name, element.layer_id])
+		if element.texture_path.is_empty():
+			problems.append("Element \"%s\" has no picture." % element.name)
 	var anchor_ids := {}
 	for anchor in scale_anchors:
 		if anchor.id.is_empty():

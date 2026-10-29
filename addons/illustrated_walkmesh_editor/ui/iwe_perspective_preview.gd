@@ -60,7 +60,7 @@ func _sync_viewport_size() -> void:
 
 
 ## Builds the stage for this calibration and frames the panel to its reference aspect ratio.
-func configure(document: Resource, texture: Texture2D, calibration: IWEPerspectiveCalibration, world_scale: float) -> void:
+func configure(document: Resource, texture: Texture2D, calibration: IWEPerspectiveCalibration, world_scale: float, element_textures: Dictionary = {}) -> void:
 	if not is_instance_valid(_viewport) or document == null or texture == null or calibration == null:
 		return
 	_image_size = document.image_size
@@ -68,7 +68,7 @@ func configure(document: Resource, texture: Texture2D, calibration: IWEPerspecti
 	_calibration = calibration
 	_world_scale = world_scale
 	_apply_reference_aspect()
-	var stage: Node3D = SCENE_GENERATOR.build_perspective_scene(document, texture, calibration, world_scale, _test_walk)
+	var stage: Node3D = SCENE_GENERATOR.build_perspective_scene(document, texture, calibration, world_scale, _test_walk, element_textures)
 	if stage == null:
 		return
 	stage.name = "PerspectiveStage"
