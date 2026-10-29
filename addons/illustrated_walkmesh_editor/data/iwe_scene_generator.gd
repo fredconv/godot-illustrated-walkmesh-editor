@@ -496,16 +496,23 @@ static func _add_projected_collision(nav_region: NavigationRegion3D, region: Res
 				return
 			floor_points.append(Vector2(projected.x, projected.z))
 		for index in floor_points.size():
-			# An edge shared with another walkable zone is a passage, not a wall.
-			if _edge_is_covered_by_other_zone(contour[index], contour[(index + 1) % contour.size()], region, all_regions):
-				continue
-			var a := floor_points[index]
-			var b := floor_points[(index + 1) % floor_points.size()]
-			var a_base := Vector3(a.x, 0.0, a.y)
-			var b_base := Vector3(b.x, 0.0, b.y)
-			var a_top := Vector3(a.x, wall_height, a.y)
-			var b_top := Vector3(b.x, wall_height, b.y)
-			wall_faces.append_array(PackedVector3Array([a_base, b_base, b_top, a_base, b_top, a_top]))
+			# A part of an edge shared with another walkable zone is a passage, not a wall. Only
+			# the parts that no other zone covers get a wall, so a bridge that touches half of an
+			# edge opens half of it.
+			var edge_start: Vector2 = contour[index]
+			var edge_end: Vector2 = contour[(index + 1) % contour.size()]
+			for piece in _uncovered_edge_pieces(edge_start, edge_end, region, all_regions):
+				var piece_start: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(edge_start.lerp(edge_end, piece.x), image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
+				var piece_end: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(edge_start.lerp(edge_end, piece.y), image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
+				if piece_start == null or piece_end == null:
+					continue
+				var a := Vector2(piece_start.x, piece_start.z)
+				var b := Vector2(piece_end.x, piece_end.z)
+				var a_base := Vector3(a.x, 0.0, a.y)
+				var b_base := Vector3(b.x, 0.0, b.y)
+				var a_top := Vector3(a.x, wall_height, a.y)
+				var b_top := Vector3(b.x, wall_height, b.y)
+				wall_faces.append_array(PackedVector3Array([a_base, b_base, b_top, a_base, b_top, a_top]))
 	if wall_faces.is_empty():
 		return
 	var wall_shape := ConcavePolygonShape3D.new()
@@ -518,22 +525,57 @@ static func _add_projected_collision(nav_region: NavigationRegion3D, region: Res
 	wall_collision.owner = nav_region.owner
 
 
-## True when the whole edge a-b (image space) lies on another walkable zone, either on
-## its outline (shared border) or inside its walkable area (overlap). Sampling several
-## points keeps a partly shared edge a wall where it is really a boundary.
-static func _edge_is_covered_by_other_zone(a: Vector2, b: Vector2, region: Resource, all_regions: Array) -> bool:
-	for sample_t in [0.25, 0.5, 0.75]:
-		var sample: Vector2 = a.lerp(b, sample_t)
-		var covered := false
-		for other in all_regions:
-			if other == region or other.points.size() < 3 or not other.visible:
-				continue
-			if _is_on_outline(sample, other.points) or _is_walkable_in(sample, other):
-				covered = true
-				break
-		if not covered:
-			return false
-	return true
+## The parts of the edge a-b (image space) that no other walkable zone covers, as (start, end)
+## pairs of parameters in 0..1. A part is covered when it lies on another zone's outline (shared
+## border) or inside its walkable area (overlap). The edge is cut wherever another zone's outline
+## or cutout crosses or ends on it, and each piece is judged by its middle.
+static func _uncovered_edge_pieces(a: Vector2, b: Vector2, region: Resource, all_regions: Array) -> Array[Vector2]:
+	var breaks: Array[float] = [0.0, 1.0]
+	var length := a.distance_to(b)
+	if length < 0.001:
+		return []
+	for other in all_regions:
+		if other == region or other.points.size() < 3 or not other.visible:
+			continue
+		var outlines: Array = [other.points]
+		outlines.append_array(other.subtraction_polygons)
+		for outline in outlines:
+			for index in outline.size():
+				var c: Vector2 = outline[index]
+				var d: Vector2 = outline[(index + 1) % outline.size()]
+				var crossing: Variant = Geometry2D.segment_intersects_segment(a, b, c, d)
+				if crossing != null:
+					breaks.append(clampf((crossing - a).dot(b - a) / (length * length), 0.0, 1.0))
+				for end_point in [c, d]:
+					var closest := Geometry2D.get_closest_point_to_segment(end_point, a, b)
+					if closest.distance_to(end_point) <= 0.5:
+						breaks.append(clampf((closest - a).dot(b - a) / (length * length), 0.0, 1.0))
+	breaks.sort()
+	var pieces: Array[Vector2] = []
+	var run_start := -1.0
+	for index in range(breaks.size() - 1):
+		var piece_start := breaks[index]
+		var piece_end := breaks[index + 1]
+		if piece_end - piece_start < 0.0005:
+			continue
+		var covered := _point_is_covered_by_other_zone(a.lerp(b, (piece_start + piece_end) * 0.5), region, all_regions)
+		if not covered and run_start < 0.0:
+			run_start = piece_start
+		elif covered and run_start >= 0.0:
+			pieces.append(Vector2(run_start, piece_start))
+			run_start = -1.0
+	if run_start >= 0.0:
+		pieces.append(Vector2(run_start, 1.0))
+	return pieces
+
+
+static func _point_is_covered_by_other_zone(point: Vector2, region: Resource, all_regions: Array) -> bool:
+	for other in all_regions:
+		if other == region or other.points.size() < 3 or not other.visible:
+			continue
+		if _is_on_outline(point, other.points) or _is_walkable_in(point, other):
+			return true
+	return false
 
 
 static func _is_on_outline(point: Vector2, polygon: PackedVector2Array) -> bool:

@@ -199,10 +199,15 @@ func test_the_bridge_is_reachable_from_the_crossroads_through_the_fully_shared_e
 	dock.queue_free()
 
 
-func test_a_bridge_touching_only_part_of_an_edge_is_not_a_doorway_known_limitation() -> void:
-	# Known limitation (related to P1-2 and P1-3): navigation connects the two zones, but the wall
-	# of the larger zone stays because only part of its edge is shared, so the character stops at
-	# the wall. Flip this test when partly shared edges become doorways or are reported.
+func _blocked(space: PhysicsDirectSpaceState3D, from_world: Vector3, to_world: Vector3) -> bool:
+	var query := PhysicsRayQueryParameters3D.create(from_world, to_world)
+	query.collide_with_bodies = true
+	return not space.intersect_ray(query).is_empty()
+
+
+func test_a_bridge_touching_only_part_of_an_edge_opens_only_that_part() -> void:
+	# The bridge shares y = 540..640 of the crossroads' right edge (x = 1200). The wall must be
+	# open there and stay everywhere else on that edge.
 	var dock: Control = await VILLAGE.new_dock(get_tree())
 	VILLAGE.import_background(dock)
 	dock._create_group_named("Chemins")
@@ -213,6 +218,13 @@ func test_a_bridge_touching_only_part_of_an_edge_is_not_a_doorway_known_limitati
 	var calibration: IWEPerspectiveCalibration = dock._document.perspective_calibration
 	var stage := await VILLAGE.start_stage(get_tree(), dock._document)
 	var player: Node = stage[1]
+	var space: PhysicsDirectSpaceState3D = stage[0].get_world_3d().direct_space_state
+	var lift := Vector3.UP * 0.8
+	for row in [420.0, 480.0, 700.0, 800.0]:
+		assert_bool(_blocked(space, VILLAGE.floor_world(Vector2(1150, row), calibration) + lift, VILLAGE.floor_world(Vector2(1250, row), calibration) + lift)).override_failure_message("wall missing at y = %s" % row).is_true()
+	for row in [560.0, 590.0, 620.0]:
+		assert_bool(_blocked(space, VILLAGE.floor_world(Vector2(1150, row), calibration) + lift, VILLAGE.floor_world(Vector2(1250, row), calibration) + lift)).override_failure_message("wall still closed at y = %s" % row).is_false()
+	# And a click-to-move walk crosses it.
 	player.set_speed_multiplier(10.0)
 	player.global_position = VILLAGE.floor_world(Vector2(1000, 700), calibration)
 	await get_tree().physics_frame
@@ -222,6 +234,6 @@ func test_a_bridge_touching_only_part_of_an_edge_is_not_a_doorway_known_limitati
 		await get_tree().physics_frame
 		frames += 1
 	var arrived := VILLAGE.world_to_image(player.global_position, calibration)
-	assert_float(arrived.x).override_failure_message("partial edges now work? update this test (ended at %s)" % arrived).is_less(1200.0)
+	assert_float(arrived.x).override_failure_message("ended at %s" % arrived).is_greater(1380.0)
 	stage[0].queue_free()
 	dock.queue_free()
