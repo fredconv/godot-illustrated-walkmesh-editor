@@ -26,7 +26,7 @@ addons/illustrated_walkmesh_editor/
 
 Perspective keeps three layers apart: the persistent calibration (saved), the projection frame (the calibration's reference viewport, aspect ratio only), and the editor display transform (panel fit in `IWEPerspectiveProjector`, never saved).
 
-Tests live in the project-level `tests/` folder (GdUnit4), not inside the addon. Current suite: 94 headless tests, all passing.
+Tests live in the project-level `tests/` folder (GdUnit4), not inside the addon. Current suite: 141 headless tests, all passing.
 
 ### 1.1 Data model facts
 

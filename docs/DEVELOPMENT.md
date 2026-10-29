@@ -43,7 +43,7 @@ From the project root, with the Godot 4.7.1 executable on your path or reference
 godot --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd --add "res://tests" --ignoreHeadlessMode
 ```
 
-A successful run prints `Exit code: 0` and reports the number of test cases (currently 94). Reports are written to `reports/`, which is ignored by Git.
+A successful run prints `Exit code: 0` and reports the number of test cases (currently 141). Reports are written to `reports/`, which is ignored by Git.
 
 The same command runs in continuous integration (`.github/workflows/tests.yml`), which downloads the pinned versions of Godot and GdUnit4.
 
@@ -111,6 +111,18 @@ Checked in the editor for Godot 4.7.1 on 2026-10-29: steps 1 to 6 and step 8. Th
 3. Change `Reference frame` width: the projection changes, the label gains a `*`, and `Undo` restores it.
 
 Checked in the editor for Godot 4.7.1 on 2026-10-29 by script (split offset 170 to 650, and window detach and reattach): reference frame unchanged, floor point identical, document not modified. Not driven with the mouse.
+
+### Manual check: replacing the illustration
+
+1. Draw a region, place a height reference, and fit the camera. Note the camera values.
+2. Import another picture of the same size. The regions and the camera values must not change, and the label gains a `*`. `Undo` restores the first picture.
+3. Import a picture of another size. A confirmation asks first. `Cancel` changes nothing; `Replace illustration` swaps the picture and `Undo` restores it.
+
+Checked headless only (`tests/test_illustration_reimport.gd`, `tests/e2e/`); the dialog was not clicked in the real editor.
+
+### End-to-end scenario
+
+`tests/e2e/README.md` describes the village and fountain scenario, its four suites, and its pinned known defects.
 
 ## Versioning
 

@@ -27,7 +27,7 @@ The illustration stays the visual source of truth. IWE does not recover real 3D 
 - Import PNG, JPG, and WebP files supported by Godot; keep the original dimensions.
 - Pan, zoom, show or hide the image.
 - Copy the image beside the project file so the project stays portable.
-- Warn when a replacement image changes dimensions.
+- Warn when a replacement image changes dimensions: completed. Replacing the picture keeps regions, templates and calibration, and is undoable.
 - Optional opacity control while tracing (planned).
 
 ### 3.2 Polygon regions
@@ -106,7 +106,7 @@ Status: **To develop.**
 - Connections between touching zones come from shared edges (completed for perspective export).
 - Generated collision walls on outer boundaries and cutouts (completed for perspective export).
 - Separate collision layer masks and configurable navigation parameters: to develop.
-- Test character with mouse and keyboard, walls, and path following (completed in the perspective runtime).
+- Test character with mouse and keyboard, walls, and path following (completed in the perspective runtime). A testing speed multiplier (x0.1 to x10), pause, and reset are available on the character; they are never saved or exported. Controls in the dock preview are to develop.
 - Debug overlays for contours, exclusions, connections, collisions, and templates: partial (contour and template guides exist; connection and collision overlays do not).
 
 The physical character size is a runtime setting, separate from its visual height. Perspective changes apparent size on screen; it must not change physical size.
@@ -127,8 +127,8 @@ Exported scenes are standard Godot scenes. Templates are placed in a `ScaleTempl
 
 - Save an IWE document (`.tres`) containing image reference, groups, regions, cutouts, templates, and calibration: **completed**, tested.
 - Reopen a document and continue editing: **completed**, tested.
-- Unsaved-change protection: **completed**. The document shows a modified mark that follows undo and redo; New and Open ask Save, Discard Changes, or Cancel; Godot's quit dialog lists an unsaved document; a failed save keeps the document modified. A document that was never saved gets a recovery copy in `user://iwe_recovery/` when Godot asks to save. Importing an illustration is not undoable and keeps the document modified until saved.
-- Schema version and migration: **to develop** (no version field yet).
+- Unsaved-change protection: **completed**. The document shows a modified mark that follows undo and redo; New and Open ask Save, Discard Changes, or Cancel; Godot's quit dialog lists an unsaved document; a failed save keeps the document modified. A document that was never saved gets a recovery copy in `user://iwe_recovery/` when Godot asks to save. The first import of an illustration is not undoable and keeps the document modified until saved; replacing it is undoable.
+- Schema version and migration: **partial**. The field exists (default 1, omitted from files). Writing the current version, refusing a newer one, and migrating are to develop.
 - Layers, visual elements, connections, region types, and export options in the document: **to develop**.
 - Exports never modify the source document.
 
@@ -164,7 +164,7 @@ The character's behaviour depends on Geometry & Navigation. Rendering decides wh
 - Save and reopen of IWE documents.
 - Touching zones are walkable as one network (headless test).
 - Test character with mouse and keyboard, walls, path following.
-- Automated test suite: 94 headless GdUnit4 tests passing.
+- Automated test suite: 141 headless GdUnit4 tests passing.
 
 **Partially implemented**
 - Locked regions: the model and canvas respect the lock, but no button sets it.

@@ -7,6 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- End-to-end validation scenario on new assets (`tests/e2e/`): the village background and the fountain foreground, authored from an empty document. 31 tests cover import, polygons, cutout union, undo and redo, save and reopen, calibration, perspective export, and walking around the fountain at several speeds. Known defects found by it are pinned by tests that say so. `docs/PRE_RELEASE_AUDIT.md` is the pre-release inventory and the proposed plan to the first release.
+- Testing speed for the test character: `set_speed_multiplier` (x0.1 to x10, presets x1, x2, x5, x10), `get_effective_speed`, `pause`, `resume`, `reset_position`. The multiplier is never saved or exported, and no depth-based scaling is added: perspective comes from the camera. Controls in the dock are not part of this change.
 - Protection against losing unsaved work (audit P1-6). The dock shows the document name with a `*` when it has changes that are not saved, and the mark follows Undo and Redo: returning to the saved state clears it. Creating a new document or opening another one asks `Save`, `Discard Changes`, or `Cancel` first. Godot's own quit dialog now lists an unsaved IWE document, `Save All` writes it in place when it has a path, and a document that was never saved gets a recovery copy in `user://iwe_recovery/` instead of being lost. A failed save is reported, keeps the document modified, and does not run the action that was waiting.
 - Floating illustration window (`Window` button) that gives the whole illustration room on screen; closing it returns the canvas to the dock.
 - Document `schema_version` field (value `1`), so future format changes can be detected and migrated.
@@ -34,6 +36,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Test doubles `tests/dock_undo_stub.gd` and `tests/undo_history_stub.gd`. They implemented `undo()` and `redo()`, which the real editor API does not have, and hid audit P0-1. Tests now use Godot's `UndoRedo`.
 
 ### Fixed
+- Replacing the illustration of a document rebuilt the calibration and overwrote the document silently (audit P1-5). Replacing now swaps the picture only, keeps regions, templates and calibration, and is one undo entry. A picture of another size asks first.
+- A picture copied beside a saved document could not be loaded until the editor had imported it, so reopening a document right after saving could show no picture. The dock now reads the file directly when the engine cannot load it.
+- The last waypoint of a click-to-move path is reached with a partial step, so the character stops on the target at every walking speed.
 - The perspective calibration stored the size of the preview panel as its reference viewport and rewrote it whenever the dock was resized, so the same document projected the floor and the templates differently depending on the layout, and the change was silent (audit P1-4). Only the aspect ratio of the reference frame matters to the projection; it is now explicit and stable.
 - The save button opened an *Open* dialog instead of a *Save* dialog (wrong `file_mode`).
 - The dock's `Undo` and `Redo` buttons called methods that `EditorUndoRedoManager` does not have, so they failed in the real editor (audit P0-1).

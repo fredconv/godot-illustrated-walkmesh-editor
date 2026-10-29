@@ -52,7 +52,11 @@ IWE asks before it would drop unsaved work:
 - **Save All** (and `Save` in the quit dialog) writes a document that already has a file, in place. A document that was never saved cannot be written silently, so IWE writes a **recovery copy** to `user://iwe_recovery/` and keeps the document marked as modified. Open the IWE `Save` button to choose a real location.
 - If a save fails, a message appears in the status bar and the Output panel, the document stays marked as modified, and whatever was waiting (for example opening another document) does not happen.
 
-Importing or replacing the illustration cannot be undone, so it keeps the document marked as modified until you save.
+The first import of an illustration cannot be undone, so it keeps the document marked as modified until you save.
+
+## Replacing the illustration
+
+Import another picture into a document that already has one and only the picture changes: regions, cutouts, height references and the calibration keep their values. The change can be undone. If the new picture has another size, IWE asks first, because your shapes are placed in the pixels of the current picture and may no longer line up.
 
 ## Floating window
 
@@ -65,6 +69,11 @@ Two walkable zones that share an edge are connected: the character walks from on
 **Limitation:** zones that overlap without sharing an exact edge are not connected yet. Their walls are removed where they overlap, but the character cannot path from one to the other with click-to-move. Snap the shared border so both zones use the same edge.
 
 ## Known limitations
+
+- Duplicating a region moves its outline but not its cutouts (audit P1-10).
+- A doorway needs a full shared edge. A zone that touches only part of another zone's edge is connected for navigation but keeps its wall, so the character stops at it.
+- The camera fit does not show how far it misses your height references. On a steeply viewed scene it can miss by about 10%.
+- The test character follows the shortest path, which hugs obstacle corners. It can stall at a very narrow doorway.
 
 - The perspective projection depends on the shape (aspect ratio) of the reference frame, not on the dock. Changing the reference frame width or height changes where every image point lands on the floor; it is undoable and marks the document modified. A frame that differs in shape from the game window is reported in the status line.
 - Locking a region has no button yet. Locked regions are respected when they are locked by data.

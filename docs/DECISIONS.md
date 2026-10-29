@@ -72,6 +72,22 @@
 
 **Consequences:** Undo is available from the dock buttons and from `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` while the illustration has focus, but not from Godot's main `Ctrl+Z` elsewhere. Creating or opening a document is not undoable. Tests drive the real `UndoRedo`; no test double reimplements the history.
 
+## 2026-10-29 — Replacing the illustration swaps the picture only
+
+**Decision:** Importing into a document that already has an illustration replaces the picture and nothing else. It is one undoable action. A picture of another size asks for confirmation first. The first import still creates a calibration for the new image.
+
+**Reason:** The old code rebuilt the calibration on every import (all six calibration fields were reset, measured against the previous commit). Regions and templates are authored in image pixels, so they cannot be moved or scaled for the author without guessing.
+
+**Consequences:** A different-size picture can leave shapes misaligned until the author adjusts them; the dialog says so and Undo restores everything. Resizing or re-anchoring shapes automatically is left for later.
+
+## 2026-10-29 — The testing speed lives on the character, not in the document
+
+**Decision:** `IWEWalkmeshCharacter` gets `set_speed_multiplier` (x0.1 to x10, presets x1/x2/x5/x10), `get_effective_speed`, `pause`, `resume`, and `reset_position`. Base speed is the existing `move_speed`. The multiplier is a plain variable, not an exported or saved property. No depth-based speed scaling exists: the walk is in world space and the camera produces the apparent speed. Dock controls are scheduled with an in-editor test character (M3), where the multiplier becomes an editor preference and the base speed stays a character property.
+
+**Reason:** The dock preview is a static render with no character, so only the runtime character can walk. A document-level or exported speed would change authored data for a testing convenience.
+
+**Consequences:** The last waypoint is reached with a partial step so the stopping error does not grow with speed. Corner-cutting at x10 is bounded by one step per frame, and walls still stop the character.
+
 ## 2026-10-29 — The perspective projection uses an explicit reference frame, not the panel size
 
 **Decision:** Three things are kept apart. (1) The persistent calibration, including `reference_viewport_size`, is saved with the document. (2) The projection frame is that reference viewport; only its aspect ratio affects the projection. (3) The editor display transform (`panel_fit`, `panel_to_reference`, `reference_to_panel` in `IWEPerspectiveProjector`) maps the preview panel to the frame with a centred contain-fit and is never saved. The preview panel sits in an `AspectRatioContainer` set to the frame's ratio, and the preview does not write to the document. New documents take the reference from the project's game window; the author can edit it explicitly.

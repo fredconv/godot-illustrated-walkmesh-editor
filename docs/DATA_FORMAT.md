@@ -36,7 +36,7 @@ When Godot asks IWE to save and the document has no file yet, IWE writes an ordi
 
 - Adding an optional field with a default value does not require a new schema version.
 - Renaming, removing, or changing the meaning of a field requires a new schema version and a migration.
-- A document with a higher schema version than the plugin supports must not be loaded silently. The plugin reports it as an error and leaves the file unchanged.
+- A document with a higher schema version than the plugin supports must not be loaded silently. **Not enforced yet:** the plugin does not read `schema_version` when opening a document (audit P1-9). Until it does, only version 1 exists, so no such file can exist.
 - Exports never modify the source document.
 
 ## Planned changes (not yet implemented)
