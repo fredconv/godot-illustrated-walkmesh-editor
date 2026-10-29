@@ -38,6 +38,8 @@ Tests live in the project-level `tests/` folder (GdUnit4), not inside the addon.
 
 - **Navigation and connections** are computed in `iwe_scene_generator.gd`. Shared edges between touching zones are detected while building walls (`_edge_is_covered_by_other_zone`). This is correct but misplaced: the rule belongs to the Geometry & Navigation domain, not to scene building, and the 2D export does not yet use it.
 - **Undo/redo** uses a Godot `UndoRedo` owned by the dock, one per document (`_history`). It is freed and recreated when a document is created or opened, so actions never apply to another document, and the editor's own histories are not used. The canvas receives the same history. Every mutation goes through `_history.add_do_method(Callable)`.
+- **Modified state.** The history is an `IWEDocumentHistory` (`data/iwe_document_history.gd`), a wrapper around `UndoRedo`. It records the undo version at the last successful save. The document is modified when the version differs, or when a change was made outside the history (`note_untracked_change`, used for importing an illustration). A new action committed while a redo is pending makes the saved state unreachable, because `UndoRedo.get_version()` would otherwise return to the saved number with different content.
+- **Godot hooks.** `plugin.gd` implements `_get_unsaved_status(for_scene)` and `_save_external_data()` and forwards both to the dock. They are not used for any scene: a non-empty `for_scene` always answers "".
 - **The dock** holds UI widgets, document mutations, export, calibration, and file dialogs in one class. It is the main maintenance risk.
 
 ## 2. Target architecture

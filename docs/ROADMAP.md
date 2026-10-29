@@ -11,6 +11,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 | Create, select, move, vertex insert/remove/move | Done | Minimum three vertices enforced |
 | Move whole region | Done | |
 | Duplicate, rename, hide, delete | Done | |
+| Unsaved-change protection (modified mark, prompts, Godot quit dialog) | Done | Audit P1-6; recovery copy for a never-saved document |
 | Overlapping cutouts remove their union once | Done | Merged before subtraction; enclosed islands are still blocked (known limitation) |
 | Undo / redo for polygon edits | Done | Per-document `UndoRedo`; reset on new or open (audit P0 fix) |
 | Lock a region | Partial | Model and canvas respect `locked`; no UI button |

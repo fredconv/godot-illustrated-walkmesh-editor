@@ -52,6 +52,8 @@ The suite covers:
 - Document serialization, including regions, cutouts, groups, templates, calibration, and the schema version.
 - Polygon editing: vertex movement, insertion, removal, and undo/redo on Godot's real `UndoRedo` (no test doubles).
 - Per-document history: opening or creating a document never replays the previous document's actions.
+- Unsaved-change state (`IWEDocumentHistory`): clean, modified, undo back to the saved state, redo, and the case where a new action after an undo makes the saved state unreachable.
+- The prompts for New and Open (Save, Discard Changes, Cancel), failed saves, documents without a path, and the dock methods behind `_get_unsaved_status` and `_save_external_data`.
 - Subtractive cutouts and their derived contours.
 - Perspective projection and floor intersections.
 - Scale templates: placement, movement, resizing, and undo.
@@ -60,6 +62,8 @@ The suite covers:
 - Floating illustration window and the save/open workflow.
 
 ### What headless tests cannot cover
+
+`EditorPlugin` cannot be instantiated outside the editor, so the tests exercise the dock methods that the plugin hooks forward to, not the hooks themselves.
 
 Clicking inside the real editor, drawing polygons with the mouse, and visual layout are not tested automatically. Check these by hand before a release:
 
@@ -83,6 +87,22 @@ Clicking inside the real editor, drawing polygons with the mouse, and visual lay
 4. Check `Player → snap_tolerance` (expected `0.864`) before saving anything.
 
 Generated anchor IDs are random on each run, so regenerating the demo produces a noisy diff even when nothing else changed. A deterministic ID scheme for the demo generator is a planned improvement.
+
+## Manual check: unsaved-change protection
+
+Run this in the real editor after any change to saving, loading, or the history. Use a scratch project or a document you do not need.
+
+1. Enable the plugin. The toolbar shows `Untitled` with no `*`.
+2. Import an illustration and draw a region. The label becomes `Untitled *`.
+3. Close Godot. The *Save before closing?* dialog must show the IWE message. Choose **Cancel**: the editor stays open and the document is unchanged.
+4. Close a Godot scene tab. No IWE message appears.
+5. Click `Save`, choose a folder, and accept the copy of the image. The label shows the file name without `*`.
+6. Draw another region (`name *`), press `Undo` (`name`), `Redo` (`name *`), `Undo` (`name`).
+7. Choose `New` while the label has a `*`: the Save / Discard Changes / Cancel question appears. `Cancel` keeps the document.
+8. Close Godot with the label clean. No IWE message appears and Godot closes.
+9. Never-saved document: draw a region, close Godot, choose **Save & Quit** or run `Save All`. A file appears in the project's `user://iwe_recovery/` folder, and the label keeps its `*`.
+
+Checked in the editor for Godot 4.7.1 on 2026-10-29: steps 1 to 6 and step 8. The buttons were driven through their signals by script, not with the mouse. Steps 7 and 9 are covered by automated tests only; they have not been run by hand in the editor.
 
 ## Versioning
 

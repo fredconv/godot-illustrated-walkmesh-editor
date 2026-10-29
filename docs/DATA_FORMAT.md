@@ -28,6 +28,10 @@ The current document schema is **1**. Documents saved before the field existed l
 
 Object identity uses the stable `id` values. Display names may change freely.
 
+## Recovery copies
+
+When Godot asks IWE to save and the document has no file yet, IWE writes an ordinary IWE document to `user://iwe_recovery/recovery_<date-time>.tres`. It uses the same schema as any other document and can be opened with `Open`. There is one file per editor session, overwritten on each save. Its illustration path is the one the document held, which may be an absolute path to the source image.
+
 ## Compatibility rules
 
 - Adding an optional field with a default value does not require a new schema version.

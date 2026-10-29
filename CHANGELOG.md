@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Protection against losing unsaved work (audit P1-6). The dock shows the document name with a `*` when it has changes that are not saved, and the mark follows Undo and Redo: returning to the saved state clears it. Creating a new document or opening another one asks `Save`, `Discard Changes`, or `Cancel` first. Godot's own quit dialog now lists an unsaved IWE document, `Save All` writes it in place when it has a path, and a document that was never saved gets a recovery copy in `user://iwe_recovery/` instead of being lost. A failed save is reported, keeps the document modified, and does not run the action that was waiting.
 - Floating illustration window (`Window` button) that gives the whole illustration room on screen; closing it returns the canvas to the dock.
 - Document `schema_version` field (value `1`), so future format changes can be detected and migrated.
 - Headless regression tests: full workflow (regions, cutouts, templates, 2D/3D/perspective exports, save and reopen), window toggling, save-folder creation, and connected walkable zones.
@@ -18,6 +19,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Layer Manager design proposal, `docs/LAYER_MANAGER_DESIGN.md`: architecture, schema version 2 migration guarantees, asset handling, and the transparency-technique study. Design only; no layer feature is implemented.
 
 ### Changed
+- The undo history is now `IWEDocumentHistory`, a thin class around Godot's `UndoRedo` that also remembers which state was saved. Closing a Godot scene never prompts about the IWE document.
 - Creating a new document is no longer an undoable action; it starts an empty history, like opening a document.
 - `Ctrl+Z`, `Ctrl+Shift+Z`, and `Ctrl+Y` undo and redo IWE edits while the illustration has focus. IWE edits no longer go into the editor's global history.
 - Documentation no longer claims that overlapping zones are connected: only zones sharing an exact edge are (audit P1-2 remains open).

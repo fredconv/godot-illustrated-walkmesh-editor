@@ -127,6 +127,7 @@ Exported scenes are standard Godot scenes. Templates are placed in a `ScaleTempl
 
 - Save an IWE document (`.tres`) containing image reference, groups, regions, cutouts, templates, and calibration: **completed**, tested.
 - Reopen a document and continue editing: **completed**, tested.
+- Unsaved-change protection: **completed**. The document shows a modified mark that follows undo and redo; New and Open ask Save, Discard Changes, or Cancel; Godot's quit dialog lists an unsaved document; a failed save keeps the document modified. A document that was never saved gets a recovery copy in `user://iwe_recovery/` when Godot asks to save. Importing an illustration is not undoable and keeps the document modified until saved.
 - Schema version and migration: **to develop** (no version field yet).
 - Layers, visual elements, connections, region types, and export options in the document: **to develop**.
 - Exports never modify the source document.

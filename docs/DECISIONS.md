@@ -56,6 +56,14 @@
 
 **Reason:** The public documentation and the GitHub presentation are in English.
 
+## 2026-10-29 — Track unsaved changes with the document's own history
+
+**Decision:** `IWEDocumentHistory` wraps `UndoRedo` and stores the version at the last successful save. A document is modified when the current version differs, when a change happened outside the history, or when the saved state became unreachable. The dock asks before New and Open, and the plugin implements `_get_unsaved_status` and `_save_external_data`.
+
+**Reason:** `UndoRedo.get_version()` goes up on commit and redo and down on undo, so equality with the saved version means "back at the saved state". That fails after an undo followed by a different action. A recovery copy is written for a document without a path, because `_save_external_data` runs while the editor may be closing and must not show a dialog.
+
+**Consequences:** Creating or opening a document starts clean. Importing an illustration is not undoable, so it keeps the document modified until saved. The viewport-size write of the perspective preview does not mark the document modified, because it fires during layout; that belongs to P1-4.
+
 ## 2026-10-29 — A per-document UndoRedo instead of the editor's history
 
 **Decision:** The dock owns a Godot `UndoRedo` for the open document. It is freed and recreated when a document is created or opened. IWE no longer uses `EditorUndoRedoManager`.

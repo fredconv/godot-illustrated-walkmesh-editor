@@ -40,6 +40,20 @@ The **IWE** dock appears in the right-hand dock area once the plugin is enabled.
 
 Each document has its own history. Creating a new document or opening another one starts an empty history, so nothing from the previous document can be undone into the new one. Creating or opening a document is itself not undoable. Godot's main `Ctrl+Z` (when the illustration does not have focus) does not undo IWE edits.
 
+## Unsaved changes
+
+The name of the document is shown at the right of the toolbar. A `*` after the name means there are changes that are not saved (`Untitled *` for a document that has never been saved). The mark follows Undo and Redo: if you undo back to the state you last saved, the `*` disappears, and it returns if you redo.
+
+IWE asks before it would drop unsaved work:
+
+- **New** and **Open** ask `Save`, `Discard Changes`, or `Cancel`. `Cancel` leaves the current document and its undo history exactly as they were. `Save` saves first and continues only if the save worked; a document that has no file yet asks where to save it.
+- **Closing Godot** lists the IWE document in Godot's own *Save before closing?* dialog.
+- **Closing a scene** in Godot does not mention the IWE document, because it is not part of any scene.
+- **Save All** (and `Save` in the quit dialog) writes a document that already has a file, in place. A document that was never saved cannot be written silently, so IWE writes a **recovery copy** to `user://iwe_recovery/` and keeps the document marked as modified. Open the IWE `Save` button to choose a real location.
+- If a save fails, a message appears in the status bar and the Output panel, the document stays marked as modified, and whatever was waiting (for example opening another document) does not happen.
+
+Importing or replacing the illustration cannot be undone, so it keeps the document marked as modified until you save.
+
 ## Floating window
 
 The `Window` button moves the illustration area into a large separate window, which is useful for seeing the whole illustration at once. Close the window, or click `Window` again, to return the canvas to the dock.
@@ -52,6 +66,7 @@ Two walkable zones that share an edge are connected: the character walks from on
 
 ## Known limitations
 
+- Resizing the dock can still change the stored perspective preview size without marking the document as modified (audit P1-4, not fixed yet).
 - Locking a region has no button yet. Locked regions are respected when they are locked by data.
 - The perspective calibration assumes one flat floor. It does not detect terrain height or hidden depth.
 - Scenes must be exported again after changing a region or the calibration.
