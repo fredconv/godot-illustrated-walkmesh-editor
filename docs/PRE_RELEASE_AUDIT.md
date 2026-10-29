@@ -7,7 +7,7 @@ This document answers one question: **what is left before the first public pre-r
 ## 1. Executive summary
 
 - **The core chain works and is test-backed.** Importing an illustration, drawing zones and cutouts, connecting zones by a shared edge, calibrating a perspective camera from height references, exporting a perspective scene, and walking a test character around the obstacles all work, from an empty document, on new assets (`tests/e2e/`, 31 tests, plus a scripted pass in the real editor).
-- **All audit blockers are closed.** P0-1, P0-2, P1-1, P1-2, P1-3, P1-4, P1-5, P1-6, P1-10 are fixed with tests (M1 is complete). P1-7, P1-8, P1-9 are still open (M2).
+- **All audit blockers are closed.** P0-1, P0-2, P1-1, P1-2, P1-3, P1-4, P1-5, P1-6, P1-10 are fixed with tests (M1 is complete). P1-7, P1-8 and P1-9 are fixed too (M2 is complete).
 - **The end-to-end run found three problems the unit tests did not.** (1) A zone that shares only *part* of another zone's edge is connected for navigation but still walled, so the character stalls. (2) The camera fit missed the two height references by 10.6% on a steeply viewed scene, and the plugin does not show the residual. (3) A picture copied beside a saved document could not be reopened until the editor had imported it (fixed in this pass, see section 5).
 - **The large features are not started.** Layers, transparent PNG elements, occlusion, parallax, triggers, portals, region types, explicit connections. They exist as design documents only. The foreground fountain of the new scene cannot yet hide the character.
 - **The editor UI is one tall dock.** There is no recorded UI/UX redesign plan in the repository or in the project notes I could access, so "the target UI" is **unverified** (section 3). I have listed concrete gaps instead of inventing a design.
@@ -75,8 +75,8 @@ Status classes: **Validated** (implemented, automated tests, checked in the real
 | Save and reopen `.tres` | Validated | | Reopening right after a save in the editor (picture not imported yet) is covered by a fix and a headless test, **not** by a real-editor run | e2e 03 | Save then reopen in a real project folder | Must |
 | Unsaved-change protection | Validated | `IWEDocumentHistory`, Godot quit dialog, recovery copy | Quit dialog driven by script only | 26 | Close Godot with a modified document | Must |
 | Per-document undo | Validated | | | 10 | | Must |
-| Schema version | Partial | `schema_version` exists with default 1 and is omitted from files | No explicit write of the current version, **no refusal of a newer version** (`DATA_FORMAT.md` states a rule the code does not enforce), no migration (P1-9) | | | Must |
-| Portable picture reference | Partial | | P1-7 | | | Must |
+| Schema version | Validated | written in every file; newer or invalid versions refused, file untouched; old files load as 1 | No migration code (none needed until version 2) | `test_schema_version` (8) | | Must |
+| Portable picture reference | Validated | always copied beside the document, relative path, Save As fixed | Picture import by the editor at export time is not testable headless | `test_picture_paths` (7) | Save in a real project folder, move it, reopen | Must |
 
 ### 2.6 Layers, visual elements, occlusion, triggers
 
@@ -198,7 +198,7 @@ Complexity: **S** a day or less · **M** two to four days · **L** one to two we
 | ID | Milestone | Depends on | Acceptance criteria | Size |
 |---|---|---|---|---|
 | M1 | **DONE 2026-10-29. Navigation and collision consistency.** Partly shared edges (N-1), overlapping zones (P1-2, or a documented decision not to support them), warnings for dropped zones and walls (P1-3), corner clearance for click-to-move (N-2), duplicate with cutouts (P1-10) | none | The e2e tests that pin N-1, P1-10 flip to the correct behaviour; a doorway of any width crossable by click-to-move; a warning names every dropped zone; no stall in the e2e walk | L |
-| M2 | **Persistence and export integrity.** Relative picture path (P1-7), no embedded pixels in exports (P1-8), explicit schema version write, refusal of newer versions and a migration policy (P1-9), stable cutout IDs, reference validator, region ID on exported nodes | none | Save, move the folder, reopen; an export of a project-folder picture is under 1 MB; a v2 file is refused with a message and untouched; v1 fixtures still load | L |
+| M2 | **DONE 2026-10-29. Persistence and export integrity.** Relative picture path (P1-7), no embedded pixels in exports (P1-8), explicit schema version write, refusal of newer versions and a migration policy (P1-9), stable cutout IDs, reference validator, region ID on exported nodes | none | Save, move the folder, reopen; an export of a project-folder picture is under 1 MB; a v2 file is refused with a message and untouched; v1 fixtures still load | L |
 | M12 | **Manual QA with a mouse**, list in section 6 | M1, M2 | Every item checked and recorded in `docs/DEVELOPMENT.md` | M |
 | M13 | **Release preparation.** Addon-only ZIP, `0.1.0-alpha.1` in `plugin.cfg` and changelog, screenshots, the village scene as a second example, doc sync (4.3), asset provenance, release checklist | M1, M2, M12 | A clean project opens with only the addon folder; every claim in README is covered by a test or marked experimental | M |
 

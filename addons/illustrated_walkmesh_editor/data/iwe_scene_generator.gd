@@ -40,6 +40,7 @@ static func build_2d_scene(document: Resource, texture: Texture2D, world_scale: 
 			continue
 		var nav_region := NavigationRegion2D.new()
 		nav_region.name = "Region_%s" % _safe_node_name(region.name)
+		nav_region.set_meta("iwe_region_id", region.id)
 		nav_region.navigation_polygon = _make_navigation_polygon(region, document.regions)
 		navigation.add_child(nav_region)
 		nav_region.owner = root
@@ -89,6 +90,7 @@ static func build_3d_scene(document: Resource, texture: Texture2D, world_scale: 
 			continue
 		var nav_region := NavigationRegion3D.new()
 		nav_region.name = _safe_node_name(region.name)
+		nav_region.set_meta("iwe_region_id", region.id)
 		nav_region.navigation_mesh = _make_navigation_mesh(region, document.regions)
 		var parent: Node3D = group_nodes.get(region.group_id, navigation)
 		parent.add_child(nav_region)
@@ -479,6 +481,7 @@ static func _make_projected_navigation_region(region: Resource, image_size: Vect
 		navigation_mesh.add_polygon(source_mesh.get_polygon(polygon_index))
 	var nav_region := NavigationRegion3D.new()
 	nav_region.name = _safe_node_name(region.name)
+	nav_region.set_meta("iwe_region_id", region.id)
 	nav_region.position.y = calibration.floor_height
 	nav_region.navigation_mesh = navigation_mesh
 	_add_walkable_surface(nav_region, navigation_mesh)
@@ -635,6 +638,8 @@ static func _add_projected_contour_guides(nav_region: NavigationRegion3D, region
 		if index < region.subtraction_names.size() and not region.subtraction_names[index].strip_edges().is_empty():
 			name = region.subtraction_names[index]
 		var cutout := _make_projected_contour_guide(name, region.subtraction_polygons[index], Color("ff5263"), image_size, viewport_size, calibration)
+		if not region.get_cutout_id(index).is_empty():
+			cutout.set_meta("iwe_cutout_id", region.get_cutout_id(index))
 		nav_region.add_child(cutout)
 		cutout.owner = nav_region.owner
 
@@ -801,6 +806,8 @@ static func _add_authored_contour_guides(nav_region: NavigationRegion3D, region:
 		if index < region.subtraction_names.size() and not region.subtraction_names[index].strip_edges().is_empty():
 			cutout_name = region.subtraction_names[index]
 		var guide := _make_contour_guide(cutout_name, region.subtraction_polygons[index], Color("ff5263"))
+		if not region.get_cutout_id(index).is_empty():
+			guide.set_meta("iwe_cutout_id", region.get_cutout_id(index))
 		nav_region.add_child(guide)
 		guide.owner = nav_region.owner
 

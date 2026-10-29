@@ -39,7 +39,9 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 
 | Item | Status | Notes |
 |---|---|---|
-| Schema version on `IWEDocument` | Partial | The field exists (default 1, omitted from files). No explicit write, no refusal of a newer version, no migration (audit P1-9) |
+| Schema version on `IWEDocument` | Done | Written in every file, a newer or invalid version is refused with a message and the file untouched, files without the field load as version 1 (audit P1-9). No migration exists yet because only version 1 exists |
+| Portable picture reference | Done | Saving always copies the picture beside the document and stores `assets/...`; a moved folder reopens; Save As brings its own copy (audit P1-7) |
+| Cutout identifiers, region identifier on exported nodes, reference validator | Done | `subtraction_ids`, `iwe_region_id` and `iwe_cutout_id` metadata, `validate_references()` reports on open |
 | Layer tree resource (`IWELayer`), create/rename/delete/reorder | Todo | |
 | Nested groups | Todo | Currently flat |
 | Regions reference a layer id, not replaced by it | Todo | Navigation never reads layer order |
@@ -74,7 +76,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 | Fit camera from two or more height references | Done | |
 | Multi-position presets (Near / Middle / Far) | Partial | Templates exist; no preset workflow |
 | Assisted calibration with quality diagnostic | Todo | The fit residual is not shown; 10.6% on the steep village scene |
-| 2D, flat 3D, and perspective exports | Done | Saved and reloaded in tests. An export from a picture outside the project embeds about 6 MB (audit P1-8) |
+| 2D, flat 3D, and perspective exports | Done | Saved and reloaded in tests. A picture inside the project is referenced, not embedded (audit P1-8); only a picture Godot has not imported and cannot import is embedded, with a warning |
 | Test character speed: base speed, x0.1 to x10 multiplier, pause, reset | Done (character) | `IWEWalkmeshCharacter`; never saved or exported |
 | Speed controls in the dock preview | Todo | Needs an in-editor test character; the dock preview is a static render (milestone M3) |
 | Environment-only and navigation-only exports | Todo | |
@@ -88,11 +90,11 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 - Perspective projection and camera views; known-height template placement.
 - Save and reopen of IWE documents, including the copy of the image beside the document.
 - Test character with mouse and keyboard, walls, and path following.
-- Automated suite: 141 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
+- Automated suite: 197 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
 
 ## Open technical debts
 
-- Schema version field exists but is not written, enforced, or migrated.
+- Schema version is written and enforced, but no migration has been exercised because version 2 does not exist yet.
 - The dock is about 1,640 lines and mixes UI with document logic.
 - Manual GUI verification is still needed for most interactions; headless tests cover data and generation.
 - Pre-existing Phantom Camera icon errors remain in the starter project.

@@ -7,6 +7,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Portable documents (audit P1-7). Saving always copies the picture beside the document and stores a path relative to it, so moving the project folder keeps it working. The extra folder prompt is gone. Fixes Save As, which kept pointing at the first folder's picture and left the new folder without one.
+- Small exports (audit P1-8). An exported scene references a picture inside the project instead of embedding its pixels (126 KB instead of 6.4 MB on the village scene). A picture that is not imported yet is imported by the editor at export time.
+- Document format version (audit P1-9). Every saved file names its `schema_version`. A file from a newer version is refused with both version numbers and is not touched. Files from before the field still open.
+- Stable cutout identifiers, region and cutout identifiers on exported nodes (`iwe_region_id`, `iwe_cutout_id`), and a reference validator that warns about broken references when a document is opened.
 - Click-to-move keeps a clearance from corners (audit N-2). The planner's paths touched obstacle and doorway corners, which a character with a radius could not round. `IWEWalkmeshCharacter.path_clearance` (default 0, set to the character radius by the export) moves each corner of a planned path away from the edge while it stays walkable.
 - Perspective export warnings (audit P1-3). A zone or template that lies at or above the horizon of the calibrated camera used to disappear from the export without a word. Each one is now named in the Output panel, the dock status shows the count, and `IWESceneGenerator.take_warnings(root)` returns them for scripts.
 - Overlapping zones are walkable as one (audit P1-2). Click-to-move crosses from one zone to another where they overlap, in both directions and across chains of three. The zone drawn first keeps the shared ground; a later zone's navigation mesh stops on its outline.

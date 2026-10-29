@@ -10,6 +10,9 @@ extends Resource
 @export var subtraction_polygons: Array[PackedVector2Array] = []
 ## User-facing names aligned by index with subtraction_polygons.
 @export var subtraction_names := PackedStringArray()
+## Stable identifiers aligned by index with subtraction_polygons. Names and order may change;
+## an identifier does not. Documents saved before they existed get them on load (ensure_cutout_ids).
+@export var subtraction_ids := PackedStringArray()
 @export var color := Color("45d483")
 @export var visible := true
 @export var locked := false
@@ -19,7 +22,29 @@ func duplicate_region() -> IWERegion:
 	var copy := duplicate(true) as IWERegion
 	copy.id = _new_id()
 	copy.name = "%s Copy" % name
+	# The copy's cutouts are new cutouts: they must not share identifiers with the original's.
+	copy.subtraction_ids = PackedStringArray()
+	copy.ensure_cutout_ids()
 	return copy
+
+
+## Gives every cutout an identifier and drops identifiers that have no cutout. Returns true when
+## something changed.
+func ensure_cutout_ids() -> bool:
+	var changed := subtraction_ids.size() != subtraction_polygons.size()
+	if subtraction_ids.size() > subtraction_polygons.size():
+		subtraction_ids.resize(subtraction_polygons.size())
+	while subtraction_ids.size() < subtraction_polygons.size():
+		subtraction_ids.append(new_cutout_id())
+	return changed
+
+
+func get_cutout_id(index: int) -> String:
+	return subtraction_ids[index] if index >= 0 and index < subtraction_ids.size() else ""
+
+
+static func new_cutout_id() -> String:
+	return "cutout_%s" % Crypto.new().generate_random_bytes(8).hex_encode()
 
 
 func get_walkable_contours() -> Array[PackedVector2Array]:

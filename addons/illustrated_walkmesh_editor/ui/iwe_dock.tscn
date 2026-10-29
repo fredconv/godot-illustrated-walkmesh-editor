@@ -479,12 +479,6 @@ file_mode = 4
 access = 2
 filters = PackedStringArray("*.tres ; IWE Document")
 
-[node name="ImageCopyDialog" type="FileDialog" parent="."]
-unique_name_in_owner = true
-file_mode = 2
-access = 2
-current_dir = "res://"
-
 [node name="OpenDocumentDialog" type="FileDialog" parent="."]
 unique_name_in_owner = true
 file_mode = 0

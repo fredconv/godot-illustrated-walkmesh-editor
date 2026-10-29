@@ -35,7 +35,6 @@ const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/
 @onready var _file_dialog: FileDialog = $ImageFileDialog
 @onready var _save_dialog: FileDialog = %DocumentFileDialog
 @onready var _open_dialog: FileDialog = $OpenDocumentDialog
-@onready var _image_copy_dialog: FileDialog = %ImageCopyDialog
 @onready var _export_dialog: FileDialog = %ExportSceneDialog
 @onready var _export_2d_button: Button = %Export2DButton
 @onready var _export_3d_button: Button = %Export3DButton
@@ -183,10 +182,8 @@ func _ready() -> void:
 	_save_dialog.file_selected.connect(_save_document)
 	# Cancelling a save that was started from the "unsaved changes" question cancels that action.
 	_save_dialog.canceled.connect(_cancel_pending_unsaved_action)
-	_image_copy_dialog.canceled.connect(_cancel_pending_unsaved_action)
 	_open_button.pressed.connect(_open_dialog.popup_centered)
 	_open_dialog.file_selected.connect(_request_open_document)
-	_image_copy_dialog.dir_selected.connect(_copy_image_into_document)
 	_export_2d_button.pressed.connect(_begin_export.bind(2))
 	_export_3d_button.pressed.connect(_begin_export.bind(3))
 	_export_dialog.file_selected.connect(_export_scene)
@@ -505,6 +502,10 @@ func _replace_document(document: Resource) -> void:
 	_reset_history()
 	_set_perspective_mode(false)
 	_migrate_document_groups()
+	for region in _document.regions:
+		region.ensure_cutout_ids()
+	for problem in _document.validate_references():
+		push_warning("IWE: %s" % problem)
 	_canvas.set_document(_document)
 	if _document != null:
 		_canvas.set_scale_anchors(_document.scale_anchors, _document.default_template_height_px)
@@ -534,9 +535,10 @@ func _save_document(path: String) -> void:
 	_pending_document_path = path
 	if not _pending_document_path.ends_with(".tres"):
 		_pending_document_path += ".tres"
-	if not _pending_image_source.is_empty() and not _is_asset_beside_document(_pending_image_source):
-		_image_copy_dialog.current_dir = _pending_document_path.get_base_dir()
-		_image_copy_dialog.popup_centered()
+	if not _pending_image_source.is_empty() and not _is_asset_beside_document(_pending_image_source, _pending_document_path):
+		# The picture always goes beside the document, whatever folder the person browsed, so the
+		# stored path ("assets/...") is relative to the document and survives moving the folder.
+		_copy_image_into_document(_pending_document_path.get_base_dir())
 		return
 	_write_document()
 
@@ -548,7 +550,7 @@ func _copy_image_into_document(directory: String) -> void:
 	var asset_directory := directory.path_join("assets")
 	var make_directory_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(asset_directory))
 	if make_directory_error != OK and make_directory_error != ERR_ALREADY_EXISTS:
-		push_error("IWE: Could not create assets directory (%s)" % error_string(make_directory_error))
+		_report_save_error("Could not create the assets folder (%s)" % error_string(make_directory_error))
 		return
 	var source_absolute := _pending_image_source
 	if source_absolute.begins_with("res://") or source_absolute.begins_with("user://"):
@@ -558,7 +560,7 @@ func _copy_image_into_document(directory: String) -> void:
 	var destination := asset_directory.path_join(image_filename)
 	var copy_error := DirAccess.copy_absolute(source_absolute, ProjectSettings.globalize_path(destination))
 	if copy_error != OK and copy_error != ERR_ALREADY_EXISTS:
-		push_error("IWE: Could not copy illustration (%s)" % error_string(copy_error))
+		_report_save_error("Could not copy the illustration (%s)" % error_string(copy_error))
 		return
 	_document.illustration_path = "assets/%s" % image_filename
 	_pending_image_source = destination
@@ -724,6 +726,11 @@ func _open_document(path: String) -> void:
 	if loaded == null or not loaded is DOCUMENT_SCRIPT:
 		push_error("IWE: Could not load an IWE document at %s" % path)
 		return
+	var schema_problem: String = DOCUMENT_SCRIPT.schema_problem(loaded)
+	if not schema_problem.is_empty():
+		push_error("IWE: %s (%s)" % [schema_problem, path])
+		_status_label.text = schema_problem
+		return
 	loaded.document_path = path
 	_replace_document(loaded)
 	if not _has_illustration:
@@ -748,7 +755,7 @@ func _export_scene(path: String) -> void:
 	if not absolute_path.replace("\\", "/").to_lower().begins_with(absolute_project.to_lower()):
 		push_error("IWE: Export the scene inside this Godot project so its resources remain portable.")
 		return
-	var texture := _load_external_texture(_pending_image_source)
+	var texture := _texture_for_export(_pending_image_source)
 	if texture == null:
 		push_error("IWE: The source illustration could not be loaded for scene export.")
 		return
@@ -951,9 +958,13 @@ func _create_subtraction(region_id: String, points: PackedVector2Array) -> void:
 	var names_before := _get_cutout_names(region)
 	var names_after := names_before.duplicate()
 	names_after.append("Cutout %d" % (after.size()))
+	region.ensure_cutout_ids()
+	var ids_before := region.subtraction_ids.duplicate()
+	var ids_after := ids_before.duplicate()
+	ids_after.append(REGION_SCRIPT.new_cutout_id())
 	_history.create_action("Subtract polygon from IWE region")
-	_history.add_do_method(_set_region_cutouts.bind(region_id, {"polygons": after, "names": names_after}))
-	_history.add_undo_method(_set_region_cutouts.bind(region_id, {"polygons": before, "names": names_before}))
+	_history.add_do_method(_set_region_cutouts.bind(region_id, {"polygons": after, "names": names_after, "ids": ids_after}))
+	_history.add_undo_method(_set_region_cutouts.bind(region_id, {"polygons": before, "names": names_before, "ids": ids_before}))
 	_history.commit_action()
 
 
@@ -963,6 +974,9 @@ func _set_region_cutouts(region_id: String, cutouts: Dictionary) -> void:
 		return
 	region.subtraction_polygons = cutouts.polygons.duplicate(true)
 	region.subtraction_names = cutouts.names.duplicate()
+	if cutouts.has("ids"):
+		region.subtraction_ids = cutouts.ids.duplicate()
+	region.ensure_cutout_ids()
 	_canvas.queue_redraw()
 	_refresh_regions(region_id)
 
@@ -1372,6 +1386,23 @@ func _resolve_document_asset_path(asset_path: String, document_path: String) -> 
 	return ProjectSettings.localize_path(resolved) if resolved.is_absolute_path() else resolved
 
 
+## The picture for an exported scene. A picture inside the project is referenced by its path, so
+## the scene stays small and follows later edits of the file. Only a picture Godot has not
+## imported (and cannot import here) is embedded, pixel by pixel, which makes the scene several
+## megabytes larger (audit P1-8).
+func _texture_for_export(source_path: String) -> Texture2D:
+	# A picture picked by absolute path may still lie inside the project.
+	var path := ProjectSettings.localize_path(source_path) if source_path.is_absolute_path() else source_path
+	if path.begins_with("res://") and not ResourceLoader.exists(path) and Engine.is_editor_hint() and FileAccess.file_exists(path):
+		# A picture that a save just copied is not imported yet; import it now.
+		EditorInterface.get_resource_filesystem().reimport_files(PackedStringArray([path]))
+	if path.begins_with("res://") and ResourceLoader.exists(path):
+		return load(path) as Texture2D
+	if path.begins_with("res://"):
+		push_warning("IWE: %s is not imported, so the exported scene embeds the picture. Let Godot import it, then export again to reference it." % path)
+	return _load_external_texture(source_path)
+
+
 func _load_external_texture(path: String) -> Texture2D:
 	if path.is_empty():
 		return null
@@ -1635,12 +1666,15 @@ func _group_index(group_id: String) -> int:
 	return -1
 
 
-func _is_asset_beside_document(asset_path: String) -> bool:
-	if _document.document_path.is_empty():
+## Whether asset_path is the document's own copy of the picture, beside the document file at
+## target_document_path (the path it is being saved to, by default the one it was opened from).
+func _is_asset_beside_document(asset_path: String, target_document_path: String = "") -> bool:
+	var document_file: String = _document.document_path if target_document_path.is_empty() else target_document_path
+	if document_file.is_empty():
 		return false
 	if not _document.illustration_path.begins_with("assets/"):
 		return false
-	var expected_path: String = _document.document_path.get_base_dir().path_join(_document.illustration_path)
+	var expected_path: String = document_file.get_base_dir().path_join(_document.illustration_path)
 	if expected_path.begins_with("res://") or expected_path.begins_with("user://"):
 		expected_path = ProjectSettings.globalize_path(expected_path)
 	var image_absolute := asset_path
