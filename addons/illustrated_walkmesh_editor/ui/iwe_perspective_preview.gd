@@ -1,8 +1,12 @@
 @tool
 extends SubViewportContainer
+## Live 3D preview of the calibrated stage.
+##
+## The preview only *displays* the calibration. The frame it shows is the calibration's own
+## reference viewport; the panel around it can have any size or shape and is only a display
+## concern. Nothing here writes to the document.
 
 signal image_point_clicked(image_position: Vector2)
-signal viewport_size_changed(viewport_size: Vector2i)
 
 const PROJECTOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_perspective_projector.gd")
 const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_scene_generator.gd")
@@ -11,28 +15,29 @@ const MIN_USABLE_SIZE := 64
 var _viewport: SubViewport
 var _image_size := Vector2i.ZERO
 var _top_view := false
-# A hidden container shrinks its SubViewport to a few pixels; keep the last usable size so
-# calibration never adopts a degenerate reference viewport.
-var _last_valid_size := Vector2i(1280, 720)
+## The frame being shown (the calibration's reference viewport). Set by configure().
+var _reference_size := Vector2i(1280, 720)
 
 
 func _ready() -> void:
-	stretch = true
+	# Stretch is off on purpose: the render target is sized explicitly below, and Godot refuses
+	# manual SubViewport sizes while the container stretches it.
+	stretch = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	custom_minimum_size = Vector2(MIN_USABLE_SIZE * 2, MIN_USABLE_SIZE * 2)
 	_viewport = SubViewport.new()
 	_viewport.name = "PerspectiveViewport"
 	_viewport.own_world_3d = true
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_viewport.size = Vector2i(1280, 720)
+	_viewport.size = _reference_size
 	add_child(_viewport)
 	resized.connect(_sync_viewport_size)
 	visibility_changed.connect(_sync_viewport_size, CONNECT_DEFERRED)
-	viewport_size_changed.emit(_viewport.size)
 
 
 ## Stretch sizing is not reliable once the container has been hidden (its SubViewport can be
-## left at 2x2 pixels, which renders as a flat grey field). Size the viewport explicitly.
+## left at 2x2 pixels, which renders as a flat grey field). Size the render target explicitly.
+## This is the *render* size only; the projection never reads it.
 func _sync_viewport_size() -> void:
 	if not is_instance_valid(_viewport) or not is_visible_in_tree():
 		return
@@ -40,14 +45,15 @@ func _sync_viewport_size() -> void:
 	if target.x < MIN_USABLE_SIZE or target.y < MIN_USABLE_SIZE or target == _viewport.size:
 		return
 	_viewport.size = target
-	_last_valid_size = target
-	viewport_size_changed.emit(target)
 
 
+## Builds the stage for this calibration and frames the panel to its reference aspect ratio.
 func configure(document: Resource, texture: Texture2D, calibration: IWEPerspectiveCalibration, world_scale: float) -> void:
 	if not is_instance_valid(_viewport) or document == null or texture == null or calibration == null:
 		return
 	_image_size = document.image_size
+	_reference_size = calibration.reference_viewport_size
+	_apply_reference_aspect()
 	var stage: Node3D = SCENE_GENERATOR.build_perspective_scene(document, texture, calibration, world_scale)
 	if stage == null:
 		return
@@ -56,6 +62,18 @@ func configure(document: Resource, texture: Texture2D, calibration: IWEPerspecti
 		child.free()
 	_viewport.add_child(stage)
 	_set_camera_mode(_top_view)
+
+
+## The parent keeps this panel at the reference aspect ratio, so the render matches the
+## calibrated frame whatever the dock looks like.
+func _apply_reference_aspect() -> void:
+	var frame := get_parent() as AspectRatioContainer
+	if frame != null and _reference_size.y > 0:
+		frame.ratio = float(_reference_size.x) / float(_reference_size.y)
+
+
+func get_reference_size() -> Vector2i:
+	return _reference_size
 
 
 func set_top_view(enabled: bool) -> void:
@@ -67,19 +85,12 @@ func is_top_view() -> bool:
 	return _top_view
 
 
-func get_viewport_size() -> Vector2i:
-	if _viewport and _viewport.size.x >= MIN_USABLE_SIZE and _viewport.size.y >= MIN_USABLE_SIZE:
-		_last_valid_size = _viewport.size
-	return _last_valid_size
-
-
 func _gui_input(event: InputEvent) -> void:
 	if _top_view or not (event is InputEventMouseButton) or not event.pressed or event.button_index != MOUSE_BUTTON_LEFT:
 		return
-	var viewport_point: Vector2 = event.position
-	if size.x > 0.0 and size.y > 0.0:
-		viewport_point *= Vector2(get_viewport_size()) / size
-	var image_position: Variant = PROJECTOR.viewport_to_image(viewport_point, _image_size, get_viewport_size())
+	# Panel pixel -> reference pixel -> image pixel. Each step is a pure function.
+	var reference_point := PROJECTOR.panel_to_reference(event.position, size, _reference_size)
+	var image_position: Variant = PROJECTOR.viewport_to_image(reference_point, _image_size, _reference_size)
 	if image_position != null:
 		image_point_clicked.emit(image_position)
 		accept_event()

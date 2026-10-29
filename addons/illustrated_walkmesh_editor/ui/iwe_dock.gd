@@ -48,6 +48,9 @@ const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/
 @onready var _perspective_button: Button = %PerspectiveButton
 @onready var _perspective_panel: VBoxContainer = %PerspectivePanel
 @onready var _perspective_preview: SubViewportContainer = %PerspectivePreview
+@onready var _perspective_preview_frame: AspectRatioContainer = %PerspectivePreviewFrame
+@onready var _reference_width_input: SpinBox = %ReferenceViewportWidthInput
+@onready var _reference_height_input: SpinBox = %ReferenceViewportHeightInput
 @onready var _perspective_top_view_button: CheckButton = %PerspectiveTopViewButton
 @onready var _fit_references_button: Button = %FitFromReferencesButton
 @onready var _add_player_input: CheckButton = %AddPlayerInput
@@ -172,7 +175,8 @@ func _ready() -> void:
 	_canvas.scale_anchor_height_requested.connect(_scale_anchor_height_by)
 	_canvas.scale_anchor_delete_requested.connect(_delete_scale_anchor_by_id)
 	_perspective_preview.image_point_clicked.connect(_create_perspective_anchor)
-	_perspective_preview.viewport_size_changed.connect(_perspective_viewport_resized)
+	_reference_width_input.value_changed.connect(_set_reference_viewport_axis.bind(0))
+	_reference_height_input.value_changed.connect(_set_reference_viewport_axis.bind(1))
 	_new_button.pressed.connect(_request_new_document)
 	_save_button.pressed.connect(_show_save_dialog)
 	_save_dialog.file_selected.connect(_save_document)
@@ -244,7 +248,9 @@ func _load_illustration(path: String) -> void:
 	_canvas.set_texture(texture)
 	_has_illustration = true
 	_document.set_illustration(path, image.get_size())
-	_document.perspective_calibration = CALIBRATION_SCRIPT.for_image(image.get_size(), _perspective_preview.get_viewport_size())
+	# The reference frame of a new calibration is the project's game window: explicit and stable.
+	# The size of this panel plays no part in it.
+	_document.perspective_calibration = CALIBRATION_SCRIPT.for_image(image.get_size(), CALIBRATION_SCRIPT.project_viewport_size())
 	_pending_image_source = path
 	_sync_calibration_inputs()
 	_refresh_group_options()
@@ -267,19 +273,8 @@ func _refresh_perspective_preview() -> void:
 	var texture := _load_external_texture(_pending_image_source)
 	if texture == null:
 		return
-	var calibration: IWEPerspectiveCalibration = _document.perspective_calibration
-	calibration.reference_viewport_size = _perspective_preview.get_viewport_size()
-	_perspective_preview.configure(_document, texture, calibration, _scale_3d.value)
+	_perspective_preview.configure(_document, texture, _document.perspective_calibration, _scale_3d.value)
 	_perspective_preview.set_top_view(_perspective_top_view_button.button_pressed)
-
-
-func _perspective_viewport_resized(viewport_size: Vector2i) -> void:
-	if _document == null or _document.perspective_calibration == null:
-		return
-	if _document.perspective_calibration.reference_viewport_size == viewport_size:
-		return
-	_document.perspective_calibration.reference_viewport_size = viewport_size
-	_refresh_perspective_preview()
 
 
 func _sync_calibration_inputs() -> void:
@@ -295,6 +290,8 @@ func _sync_calibration_inputs() -> void:
 	_camera_rotation_x_input.set_value_no_signal(calibration.camera_rotation_degrees.x)
 	_camera_rotation_y_input.set_value_no_signal(calibration.camera_rotation_degrees.y)
 	_camera_rotation_z_input.set_value_no_signal(calibration.camera_rotation_degrees.z)
+	_reference_width_input.set_value_no_signal(calibration.reference_viewport_size.x)
+	_reference_height_input.set_value_no_signal(calibration.reference_viewport_size.y)
 
 
 func _set_calibration_fov(value: float) -> void:
@@ -315,6 +312,15 @@ func _set_camera_position_axis(value: float, axis: int) -> void:
 	var position: Vector3 = _document.perspective_calibration.camera_position
 	position[axis] = value
 	_set_calibration_value("camera_position", position)
+
+
+## Editing the reference frame is a deliberate change: it moves every image point on the floor.
+func _set_reference_viewport_axis(value: float, axis: int) -> void:
+	if _document == null or _document.perspective_calibration == null:
+		return
+	var reference: Vector2i = _document.perspective_calibration.reference_viewport_size
+	reference[axis] = maxi(roundi(value), 64)
+	_set_calibration_value("reference_viewport_size", reference)
 
 
 func _set_camera_rotation_axis(value: float, axis: int) -> void:
@@ -407,6 +413,7 @@ func _set_perspective_mode(enabled: bool) -> void:
 	_perspective_button.set_pressed_no_signal(enabled)
 	_perspective_panel.visible = enabled
 	_perspective_preview.visible = enabled
+	_perspective_preview_frame.visible = enabled
 	_image_scroll.visible = not enabled
 	if enabled:
 		_stop_tools()
@@ -1344,6 +1351,11 @@ func _sync_points_mode(enabled: bool) -> void:
 func _refresh_status() -> void:
 	if _perspective_mode:
 		_status_label.text = "Perspective calibration  •  Click the preview to place a height reference; adjust FOV, camera and floor controls."
+		if _document != null and _document.perspective_calibration != null:
+			var reference: Vector2i = _document.perspective_calibration.reference_viewport_size
+			var game_window := CALIBRATION_SCRIPT.project_viewport_size()
+			if not CALIBRATION_SCRIPT.aspects_match(reference, game_window):
+				_status_label.text += "  •  Reference frame %d×%d differs in shape from the game window %d×%d" % [reference.x, reference.y, game_window.x, game_window.y]
 		return
 	var mode := "Select"
 	if _template_mode_button.button_pressed:

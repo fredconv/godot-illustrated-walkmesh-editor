@@ -60,3 +60,32 @@ static func image_scale_in_viewport(image_size: Vector2i, viewport_size: Vector2
 	if image_size.x <= 0 or image_size.y <= 0 or viewport_size.x <= 0 or viewport_size.y <= 0:
 		return 0.0
 	return minf(float(viewport_size.x) / image_size.x, float(viewport_size.y) / image_size.y)
+
+
+## --- Display transform (editor only) -------------------------------------------------------
+## The projection above works in the *reference viewport*: the frame the calibration was made
+## for. Only its aspect ratio matters, never its pixel size. The editor shows that frame inside
+## a panel of any size; these two functions convert between panel pixels and reference pixels.
+## They never touch the calibration, so resizing or detaching the panel cannot change it.
+
+## Scale that fits the whole reference frame inside the panel, and the offset that centres it.
+static func panel_fit(panel_size: Vector2, reference_size: Vector2i) -> Dictionary:
+	if panel_size.x <= 0.0 or panel_size.y <= 0.0 or reference_size.x <= 0 or reference_size.y <= 0:
+		return {"scale": 0.0, "offset": Vector2.ZERO}
+	var fit_scale := minf(panel_size.x / reference_size.x, panel_size.y / reference_size.y)
+	return {"scale": fit_scale, "offset": (panel_size - Vector2(reference_size) * fit_scale) * 0.5}
+
+
+## Panel pixel -> reference-viewport pixel. The result may lie outside the reference frame when
+## the point is in the letterbox bars. Returns Vector2.ZERO for an unusable panel or reference.
+static func panel_to_reference(panel_point: Vector2, panel_size: Vector2, reference_size: Vector2i) -> Vector2:
+	var fit := panel_fit(panel_size, reference_size)
+	if fit.scale <= 0.0:
+		return Vector2.ZERO
+	return (panel_point - fit.offset) / fit.scale
+
+
+## Reference-viewport pixel -> panel pixel.
+static func reference_to_panel(reference_point: Vector2, panel_size: Vector2, reference_size: Vector2i) -> Vector2:
+	var fit := panel_fit(panel_size, reference_size)
+	return fit.offset + reference_point * fit.scale

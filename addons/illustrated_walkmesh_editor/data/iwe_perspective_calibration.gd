@@ -7,6 +7,10 @@ extends Resource
 @export var camera_rotation_degrees := Vector3(-44.6, 0.0, 0.0)
 @export var floor_height := 0.0
 @export_range(1.0, 10000.0, 1.0) var character_height_units := 180.0
+## The projection frame this calibration was made for. It is part of the calibration, like the
+## camera: only its aspect ratio matters (the pixel size does not), and changing it changes how
+## every image point lands on the floor. It is set when the document is created (from the
+## project's game window) and edited on purpose, never by the size of an editor panel.
 @export var reference_viewport_size := Vector2i(1280, 720)
 
 
@@ -24,6 +28,18 @@ static func for_image(image_size: Vector2i, viewport_size: Vector2i = Vector2i(1
 	calibration.camera_rotation_degrees = Vector3(-rad_to_deg(atan2(camera_y - calibration.floor_height, camera_z - target_z)), 0.0, 0.0)
 	calibration.character_height_units = maxf(float(image_size.y) * 0.16, 1.0)
 	return calibration
+
+
+## Aspect ratio of the reference frame.
+func get_reference_aspect() -> float:
+	return float(reference_viewport_size.x) / maxf(float(reference_viewport_size.y), 1.0)
+
+
+## True when two frames have the same aspect ratio within a relative tolerance.
+static func aspects_match(first: Vector2i, second: Vector2i, tolerance := 0.01) -> bool:
+	var first_aspect := float(first.x) / maxf(float(first.y), 1.0)
+	var second_aspect := float(second.x) / maxf(float(second.y), 1.0)
+	return absf(first_aspect - second_aspect) <= tolerance * second_aspect
 
 
 ## Game window size from Project Settings; exported cameras are calibrated for this aspect ratio.

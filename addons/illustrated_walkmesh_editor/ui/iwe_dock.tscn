@@ -266,6 +266,30 @@ max_value = 10000.0
 step = 1.0
 value = 180.0
 
+[node name="ReferenceViewportLabel" type="Label" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+layout_mode = 2
+text = "Reference frame (width / height, pixels)"
+tooltip_text = "The frame the calibration is made for, normally your game window. Only its aspect ratio matters. Changing it changes how the image lands on the floor."
+
+[node name="ReferenceViewportInputs" type="HFlowContainer" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
+layout_mode = 2
+
+[node name="ReferenceViewportWidthInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel/ReferenceViewportInputs"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 64.0
+max_value = 16384.0
+step = 1.0
+value = 1280.0
+
+[node name="ReferenceViewportHeightInput" type="SpinBox" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel/ReferenceViewportInputs"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 64.0
+max_value = 16384.0
+step = 1.0
+value = 720.0
+
 [node name="CameraPositionLabel" type="Label" parent="Workspace/Sidebar/SidebarContent/PerspectivePanel"]
 layout_mode = 2
 text = "Camera position (X / Y / Z)"
@@ -413,9 +437,16 @@ size_flags_vertical = 3
 horizontal_scroll_mode = 3
 vertical_scroll_mode = 3
 
-[node name="PerspectivePreview" type="SubViewportContainer" parent="Workspace/CanvasArea"]
+[node name="PerspectivePreviewFrame" type="AspectRatioContainer" parent="Workspace/CanvasArea"]
 unique_name_in_owner = true
 visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+ratio = 1.7777778
+
+[node name="PerspectivePreview" type="SubViewportContainer" parent="Workspace/CanvasArea/PerspectivePreviewFrame"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
