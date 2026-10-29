@@ -28,7 +28,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 | Touching zones on one floor are walkable | Done | Exact, full shared edges only; tested headlessly and end to end. A partly shared edge is connected for navigation but keeps its wall (found by the village scenario) |
 | Overlapping zones are connected for navigation | Done | The earlier zone keeps the shared ground, the later mesh stops on its outline (audit P1-2). Tested headlessly: areas, chains of three, gaps stay closed |
 | Click-to-move keeps clearance from obstacle corners | Todo | Paths hug corners, so the character can stall at a narrow doorway |
-| Warnings when export drops a zone or wall above the horizon | Todo | Audit P1-3 |
+| Warnings when export drops a zone or wall above the horizon | Done | Audit P1-3. Each dropped zone or template is named in the Output panel and counted in the dock status; a zone that crosses the horizon is dropped whole and reported |
 | Explicit manual connection (bridge between two regions) | Todo | Width, allowed flag, optional direction |
 | Connection only between regions that touch or are explicitly linked | Todo | Single-point contact is never a passage |
 | Collision-only region (no navigation effect) | Todo | |

@@ -11,6 +11,8 @@ const CHARACTER_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/runt
 const LAYER_FLOOR_ILLUSTRATION := 1 << 1
 const LAYER_CAMERA_BACKDROP := 1 << 2
 const PERSPECTIVE_CAMERA_FAR := 2000.0
+## Metadata key a perspective export uses to hand its warnings to the caller. See take_warnings.
+const WARNINGS_META := "iwe_export_warnings"
 
 
 static func build_2d_scene(document: Resource, texture: Texture2D, world_scale: float = 1.0, add_camera: bool = false) -> Node2D:
@@ -138,12 +140,24 @@ static func build_3d_scene(document: Resource, texture: Texture2D, world_scale: 
 	return root
 
 
+## Warnings recorded while a scene was built (geometry that could not be exported), one sentence
+## each. The list is removed from the scene so that it is not saved with it. Empty when nothing
+## was dropped.
+static func take_warnings(root: Node) -> PackedStringArray:
+	if root == null or not root.has_meta(WARNINGS_META):
+		return PackedStringArray()
+	var warnings: PackedStringArray = root.get_meta(WARNINGS_META)
+	root.remove_meta(WARNINGS_META)
+	return warnings
+
+
 static func build_perspective_scene(document: Resource, texture: Texture2D, calibration: IWEPerspectiveCalibration, world_scale: float = 0.01, add_player: bool = false) -> Node3D:
 	if document == null or texture == null or calibration == null or document.image_size.x <= 0 or document.image_size.y <= 0 or world_scale <= 0.0:
 		return null
 	var viewport_size := calibration.reference_viewport_size
 	if viewport_size.x <= 0 or viewport_size.y <= 0:
 		return null
+	var warnings := PackedStringArray()
 	var root := Node3D.new()
 	root.name = _safe_node_name(document.resource_name if not document.resource_name.is_empty() else "IWEPerspectiveStage")
 	root.set_meta("iwe_projection_source", "image-space")
@@ -218,6 +232,7 @@ static func build_perspective_scene(document: Resource, texture: Texture2D, cali
 			continue
 		var projected_region := _make_projected_navigation_region(region, document.image_size, viewport_size, calibration, document.regions)
 		if projected_region == null:
+			warnings.append("Zone \"%s\" was not exported: part of it lies at or above the horizon of the calibrated camera, where the floor cannot be projected. Move it below the horizon or recalibrate the camera." % region.name)
 			continue
 		var parent: Node3D = group_nodes.get(region.group_id, navigation)
 		parent.add_child(projected_region)
@@ -227,6 +242,7 @@ static func build_perspective_scene(document: Resource, texture: Texture2D, cali
 		var anchor: IWEScaleAnchor = document.scale_anchors[anchor_index]
 		var ground_point: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(anchor.position, document.image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
 		if ground_point == null:
+			warnings.append("Template \"%s\" was not exported: it lies at or above the horizon of the calibrated camera." % anchor.name)
 			continue
 		var anchor_node := Node3D.new()
 		anchor_node.name = _safe_node_name(anchor.name if not anchor.name.strip_edges().is_empty() else "Calibration %d" % (anchor_index + 1))
@@ -250,6 +266,8 @@ static func build_perspective_scene(document: Resource, texture: Texture2D, cali
 		mannequin.material_override = mannequin_material
 		anchor_node.add_child(mannequin)
 		mannequin.owner = root
+	if not warnings.is_empty():
+		root.set_meta(WARNINGS_META, warnings)
 	if add_player:
 		var player := _make_player(document, calibration, viewport_size, world_scale)
 		if player:

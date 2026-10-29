@@ -763,6 +763,7 @@ func _export_scene(path: String) -> void:
 	if root == null:
 		push_error("IWE: Could not build the generated scene.")
 		return
+	var warnings := SCENE_GENERATOR.take_warnings(root)
 	var packed := PackedScene.new()
 	var pack_error := packed.pack(root)
 	root.free()
@@ -775,6 +776,10 @@ func _export_scene(path: String) -> void:
 		push_error("IWE: Could not save generated scene (%s)." % error_string(save_error))
 		return
 	_status_label.text = "Exported perspective scene: %s" % ProjectSettings.localize_path(save_path) if _pending_export_dimension == 4 else "Exported %dD scene: %s" % [_pending_export_dimension, ProjectSettings.localize_path(save_path)]
+	if not warnings.is_empty():
+		for warning in warnings:
+			push_warning("IWE: %s" % warning)
+		_status_label.text += " (%d warning%s, see the Output panel)" % [warnings.size(), "" if warnings.size() == 1 else "s"]
 
 
 func _create_region(points: PackedVector2Array) -> void:
