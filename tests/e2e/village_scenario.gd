@@ -100,10 +100,10 @@ static func world_to_image(world_position: Vector3, calibration: IWEPerspectiveC
 
 
 ## The perspective stage with its test character, in the tree, with navigation settled.
-static func start_stage(tree: SceneTree, document: Resource) -> Array:
+static func start_stage(tree: SceneTree, document: Resource, element_textures: Dictionary = {}) -> Array:
 	var calibration: IWEPerspectiveCalibration = document.perspective_calibration
 	var texture := load(BACKGROUND) as Texture2D
-	var root: Node3D = SCENE_GENERATOR.build_perspective_scene(document, texture, calibration, WORLD_SCALE, true)
+	var root: Node3D = SCENE_GENERATOR.build_perspective_scene(document, texture, calibration, WORLD_SCALE, true, element_textures)
 	var player := root.get_node("Player") as CharacterBody3D
 	tree.root.add_child(root)
 	# A fixed number of frames is not enough on a busy machine: the navigation map can take longer

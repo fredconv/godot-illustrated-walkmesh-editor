@@ -8,6 +8,7 @@ This document answers one question: **what is left before the first public pre-r
 
 - **The core chain works and is test-backed.** Importing an illustration, drawing zones and cutouts, connecting zones by a shared edge, calibrating a perspective camera from height references, exporting a perspective scene, and walking a test character around the obstacles all work, from an empty document, on new assets (`tests/e2e/`, 31 tests, plus a scripted pass in the real editor).
 - **All audit blockers are closed.** P0-1, P0-2, P1-1, P1-2, P1-3, P1-4, P1-5, P1-6, P1-10 are fixed with tests (M1 is complete). P1-7, P1-8 and P1-9 are fixed too (M2 is complete).
+- **Update (second session, 2026-10-29): layers, pictures, foreground occlusion, the union command and the two-tab dock are built; see section 7.1.** The statements below about layers being "not started" describe the first session.
 - **Status after the autonomous session of 2026-10-29: M1, M2, M3 and M4 are done and pushed** (224 tests, CI green). What remains is M12 (manual QA with a mouse, which no tool in that session could do), M13 (release preparation, see `RELEASE_CHECKLIST.md`), M5 (waiting for a UI decision, see `UI_REDESIGN_PROPOSAL.md`) and the optional milestones. The plugin is **technically close to an alpha for the authoring and perspective core, but not ready to release**: no mouse validation has been done, and a doorway narrower than the character is reported but not avoided.
 - **The end-to-end run found three problems the unit tests did not.** (1) A zone that shares only *part* of another zone's edge is connected for navigation but still walled, so the character stalls. (2) The camera fit missed the two height references by 10.6% on a steeply viewed scene, and the plugin does not show the residual. (3) A picture copied beside a saved document could not be reopened until the editor had imported it (fixed in this pass, see section 5).
 - **The large features are not started.** Layers, transparent PNG elements, occlusion, parallax, triggers, portals, region types, explicit connections. They exist as design documents only. The foreground fountain of the new scene cannot yet hide the character.
@@ -83,9 +84,10 @@ Status classes: **Validated** (implemented, automated tests, checked in the real
 
 | Feature | Status | Notes | Priority |
 |---|---|---|---|
-| Layer Manager (create, group, hide, lock, opacity, reorder) | Not started | Design only: `LAYER_MANAGER_DESIGN.md`, `IWE_LAYERS_TRIGGERS_POST_OPUS.md` | **Decision needed** |
-| Transparent PNG elements and transforms | Not started | The foreground fountain of the e2e scene can only be stacked by hand in a Godot scene | Decision needed |
-| Background / foreground / depth occlusion / parallax | Not started | Prototype `prototypes/occlusion/`: Alpha Scissor and Alpha Blend are good in both renderers; Alpha Hash is wrong under GL Compatibility | Decision needed |
+| Layers: create, rename, hide, lock, opacity, remove, with undo | **Implemented, needs a mouse check** | Flat list with Background and Foreground defaults (`IWELayer`, `IWELayerPanel`, schema 2) | Nesting, reordering, duplicating layers; layers on regions | `test_layers` (34), e2e 05 (6) | Use the panel | Must (owner scope) |
+| Transparent PNG pictures: import, position, scale, opacity, ground point | **Implemented, needs a mouse check** | `IWEVisualElement`, copied once to `assets/elements/`, placeholder when missing | Rotation, pivot, flip, mouse dragging (the position is typed) | `test_layers`, e2e 05 | Add the fountain and set its ground point | Must (owner scope) |
+| Background / foreground / depth occlusion | **Validated on real pixels** | Behind, in front, by depth; camera-facing quad at the depth of the ground point; alpha scissor | One depth per picture (right for a fountain, wrong for a long railing seen at an angle); faded pictures do not occlude exactly | `tests/render_check/` (GPU window: hidden behind the fountain, shown in front), `test_layers` | Walk behind the fountain in the editor and in an exported scene | Must (owner scope) |
+| Parallax | Not started | Out of the first release | | | | Post-release |
 | Triggers, actions, portals, spawn points | Not started | Specification only | Post-release |
 
 ### 2.7 Quality and infrastructure
@@ -101,7 +103,9 @@ Status classes: **Validated** (implemented, automated tests, checked in the real
 
 **Existing UI** (one dock, `iwe_dock.tscn`, `iwe_dock.gd` at 1,637 lines): a toolbar (New, Save, Open, Import, New group, group selector, Undo, Redo, Perspective, Window, zoom), a region tree, region tools, a template section, a perspective section with calibration inputs and a reference-frame pair, export buttons, and a status line. Observed in the real editor on 2026-10-29: the dock is usable but wide; in the editor layout I captured, the canvas column was cut at the right edge.
 
-**Target UI.** `SPECIFICATION.md` 3.12 names five workspaces (Image & Regions, Perspective, 3D Preview, Test, Export). Nothing implements them: Perspective is a toggle, 3D Preview is the same toggle, Test and Export are buttons. The Layer Manager design proposes a single typed editing tree and asks for a small usability proof of concept first. **I found no other redesign plan** in the repository, the planning documents, or the project notes. Any redesign request from earlier conversations that is not in those files is **unverified**. Please provide it or confirm that 3.12 is the intended target.
+**Decided on 2026-10-29 (owner):** two tabs, Creation and Test, with foldable sections. Built, and a real render of the dock was read by eye (no click made). The paragraph below is the earlier analysis, kept for the gaps it lists.
+
+**Target UI (earlier analysis).** `SPECIFICATION.md` 3.12 named five workspaces (Image & Regions, Perspective, 3D Preview, Test, Export). Nothing implements them: Perspective is a toggle, 3D Preview is the same toggle, Test and Export are buttons. The Layer Manager design proposes a single typed editing tree and asks for a small usability proof of concept first. **I found no other redesign plan** in the repository, the planning documents, or the project notes. Any redesign request from earlier conversations that is not in those files is **unverified**. Please provide it or confirm that 3.12 is the intended target.
 
 | Area | Existing | Gap observed or recorded | Priority |
 |---|---|---|---|
@@ -228,10 +232,26 @@ Complexity: **S** a day or less · **M** two to four days · **L** one to two we
 
 ### Decisions needed from you
 
-1. Is the first release the authoring and perspective core, or does it include layers and occlusion?
-2. Visual order: ordered children of one typed tree (the Opus recommendation, and the `POST_OPUS` document) or a separate `draw_index` (the earlier validated plan)? This blocks M7 only.
-3. Is `SPECIFICATION.md` 3.12 the intended UI target, or is there a separate redesign plan?
-4. Should partly shared edges become doorways (M1 option A) or be reported as an authoring error (option B)?
+All four are answered (2026-10-29):
+
+1. The first release includes layers and foreground occlusion (owner).
+2. Visual order: not needed in the reduced design. Layers are a flat list and pictures keep the order of the list; the depth mode, not the order, decides who is in front of the character. Revisit with nested layers.
+3. UI target: two tabs, Creation and Test, with foldable sections (owner).
+4. Partly shared edges became doorways (option A, built in M1).
+
+## 7.1 Status on 2026-10-29, after the second autonomous session
+
+| Milestone | State |
+|---|---|
+| M1, M2, M3, M4 | Done. |
+| M5 UI (two tabs, foldable sections) | Done for the owner's direction. Not done: region properties block, lock button, a layout checked at a narrow width, first-run guidance. |
+| M7 Layers, M8 pictures, M9 occlusion | Done in the reduced form of `LAYER_MANAGER_DESIGN.md` (flat layers, three depth modes, no parallax). Occlusion verified on real rendered pixels. |
+| Union command | Done (`Merge with…`). Intersection and XOR not built. |
+| M12 manual QA with a mouse | **Not done.** No tool for it in either session. The list is in `RELEASE_CHECKLIST.md`. |
+| M13 release preparation | Not done: the version stays `0.1.0-dev`, no ZIP, no screenshots, no provenance check. Listed in `RELEASE_CHECKLIST.md`. |
+| M6 clean-up, M11 region types and connections, M10 triggers | Not started and outside the owner's first-release list. |
+
+**Release readiness.** The features the owner listed for the first release are implemented and covered by 292 headless tests, a real-editor self-test and a real-GPU render check. The plugin is **not ready to release**: nothing has been tried with a mouse in the editor, the dock layout has not been checked at a narrow width, a doorway narrower than the character is reported but not avoided, a picture occludes by a single depth, and the release preparation is not done. The owner's explicit approval is also required.
 
 ## 8. Proposed next milestone
 

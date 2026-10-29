@@ -31,6 +31,7 @@ Everything is created from an empty document through the signals the canvas emit
 | Suite | Covers |
 |---|---|
 | `test_e2e_01_assets_and_import.gd` | Asset set, composite scene, empty start, first import, two documents in a row, replacing the picture |
+| `test_e2e_05_layers_and_occlusion.gd` | The fountain as a foreground picture on its layer: depth order, walk, save and reopen, export, layers never touching navigation, a merged zone keeping the fountain cutouts |
 | `test_e2e_02_polygons_and_operations.gd` | Drawing from scratch, shared-edge union, overlapping cutouts subtracted once, a refused cutout, undo and redo of cutouts, the merge command |
 | `test_e2e_03_editing_and_persistence.gd` | Selection, vertex move, add and remove point, delete and undo, rename and hide, undoing a whole session, duplicate (known defect), save and reopen in a fresh dock |
 | `test_e2e_04_perspective_layers_and_walk.gd` | Camera fit, preview independent of the dock, perspective export, absence of a foreground layer, footprint against the foreground picture, walking around the fountain at x1, x5 and x10, the doorway, the partial-edge limitation |

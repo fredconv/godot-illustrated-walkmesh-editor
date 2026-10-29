@@ -90,7 +90,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 - Perspective projection and camera views; known-height template placement.
 - Save and reopen of IWE documents, including the copy of the image beside the document.
 - Test character with mouse and keyboard, walls, and path following.
-- Automated suite: 286 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
+- Automated suite: 292 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
 
 ## Open technical debts
 
