@@ -14,7 +14,7 @@ No. The perspective stage projects your image onto one flat virtual floor, using
 
 ## Do my walkable zones have to be merged into one polygon?
 
-No. Draw each zone separately. Two zones that share an edge form one walkable network: the character walks across the shared edge without a wall. Zones that only touch at a corner are not connected.
+No. Draw each zone separately. Two zones that share an edge form one walkable network: the character walks across the shared edge without a wall. Zones that only touch at a corner are not connected. Zones that overlap without sharing an exact edge are not connected yet either: make their borders meet on the same edge.
 
 ## Where is my work saved?
 
@@ -22,7 +22,7 @@ A saved IWE document is a `.tres` file. The illustration is copied into an `asse
 
 ## Can I undo my edits?
 
-Yes, for polygon edits, cutouts, templates, and calibration changes made in the editor. Undo and redo use the editor's history.
+Yes, for polygon edits, cutouts, groups, templates, and calibration changes. Use the dock's `Undo` and `Redo` buttons, or `Ctrl+Z` and `Ctrl+Shift+Z` while the illustration has focus. The history belongs to the open document and is reset when you create or open another document.
 
 ## Why does my exported scene not match the editor after I changed the calibration?
 

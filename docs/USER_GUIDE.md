@@ -36,7 +36,9 @@ The **IWE** dock appears in the right-hand dock area once the plugin is enabled.
 
 ## Undo and redo
 
-`Undo` and `Redo` work for polygon edits, cutouts, templates, and calibration changes that go through the editor.
+`Undo` and `Redo` (or `Ctrl+Z` and `Ctrl+Shift+Z` / `Ctrl+Y` while the illustration has focus) work for polygon edits, cutouts, groups, templates, and calibration changes.
+
+Each document has its own history. Creating a new document or opening another one starts an empty history, so nothing from the previous document can be undone into the new one. Creating or opening a document is itself not undoable. Godot's main `Ctrl+Z` (when the illustration does not have focus) does not undo IWE edits.
 
 ## Floating window
 
@@ -45,6 +47,8 @@ The `Window` button moves the illustration area into a large separate window, wh
 ## Connected zones
 
 Two walkable zones that share an edge are connected: the character walks from one to the other without a wall at the shared edge. Zones that only touch at a corner are not connected. You do not need to merge the polygons.
+
+**Limitation:** zones that overlap without sharing an exact edge are not connected yet. Their walls are removed where they overlap, but the character cannot path from one to the other with click-to-move. Snap the shared border so both zones use the same edge.
 
 ## Known limitations
 

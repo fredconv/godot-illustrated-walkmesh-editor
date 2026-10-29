@@ -37,7 +37,7 @@ Tests live in the project-level `tests/` folder (GdUnit4), not inside the addon.
 ### 1.2 Where logic currently lives
 
 - **Navigation and connections** are computed in `iwe_scene_generator.gd`. Shared edges between touching zones are detected while building walls (`_edge_is_covered_by_other_zone`). This is correct but misplaced: the rule belongs to the Geometry & Navigation domain, not to scene building, and the 2D export does not yet use it.
-- **Undo/redo** uses `EditorUndoRedoManager` with method callbacks on the dock. Every mutation goes through `_undo_redo.add_do_method`.
+- **Undo/redo** uses a Godot `UndoRedo` owned by the dock, one per document (`_history`). It is freed and recreated when a document is created or opened, so actions never apply to another document, and the editor's own histories are not used. The canvas receives the same history. Every mutation goes through `_history.add_do_method(Callable)`.
 - **The dock** holds UI widgets, document mutations, export, calibration, and file dialogs in one class. It is the main maintenance risk.
 
 ## 2. Target architecture

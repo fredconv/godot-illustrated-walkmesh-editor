@@ -11,7 +11,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 | Create, select, move, vertex insert/remove/move | Done | Minimum three vertices enforced |
 | Move whole region | Done | |
 | Duplicate, rename, hide, delete | Done | |
-| Undo / redo for polygon edits | Done | Editor undo/redo |
+| Undo / redo for polygon edits | Done | Per-document `UndoRedo`; reset on new or open (audit P0 fix) |
 | Lock a region | Partial | Model and canvas respect `locked`; no UI button |
 | Region type field (walkable, connection, collision only, special) | Todo | Required before step 2 |
 | Region properties panel (type, name, colour) | Todo | |
@@ -20,7 +20,8 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 
 | Item | Status | Notes |
 |---|---|---|
-| Touching zones on one floor are walkable | Done | Shared edges are passages; tested headlessly (`test_walkable_connections.gd`) |
+| Touching zones on one floor are walkable | Done | Exact shared edges only; tested headlessly (`test_walkable_connections.gd`) |
+| Overlapping zones are connected for navigation | Todo | Walls are removed but navigation is not linked (audit P1-2) |
 | Explicit manual connection (bridge between two regions) | Todo | Width, allowed flag, optional direction |
 | Connection only between regions that touch or are explicitly linked | Todo | Single-point contact is never a passage |
 | Collision-only region (no navigation effect) | Todo | |

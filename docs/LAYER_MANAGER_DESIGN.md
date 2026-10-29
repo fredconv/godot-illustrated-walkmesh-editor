@@ -23,7 +23,7 @@ Status: **design validated, implementation not started.** The architecture (§3)
 ### 1.3 Region management UI
 
 - `ui/iwe_region_list.gd` (a `Tree`) shows groups as parents and regions as children. Its metadata carries `kind` (`group`/`region`) and `id`, so it already distinguishes item types without storing a type on the region.
-- All mutations go through `IWEDock` with `EditorUndoRedoManager` method callbacks.
+- All mutations go through `IWEDock` and its per-document `UndoRedo` (`_history`). Until 2026-10-29 they went through `EditorUndoRedoManager`, which mixed documents and had no `undo()` method (audit P0-1, P0-2).
 - The dock is ~1,400 lines and mixes UI, document mutation, export, and calibration.
 
 ### 1.4 Calibration and projection

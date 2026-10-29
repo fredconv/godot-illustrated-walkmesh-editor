@@ -50,7 +50,8 @@ The same command runs in continuous integration (`.github/workflows/tests.yml`),
 The suite covers:
 
 - Document serialization, including regions, cutouts, groups, templates, calibration, and the schema version.
-- Polygon editing: vertex movement, insertion, removal, and undo/redo.
+- Polygon editing: vertex movement, insertion, removal, and undo/redo on Godot's real `UndoRedo` (no test doubles).
+- Per-document history: opening or creating a document never replays the previous document's actions.
 - Subtractive cutouts and their derived contours.
 - Perspective projection and floor intersections.
 - Scale templates: placement, movement, resizing, and undo.

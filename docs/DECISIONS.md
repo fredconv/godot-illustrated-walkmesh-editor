@@ -55,3 +55,11 @@
 **Decision:** User-facing labels and tooltips are in English. The working name stays IWE until the final public name is chosen.
 
 **Reason:** The public documentation and the GitHub presentation are in English.
+
+## 2026-10-29 — A per-document UndoRedo instead of the editor's history
+
+**Decision:** The dock owns a Godot `UndoRedo` for the open document. It is freed and recreated when a document is created or opened. IWE no longer uses `EditorUndoRedoManager`.
+
+**Reason:** The audit confirmed that `EditorUndoRedoManager` has no `undo()`/`redo()` methods, so the dock buttons failed, and that IWE actions went into the editor's global history, where they survived a document change and could inject regions of one document into another. Clearing the global history would also erase other tools' actions.
+
+**Consequences:** Undo is available from the dock buttons and from `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` while the illustration has focus, but not from Godot's main `Ctrl+Z` elsewhere. Creating or opening a document is not undoable. Tests drive the real `UndoRedo`; no test double reimplements the history.

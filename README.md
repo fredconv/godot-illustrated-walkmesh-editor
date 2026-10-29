@@ -34,9 +34,9 @@ Three levels, so you know what you can rely on today. The [roadmap](docs/ROADMAP
 Implemented and covered by automated tests. Most were also checked in the editor; the 2D export has so far been tested headless only.
 
 - **Illustration.** Import a PNG, JPG, or WebP image, then pan and zoom. Authored geometry is stored in image pixels, so zoom never changes it.
-- **Walkable polygons.** Draw, select, move, and edit polygons vertex by vertex. Add or remove points, duplicate, rename, hide, and delete. Edits support undo and redo.
+- **Walkable polygons.** Draw, select, move, and edit polygons vertex by vertex. Add or remove points, duplicate, rename, hide, and delete. Edits support undo and redo, with a separate history per document.
 - **Groups and cutouts.** Organize regions into flat groups. Cut holes (lakes, rocks) into a region with named cutouts.
-- **Touching zones.** Two walkable zones that share an edge form one walkable network. The shared edge has no wall, and the zones are not merged.
+- **Touching zones.** Two walkable zones that share an edge form one walkable network. The shared edge has no wall, and the zones are not merged. Zones that overlap without an exact shared edge are not connected yet.
 - **Scene export.** Export a standalone 2D scene or a flat 3D stage. Each export contains one navigation region per walkable zone. The 3D stage nests them under their groups.
 - **Save and reopen.** Save an IWE document as a `.tres` file. The illustration is copied next to it, and reopening restores regions, cutouts, and templates.
 - **Floating window.** Open the illustration editor in a large separate window.

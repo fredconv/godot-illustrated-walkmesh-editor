@@ -35,7 +35,7 @@ The illustration stays the visual source of truth. IWE does not recover real 3D 
 - Create convex and concave polygons; close them automatically or manually.
 - Select, move a vertex, insert a vertex on an edge, remove a vertex (minimum three), move a whole region.
 - Duplicate, rename, hide, lock, and delete regions.
-- Undo and redo for every edit.
+- Undo and redo for every edit, with a history that belongs to the open document. Creating or opening a document starts a new, empty history.
 - Snapping to vertices and edges (planned).
 
 ### 3.3 Region types
@@ -62,11 +62,11 @@ The character must be able to walk from one zone to another when their polygons 
 
 - Shared edges are passages, not walls. Outer edges keep their walls.
 - A contact at a single point does not create a passage.
-- Overlapping zones are connected where they overlap on the same floor.
+- **Not implemented yet:** zones that overlap without sharing an exact edge. Their walls are removed where they overlap, but the navigation regions are not linked, so click-to-move cannot cross from one to the other (audit P1-2). Until this is fixed, draw touching zones with a shared edge.
 - Zones at different heights are not connected unless an explicit connection exists (to develop).
 - A passage narrower than the character's physical diameter is not traversable (to develop; requires the physical radius setting).
 
-Status: **Completed** for touching zones on one floor (tested headlessly). Explicit connections, width checks, and level handling are to develop.
+Status: **Completed** for zones that share an exact edge on one floor (tested headlessly). **To develop** for overlapping zones (see above). Explicit connections, width checks, and level handling are to develop.
 
 ### 3.6 Calibration
 

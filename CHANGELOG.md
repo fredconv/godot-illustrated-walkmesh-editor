@@ -14,17 +14,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - User guide with installation steps, `docs/USER_GUIDE.md`; development guide, `docs/DEVELOPMENT.md`; data format and compatibility rules, `docs/DATA_FORMAT.md`.
 - Repository governance: `CONTRIBUTING.md` (including the policy for AI-assisted contributions), `CODE_OF_CONDUCT.md`, `SECURITY.md`.
 - GitHub issue and pull request templates.
-- Headless test workflow `.github/workflows/tests.yml`. It installs GdUnit4 6.2.2 and Godot 4.7.1 at pinned versions. It has not yet been run on GitHub.
+- Headless test workflow `.github/workflows/tests.yml`. It installs GdUnit4 6.2.2 and the Godot 4.7.1 console build at pinned versions, and runs on every push and pull request.
 - Layer Manager design proposal, `docs/LAYER_MANAGER_DESIGN.md`: architecture, schema version 2 migration guarantees, asset handling, and the transparency-technique study. Design only; no layer feature is implemented.
 
 ### Changed
+- Creating a new document is no longer an undoable action; it starts an empty history, like opening a document.
+- `Ctrl+Z`, `Ctrl+Shift+Z`, and `Ctrl+Y` undo and redo IWE edits while the illustration has focus. IWE edits no longer go into the editor's global history.
+- Documentation no longer claims that overlapping zones are connected: only zones sharing an exact edge are (audit P1-2 remains open).
 - Walls are no longer generated along edges shared with another walkable zone. Touching zones form a continuous walkable network without being merged.
 - Save dialog opens inside the project and creates the target folder when it does not exist.
 - User-facing labels in the window are in English.
 - README restructured after a MIT-licensed reference project: what the plugin does, a screenshot, documentation links, a numbered installation section, and credits. New FAQ in `docs/FAQ.md`.
 
+### Removed
+- Test doubles `tests/dock_undo_stub.gd` and `tests/undo_history_stub.gd`. They implemented `undo()` and `redo()`, which the real editor API does not have, and hid audit P0-1. Tests now use Godot's `UndoRedo`.
+
 ### Fixed
 - The save button opened an *Open* dialog instead of a *Save* dialog (wrong `file_mode`).
+- The dock's `Undo` and `Redo` buttons called methods that `EditorUndoRedoManager` does not have, so they failed in the real editor (audit P0-1).
+- The undo history was shared across documents: after opening another document, undo or redo could add regions of the previous document to it (audit P0-2). Each document now has its own Godot `UndoRedo`, freed when the document changes.
 - Selecting a cutout in the region tree could abort the engine: the tree was rebuilt inside its own selection callback. Selection no longer rebuilds the tree, and interaction signals are deferred. See `docs/REGION_TREE_FIX.md`.
 
 ## [0.1.0-dev] — development snapshot
