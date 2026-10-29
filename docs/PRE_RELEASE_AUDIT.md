@@ -8,6 +8,7 @@ This document answers one question: **what is left before the first public pre-r
 
 - **The core chain works and is test-backed.** Importing an illustration, drawing zones and cutouts, connecting zones by a shared edge, calibrating a perspective camera from height references, exporting a perspective scene, and walking a test character around the obstacles all work, from an empty document, on new assets (`tests/e2e/`, 31 tests, plus a scripted pass in the real editor).
 - **All audit blockers are closed.** P0-1, P0-2, P1-1, P1-2, P1-3, P1-4, P1-5, P1-6, P1-10 are fixed with tests (M1 is complete). P1-7, P1-8 and P1-9 are fixed too (M2 is complete).
+- **Status after the autonomous session of 2026-10-29: M1, M2, M3 and M4 are done and pushed** (224 tests, CI green). What remains is M12 (manual QA with a mouse, which no tool in that session could do), M13 (release preparation, see `RELEASE_CHECKLIST.md`), M5 (waiting for a UI decision, see `UI_REDESIGN_PROPOSAL.md`) and the optional milestones. The plugin is **technically close to an alpha for the authoring and perspective core, but not ready to release**: no mouse validation has been done, and a doorway narrower than the character is reported but not avoided.
 - **The end-to-end run found three problems the unit tests did not.** (1) A zone that shares only *part* of another zone's edge is connected for navigation but still walled, so the character stalls. (2) The camera fit missed the two height references by 10.6% on a steeply viewed scene, and the plugin does not show the residual. (3) A picture copied beside a saved document could not be reopened until the editor had imported it (fixed in this pass, see section 5).
 - **The large features are not started.** Layers, transparent PNG elements, occlusion, parallax, triggers, portals, region types, explicit connections. They exist as design documents only. The foreground fountain of the new scene cannot yet hide the character.
 - **The editor UI is one tall dock.** There is no recorded UI/UX redesign plan in the repository or in the project notes I could access, so "the target UI" is **unverified** (section 3). I have listed concrete gaps instead of inventing a design.
@@ -65,7 +66,7 @@ Status classes: **Validated** (implemented, automated tests, checked in the real
 |---|---|---|---|---|---|---|
 | Test character (click, keys, walls, path) | Validated | `IWEWalkmeshCharacter` | **Path hugs obstacle corners with no clearance**: at a narrow doorway the capsule stalls on the corner (observed: stopped 33 px from the corner after 28 frames) | runtime, e2e 04 | Feel of the controls | Must |
 | Base speed, multiplier x0.1 to x10, presets x1/x2/x5/x10, pause, reset | **Implemented at character level** | `set_speed_multiplier`, `get_effective_speed`, `pause`, `resume`, `reset_position`; never saved, never exported | | 10 + e2e 04 | | Should |
-| Controls in the dock (speed selector, pause, reset, base speed) | **Scheduled** (milestone M3) | | The dock preview is a static render with no character, so a control there would have nothing to drive | | | Should |
+| Controls in the dock (speed selector, pause, reset, base speed) | **Implemented, needs a mouse check** (M3) | `Test walk` in the perspective panel; the preview character moves without physics; settings are preview-only | Multiplier is not remembered between sessions | `test_preview_walk` (13), `tests/editor_selftest` (real editor runtime, no mouse) | Click the preview, press the buttons | Should |
 | Perspective-consistent apparent speed | Validated | no depth scaling; the camera does it. Tested: equal world distance at every depth, screen distance proportional to the multiplier at every depth | | 2 | | |
 
 ### 2.5 Persistence and format
@@ -162,7 +163,7 @@ Do not start the redesign before the target is agreed.
 
 ## 6. Test coverage and pending manual checks
 
-**Automated: 141 headless tests, all passing** (CI green on the pushed commits; the commits from this session are pushed with the documentation).
+**Automated: 224 headless tests, all passing** (CI green on the pushed commits). Plus `tests/editor_selftest/`, which runs the dock and the test walk in the real editor runtime (no mouse).
 
 | Area | Tests |
 |---|---|
@@ -171,7 +172,10 @@ Do not start the redesign before the target is agreed.
 | Region tree selection | 6 |
 | Perspective runtime and stability | 7 + 15 |
 | Illustration replacement | 6 |
-| Preview speed | 10 |
+| Preview speed (character) | 10 |
+| Overlapping zones, export warnings, path clearance | 13 + 9 + 6 |
+| Picture paths, schema version, stable ids | 7 + 8 + 10 |
+| Test walk in the dock, calibration report | 13 + 9 |
 | Window and storage, walkable connections | 4 + 1 |
 | End to end, village and fountain | 31 |
 
@@ -206,7 +210,7 @@ Complexity: **S** a day or less · **M** two to four days · **L** one to two we
 
 | ID | Milestone | Depends on | Acceptance criteria | Size |
 |---|---|---|---|---|
-| M3 | **In-editor test playback and speed controls.** A character in the dock preview (reusing `IWEWalkmeshCharacter`), a compact bar with Base Speed, x1/x2/x5/x10, Pause, Reset. The multiplier is an editor preference, not document data; the base speed is a character property | M1 | Walk the village path at x10 in the dock; changing speed during the walk takes effect at once; nothing saved in the document or the export changes | L |
+| M3 | **DONE 2026-10-29 (needs a mouse check). In-editor test playback and speed controls.** A character in the dock preview (reusing `IWEWalkmeshCharacter`), a compact bar with Base Speed, x1/x2/x5/x10, Pause, Reset. The multiplier is an editor preference, not document data; the base speed is a character property | M1 | Walk the village path at x10 in the dock; changing speed during the walk takes effect at once; nothing saved in the document or the export changes | L |
 | M4 | **DONE 2026-10-29. Calibration usability.** Show the fit residual per reference, warn when it exceeds a threshold, horizon warning | none | The e2e steep scene shows its 10.6% residual and a warning | M |
 | M5 | **UI/UX pass.** Needs an approved target first (section 3): workspaces, lock button, region properties, narrow-dock layout, first-run guidance | decision on the target | Agreed checklist; no control cut off at a 380 px dock | M to L |
 | M6 | **Structural clean-up.** One selection model, controllers extracted from the dock, geometry module for passage rules, a public API for tests | M1 | Characterisation tests written first; dock under 1,000 lines | L |
