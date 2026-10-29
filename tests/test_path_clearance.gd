@@ -191,3 +191,17 @@ func test_the_character_crosses_a_narrow_doorway_between_two_rooms() -> void:
 	assert_float(arrived.x).override_failure_message("stalled at %s" % arrived).is_greater(650.0)
 	root.queue_free()
 	await scene_tree.process_frame
+
+
+func test_a_walk_requested_before_the_navigation_is_ready_counts_as_under_way() -> void:
+	# Code that waits for the walk to end must not stop before the walk has begun: a request made while
+	# the navigation server has no regions yet is kept, and reports as moving.
+	var player := IWEWalkmeshCharacter.new()
+	var scene_tree := Engine.get_main_loop() as SceneTree
+	scene_tree.root.add_child(player)
+	player.move_to(Vector3(1.0, 0.0, 1.0))
+	assert_bool(player.is_moving_along_path()).is_true()
+	player.stop()
+	assert_bool(player.is_moving_along_path()).is_false()
+	player.queue_free()
+	await scene_tree.process_frame

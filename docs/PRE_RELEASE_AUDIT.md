@@ -251,7 +251,7 @@ All four are answered (2026-10-29):
 | M13 release preparation | Not done: the version stays `0.1.0-dev`, no ZIP, no screenshots, no provenance check. Listed in `RELEASE_CHECKLIST.md`. |
 | M6 clean-up, M11 region types and connections, M10 triggers | Not started and outside the owner's first-release list. |
 
-**Release readiness.** The features the owner listed for the first release are implemented and covered by 292 headless tests, a real-editor self-test and a real-GPU render check. The plugin is **not ready to release**: nothing has been tried with a mouse in the editor, the dock layout has not been checked at a narrow width, a doorway narrower than the character is reported but not avoided, a picture occludes by a single depth, and the release preparation is not done. The owner's explicit approval is also required.
+**Release readiness.** The features the owner listed for the first release are implemented and covered by 293 headless tests, a real-editor self-test and a real-GPU render check. The plugin is **not ready to release**: nothing has been tried with a mouse in the editor, the dock layout has not been checked at a narrow width, a doorway narrower than the character is reported but not avoided, a picture occludes by a single depth, and the release preparation is not done. The owner's explicit approval is also required.
 
 ## 8. Proposed next milestone
 

@@ -213,8 +213,10 @@ func stop() -> void:
 	_blocked_frames = 0
 
 
+## True while a walk is under way, and also while a requested walk waits for the navigation server
+## to be ready, so code that waits for the walk to end does not stop before it has begun.
 func is_moving_along_path() -> bool:
-	return _path_index < _path.size()
+	return _pending_target != null or _path_index < _path.size()
 
 
 func _physics_process(delta: float) -> void:

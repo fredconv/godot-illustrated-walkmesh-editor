@@ -36,7 +36,7 @@ What was checked without a mouse is listed separately in the "Checked without a 
 
 Done in this work and reproducible, but not a substitute for the list above:
 
-- 292 headless GdUnit4 tests, including dock operations driven through the same signals the canvas emits.
+- 293 headless GdUnit4 tests, including dock operations driven through the same signals the canvas emits.
 - `tests/editor_selftest/run.ps1`: the dock and the test walk inside the real Godot editor runtime (headless editor).
 - `tests/render_check/run.ps1`: a real GPU render of the village stage. The character is hidden behind the foreground fountain (1 matching pixel) and shown in front of it (2,725 pixels).
 - A real render of the dock itself in a window, read by eye: the two tabs, the foldable sections, the layer panel, the speed controls. No click was made.
