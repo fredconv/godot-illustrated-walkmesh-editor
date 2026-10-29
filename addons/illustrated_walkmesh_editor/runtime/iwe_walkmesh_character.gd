@@ -10,7 +10,13 @@ extends CharacterBody3D
 
 signal destination_reached
 
-## Walking speed in world units per second.
+const MIN_SPEED_MULTIPLIER := 0.1
+const MAX_SPEED_MULTIPLIER := 10.0
+## Presets offered to the person testing a path: normal, fast, very fast, rapid inspection.
+const SPEED_PRESETS := [1.0, 2.0, 5.0, 10.0]
+
+## Base Speed: normal walking speed in world units per second. The speed is the same at every
+## depth; the apparent speed on screen comes from the perspective camera alone.
 @export var move_speed := 2.5
 ## Move with arrow keys / WASD, relative to the active camera.
 @export var keyboard_control := true
@@ -27,6 +33,11 @@ signal destination_reached
 ## Frames without progress along a click-to-move path before the path is abandoned.
 @export var blocked_frames_limit := 20
 
+## Testing multiplier, never saved and never exported: it only makes a path test shorter.
+## Effective speed is move_speed * speed_multiplier. Set it with set_speed_multiplier().
+var speed_multiplier := 1.0
+var _paused := false
+var _start_position := Vector3.ZERO
 var _path := PackedVector3Array()
 var _path_index := 0
 var _pending_target: Variant = null
@@ -42,6 +53,7 @@ const NAVIGATION_STABLE_FRAMES := 5
 
 func _ready() -> void:
 	motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
+	_start_position = global_position
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -84,6 +96,36 @@ func set_move_input(direction: Vector3) -> void:
 		stop()
 
 
+## Changes the testing multiplier. It can change while the character is walking.
+func set_speed_multiplier(multiplier: float) -> void:
+	speed_multiplier = clampf(multiplier, MIN_SPEED_MULTIPLIER, MAX_SPEED_MULTIPLIER)
+
+
+func get_effective_speed() -> float:
+	return move_speed * speed_multiplier
+
+
+## Freezes the character in place. The path is kept, so resume() continues it.
+func pause() -> void:
+	_paused = true
+
+
+func resume() -> void:
+	_paused = false
+
+
+func is_paused() -> bool:
+	return _paused
+
+
+## Puts the character back where it started and cancels any path. Speed settings are kept.
+func reset_position() -> void:
+	stop()
+	_move_input = Vector3.ZERO
+	velocity = Vector3.ZERO
+	global_position = _start_position
+
+
 func stop() -> void:
 	_path = PackedVector3Array()
 	_path_index = 0
@@ -97,9 +139,11 @@ func is_moving_along_path() -> bool:
 
 func _physics_process(delta: float) -> void:
 	_update_navigation_settled()
-	if not _navigation_settled:
+	if not _navigation_settled or _paused:
 		velocity = Vector3.ZERO
 		move_and_slide()
+		if _paused:
+			_move_input = Vector3.ZERO
 		return
 	if _pending_target != null:
 		move_to(_pending_target)
@@ -110,7 +154,7 @@ func _physics_process(delta: float) -> void:
 	var direction := _move_input
 	if direction == Vector3.ZERO:
 		direction = _path_direction(delta)
-	velocity = direction * move_speed
+	velocity = direction * get_effective_speed()
 	var before := global_position
 	move_and_slide()
 	_update_blocked_state(before, direction)
@@ -135,7 +179,7 @@ func _update_blocked_state(before: Vector3, direction: Vector3) -> void:
 		_blocked_frames = 0
 		return
 	var moved := (global_position - before) * Vector3(1.0, 0.0, 1.0)
-	if moved.length() < move_speed * 0.1 * get_physics_process_delta_time():
+	if moved.length() < get_effective_speed() * 0.1 * get_physics_process_delta_time():
 		_blocked_frames += 1
 		if _blocked_frames >= blocked_frames_limit:
 			stop()
@@ -183,11 +227,15 @@ func _path_direction(delta: float) -> Vector3:
 	while _path_index < _path.size():
 		var offset := _path[_path_index] - global_position
 		offset.y = 0.0
-		if offset.length() > maxf(move_speed * delta, 0.001):
+		var step := get_effective_speed() * delta
+		if offset.length() > maxf(step, 0.001):
 			return offset.normalized()
 		_path_index += 1
 		if _path_index >= _path.size():
 			destination_reached.emit()
+			# Land on the destination with a partial step, so the stopping error does not grow
+			# with the walking speed.
+			return offset / step if step > 0.0001 else Vector3.ZERO
 	return Vector3.ZERO
 
 
