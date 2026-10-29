@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 
 ## Regression tests for the per-document undo history (audit P0-1 and P0-2).
-## They drive the real dock and Godot's own UndoRedo class; no test double replaces it.
+## They drive the real dock and Godot's own UndoRedo class (wrapped by IWEDocumentHistory); no
+## test double replaces it.
 
 const DOCUMENT_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_document.gd")
 const REGION_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region.gd")
@@ -66,10 +67,10 @@ func _tree_has_region(dock: Control, region_id: String) -> bool:
 	return false
 
 
-func test_history_is_a_real_godot_undo_redo() -> void:
+func test_history_is_the_document_history() -> void:
 	var dock := _make_dock(_make_document("Path"))
 	await get_tree().process_frame
-	assert_bool(dock._history is UndoRedo).is_true()
+	assert_bool(dock._history is IWEDocumentHistory).is_true()
 	assert_bool(dock._undo_button.disabled).is_true()
 	assert_bool(dock._redo_button.disabled).is_true()
 	dock.queue_free()
@@ -158,7 +159,7 @@ func test_opening_document_b_does_not_replay_document_a_history() -> void:
 	var region_from_a: String = document_a.regions[0].id
 	dock._create_region(_square(100, 10, 50))
 	dock._undo()   # leaves one action in the redo stack
-	var history_a: UndoRedo = dock._history
+	var history_a_ref: WeakRef = weakref(dock._history)
 	# Save document B to disk and open it through the real Open path.
 	var document_b := _make_document("B")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SAVE_FOLDER))
@@ -167,7 +168,7 @@ func test_opening_document_b_does_not_replay_document_a_history() -> void:
 	dock._open_document(path_b)
 	_prepare(dock)
 	var opened_b: Resource = dock.get_document()
-	assert_bool(is_instance_valid(history_a)).is_false()
+	assert_object(history_a_ref.get_ref()).is_null()
 	assert_bool(dock._history.has_undo()).is_false()
 	assert_bool(dock._history.has_redo()).is_false()
 	dock._redo()
@@ -241,6 +242,6 @@ func test_ctrl_z_and_ctrl_shift_z_on_the_canvas_drive_the_history() -> void:
 func test_freeing_the_dock_frees_its_history() -> void:
 	var dock := _make_dock(_make_document("Path"))
 	await get_tree().process_frame
-	var history: UndoRedo = dock._history
+	var history_ref: WeakRef = weakref(dock._history)
 	dock.free()
-	assert_bool(is_instance_valid(history)).is_false()
+	assert_object(history_ref.get_ref()).is_null()

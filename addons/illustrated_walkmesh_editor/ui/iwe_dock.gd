@@ -66,13 +66,23 @@ const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/
 @onready var _canvas: Control = $Workspace/CanvasArea/ImageScroll/Canvas
 @onready var _canvas_window_button: Button = %CanvasWindowButton
 @onready var _canvas_area: Control = $Workspace/CanvasArea
+@onready var _document_title_label: Label = %DocumentTitleLabel
 
 var _zoom := 1.0
 var _document: Resource
 ## Undo history of the current document only. It is replaced (and the old one freed)
 ## whenever the document changes, so actions can never apply to another document, and the
 ## editor's own histories are never touched.
-var _history: UndoRedo
+var _history: IWEDocumentHistory
+## Action waiting for the user's answer to the "unsaved changes" question or for the save that
+## answer started. Cleared when the user cancels or when the save fails.
+var _pending_unsaved_action := Callable()
+var _unsaved_dialog: ConfirmationDialog
+## How a document is written to disk. Tests replace it to simulate a failing disk without
+## depending on the engine's own error messages.
+var _resource_saver := Callable(ResourceSaver, "save")
+## One recovery file per editor session, so repeated saves overwrite instead of piling up.
+var _recovery_stamp := Time.get_datetime_string_from_system().replace(":", "-")
 var _pending_document_path := ""
 var _pending_image_source := ""
 var _selected_group_id := ""
@@ -97,7 +107,7 @@ func set_document(document: Resource) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE and _history != null:
-		_history.free()
+		_history.dispose()
 		_history = null
 
 
@@ -105,18 +115,37 @@ func _notification(what: int) -> void:
 ## action it held, including references to regions and anchors of the previous document.
 func _reset_history() -> void:
 	if _history != null:
-		_history.free()
-	_history = UndoRedo.new()
-	_history.version_changed.connect(_update_history_buttons)
+		_history.dispose()
+	_history = IWEDocumentHistory.new()
+	_history.changed.connect(_on_history_changed)
 	_canvas.set_undo_redo(_history)
-	_update_history_buttons()
+	_on_history_changed()
 
 
-func _update_history_buttons() -> void:
+func _on_history_changed() -> void:
 	if not is_node_ready() or _history == null:
 		return
 	_undo_button.disabled = not _history.has_undo()
 	_redo_button.disabled = not _history.has_redo()
+	_update_document_title()
+
+
+func _document_display_name() -> String:
+	var path: String = _document.document_path if _document != null else ""
+	return path.get_file().get_basename() if not path.is_empty() else "Untitled"
+
+
+## "Name" when saved, "Name *" when there are unsaved changes.
+func _update_document_title() -> void:
+	if _history == null:
+		return
+	_document_title_label.text = _document_display_name() + (" *" if _history.is_dirty() else "")
+	var has_path: bool = _document != null and not _document.document_path.is_empty()
+	_document_title_label.tooltip_text = _document.document_path if has_path else "This document has not been saved yet"
+
+
+func is_dirty() -> bool:
+	return _history != null and _history.is_dirty()
 
 
 func _ready() -> void:
@@ -144,11 +173,14 @@ func _ready() -> void:
 	_canvas.scale_anchor_delete_requested.connect(_delete_scale_anchor_by_id)
 	_perspective_preview.image_point_clicked.connect(_create_perspective_anchor)
 	_perspective_preview.viewport_size_changed.connect(_perspective_viewport_resized)
-	_new_button.pressed.connect(_new_document)
+	_new_button.pressed.connect(_request_new_document)
 	_save_button.pressed.connect(_show_save_dialog)
 	_save_dialog.file_selected.connect(_save_document)
+	# Cancelling a save that was started from the "unsaved changes" question cancels that action.
+	_save_dialog.canceled.connect(_cancel_pending_unsaved_action)
+	_image_copy_dialog.canceled.connect(_cancel_pending_unsaved_action)
 	_open_button.pressed.connect(_open_dialog.popup_centered)
-	_open_dialog.file_selected.connect(_open_document)
+	_open_dialog.file_selected.connect(_request_open_document)
 	_image_copy_dialog.dir_selected.connect(_copy_image_into_document)
 	_export_2d_button.pressed.connect(_begin_export.bind(2))
 	_export_3d_button.pressed.connect(_begin_export.bind(3))
@@ -219,6 +251,8 @@ func _load_illustration(path: String) -> void:
 	_refresh_regions()
 	_refresh_status()
 	_refresh_perspective_preview()
+	# Importing replaces the illustration and the calibration outside the undo history.
+	_history.note_untracked_change()
 
 
 func _change_zoom(factor: float) -> void:
@@ -465,6 +499,7 @@ func _copy_image_into_document(directory: String) -> void:
 		return
 	_document.illustration_path = "assets/%s" % image_filename
 	_pending_image_source = destination
+	_history.note_untracked_change()
 	_write_document()
 
 
@@ -480,16 +515,145 @@ func _show_save_dialog() -> void:
 	_save_dialog.popup_centered_ratio(0.6)
 
 
-func _write_document() -> void:
+## Writes the document to _pending_document_path. Returns true on success. A failure keeps the
+## document modified, restores its previous path, and is reported to the user.
+func _write_document() -> bool:
 	var directory := _pending_document_path.get_base_dir()
 	var directory_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(directory))
 	if directory_error != OK and directory_error != ERR_ALREADY_EXISTS:
-		push_error("IWE: Could not create document folder %s (%s)" % [directory, error_string(directory_error)])
-		return
+		_report_save_error("Could not create folder %s (%s)" % [directory, error_string(directory_error)])
+		return false
+	var previous_path: String = _document.document_path
 	_document.document_path = _pending_document_path
-	var error := ResourceSaver.save(_document, _pending_document_path)
+	var error: int = _resource_saver.call(_document, _pending_document_path)
 	if error != OK:
-		push_error("IWE: Could not save document (%s)" % error_string(error))
+		_document.document_path = previous_path
+		_report_save_error("Could not save %s (%s)" % [_pending_document_path, error_string(error)])
+		return false
+	_history.mark_saved()
+	_refresh_status()
+	_run_pending_unsaved_action()
+	return true
+
+
+func _report_save_error(message: String) -> void:
+	push_error("IWE: %s" % message)
+	_status_label.text = "Save failed: %s" % message
+	_cancel_pending_unsaved_action()
+
+
+## Asks what to do with unsaved changes before running action. Unsaved changes are never
+## dropped silently: Save runs the action after a successful save, Discard Changes runs it
+## now, Cancel keeps the document untouched.
+func _run_after_unsaved_check(action: Callable) -> void:
+	if _history == null or not _history.is_dirty():
+		action.call()
+		return
+	_pending_unsaved_action = action
+	if is_instance_valid(_unsaved_dialog):
+		_unsaved_dialog.queue_free()
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "Unsaved changes"
+	dialog.dialog_text = "%s has unsaved changes." % _document_display_name()
+	dialog.ok_button_text = "Save"
+	dialog.cancel_button_text = "Cancel"
+	dialog.add_button("Discard Changes", true, "discard")
+	dialog.confirmed.connect(_unsaved_choice.bind("save"))
+	dialog.canceled.connect(_unsaved_choice.bind("cancel"))
+	dialog.custom_action.connect(func(choice: StringName) -> void: _unsaved_choice(String(choice)))
+	_unsaved_dialog = dialog
+	add_child(dialog)
+	dialog.popup_centered()
+
+
+## choice is "save", "discard", or "cancel". The tests call it because they cannot click buttons.
+func _unsaved_choice(choice: String) -> void:
+	if is_instance_valid(_unsaved_dialog):
+		_unsaved_dialog.hide()
+		_unsaved_dialog.queue_free()
+		_unsaved_dialog = null
+	match choice:
+		"discard":
+			var action := _pending_unsaved_action
+			_pending_unsaved_action = Callable()
+			if action.is_valid():
+				action.call()
+		"save":
+			_save_current()
+		_:
+			_cancel_pending_unsaved_action()
+
+
+## Saves to the document's own path, or asks for one when it has none (Save As).
+func _save_current() -> void:
+	if _document.document_path.is_empty():
+		_show_save_dialog()
+		return
+	_save_document(_document.document_path)
+
+
+func _run_pending_unsaved_action() -> void:
+	if not _pending_unsaved_action.is_valid():
+		return
+	var action := _pending_unsaved_action
+	_pending_unsaved_action = Callable()
+	# The action replaces the document and its history; let the save finish unwinding first.
+	action.call_deferred()
+
+
+func _cancel_pending_unsaved_action() -> void:
+	_pending_unsaved_action = Callable()
+
+
+func _request_new_document() -> void:
+	_run_after_unsaved_check(_new_document)
+
+
+func _request_open_document(path: String) -> void:
+	_run_after_unsaved_check(_open_document.bind(path))
+
+
+## Text for Godot's own "unsaved changes" dialog when the editor is closing, or "" when clean.
+## for_scene is the scene being closed, or "" when the whole editor is closing. The IWE
+## document is not part of any scene, so closing a scene never reports it.
+func get_unsaved_status(for_scene: String = "") -> String:
+	if not for_scene.is_empty() or not is_dirty():
+		return ""
+	if _document.document_path.is_empty():
+		return "IWE document \"%s\" has never been saved. Choosing Save writes a recovery copy to user://iwe_recovery/; use the IWE Save button to pick a location." % _document_display_name()
+	return "IWE document \"%s\" has unsaved changes." % _document_display_name()
+
+
+## Called by Godot when the user chooses to save (Save All, or Save in the quit dialog).
+## It must not show dialogs. A document with a path is written in place; anything that
+## would need the user (no path yet, or an image still outside the document folder) gets a
+## recovery copy and stays modified.
+func save_external_data() -> void:
+	if not is_dirty():
+		return
+	var image_ready: bool = _pending_image_source.is_empty() or _is_asset_beside_document(_pending_image_source)
+	if not _document.document_path.is_empty() and image_ready:
+		_pending_document_path = _document.document_path
+		_write_document()
+		return
+	var recovery_path := save_recovery_copy()
+	if not recovery_path.is_empty():
+		push_warning("IWE: the document is not saved yet. A recovery copy was written to %s" % recovery_path)
+
+
+## Writes the document to user://iwe_recovery/ without touching its path or its modified state.
+## Returns the file path, or "" on failure.
+func save_recovery_copy() -> String:
+	if _document == null:
+		return ""
+	var folder := "user://iwe_recovery"
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder))
+	var path := "%s/recovery_%s.tres" % [folder, _recovery_stamp]
+	var error := ResourceSaver.save(_document, path)
+	if error != OK:
+		push_error("IWE: Could not write the recovery copy (%s)" % error_string(error))
+		return ""
+	return path
 
 
 func _open_document(path: String) -> void:
@@ -649,6 +813,7 @@ func _set_selected_template_height(value: float) -> void:
 		if _document:
 			_document.default_template_height_px = value
 			_canvas.set_scale_anchors(_document.scale_anchors, value)
+			_history.note_untracked_change()
 		return
 	if is_equal_approx(anchor.apparent_height_px, value):
 		return

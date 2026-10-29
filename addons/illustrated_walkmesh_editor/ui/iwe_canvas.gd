@@ -32,7 +32,7 @@ var _regions: Array[IWERegion] = []
 var _selected_id := ""
 var _selected_vertex := -1
 var _draft := PackedVector2Array()
-var _history: UndoRedo
+var _history: IWEDocumentHistory
 var _document: IWEDocument
 var _vertex_before := PackedVector2Array()
 var _vertex_dragged := false
@@ -60,7 +60,7 @@ func _ready() -> void:
 	focus_mode = Control.FOCUS_ALL
 
 
-func set_undo_redo(history: UndoRedo) -> void:
+func set_undo_redo(history: IWEDocumentHistory) -> void:
 	_history = history
 
 

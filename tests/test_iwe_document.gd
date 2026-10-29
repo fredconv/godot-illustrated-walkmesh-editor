@@ -207,7 +207,7 @@ func test_canvas_vertex_edit_supports_undo_and_redo() -> void:
 	var canvas: Control = CANVAS_SCRIPT.new()
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	scene_tree.root.add_child(canvas)
-	var history := UndoRedo.new()
+	var history := IWEDocumentHistory.new()
 	canvas.set_undo_redo(history)
 	var region: Resource = REGION_SCRIPT.new()
 	region.id = "editable_region"
@@ -228,7 +228,6 @@ func test_canvas_vertex_edit_supports_undo_and_redo() -> void:
 	history.redo()
 	assert_vector(region.points[0]).is_equal(Vector2(10, 10))
 	assert_vector(document.regions[0].points[0]).is_equal(Vector2(10, 10))
-	history.free()
 	canvas.queue_free()
 
 
@@ -236,7 +235,7 @@ func test_add_vertex_on_polygon_edge_is_undoable() -> void:
 	var canvas: Control = CANVAS_SCRIPT.new()
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	scene_tree.root.add_child(canvas)
-	var history := UndoRedo.new()
+	var history := IWEDocumentHistory.new()
 	canvas.set_undo_redo(history)
 	var region: Resource = REGION_SCRIPT.new()
 	region.id = "edge_region"
@@ -255,7 +254,6 @@ func test_add_vertex_on_polygon_edge_is_undoable() -> void:
 	assert_object(canvas.get_selected_region()).is_not_null()
 	history.undo()
 	assert_int(region.points.size()).is_equal(4)
-	history.free()
 	canvas.queue_free()
 
 
@@ -434,7 +432,7 @@ func test_vertex_selection_persists_after_mouse_release_and_can_move() -> void:
 	var canvas: Control = CANVAS_SCRIPT.new()
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	scene_tree.root.add_child(canvas)
-	var history := UndoRedo.new()
+	var history := IWEDocumentHistory.new()
 	canvas.set_undo_redo(history)
 	var region: Resource = REGION_SCRIPT.new()
 	region.id = "persistent_vertex"
@@ -468,7 +466,6 @@ func test_vertex_selection_persists_after_mouse_release_and_can_move() -> void:
 	canvas._gui_input(release)
 	assert_vector(region.points[0]).is_equal(Vector2(35, 50))
 	assert_vector(region.subtraction_polygons[0][0]).is_equal(Vector2(60, 70))
-	history.free()
 	canvas.queue_free()
 
 
@@ -476,7 +473,7 @@ func test_remove_selected_vertex_keeps_three_point_minimum() -> void:
 	var canvas: Control = CANVAS_SCRIPT.new()
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	scene_tree.root.add_child(canvas)
-	var history := UndoRedo.new()
+	var history := IWEDocumentHistory.new()
 	canvas.set_undo_redo(history)
 	var region: Resource = REGION_SCRIPT.new()
 	region.id = "remove_region"
@@ -494,7 +491,6 @@ func test_remove_selected_vertex_keeps_three_point_minimum() -> void:
 	canvas.set_selected_vertex(0)
 	canvas.remove_selected_vertex()
 	assert_int(region.points.size()).is_equal(3)
-	history.free()
 	canvas.queue_free()
 
 

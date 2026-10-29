@@ -79,6 +79,11 @@ toggle_mode = true
 text = "Window"
 tooltip_text = "Open the illustration editor in a larger window"
 
+[node name="DocumentTitleLabel" type="Label" parent="DocumentToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Untitled"
+
 [node name="Workspace" type="HSplitContainer" parent="."]
 layout_mode = 2
 size_flags_vertical = 3
