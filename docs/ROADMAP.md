@@ -75,7 +75,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 | Manual calibration of camera and floor | Done | |
 | Fit camera from two or more height references | Done | |
 | Multi-position presets (Near / Middle / Far) | Partial | Templates exist; no preset workflow |
-| Assisted calibration with quality diagnostic | Todo | The fit residual is not shown; 10.6% on the steep village scene |
+| Calibration quality diagnostic | Done | Per-reference miss in the perspective panel, a warning above 5%, the horizon row, and the zones on or above it (M4). The steep village scene shows -10.6% / +10.6% with a warning. Assisted calibration itself (suggesting better references) is still to develop |
 | 2D, flat 3D, and perspective exports | Done | Saved and reloaded in tests. A picture inside the project is referenced, not embedded (audit P1-8); only a picture Godot has not imported and cannot import is embedded, with a warning |
 | Test character speed: base speed, x0.1 to x10 multiplier, pause, reset | Done (character) | `IWEWalkmeshCharacter`; never saved or exported |
 | Speed controls in the dock preview | Done | `Test walk` in the perspective panel: character on the preview floor, base speed, x1/x2/x5/x10, pause/resume, reset; settings are preview-only. Verified headless (13 tests) and in the real editor runtime by `tests/editor_selftest` (no mouse) |
@@ -90,7 +90,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 - Perspective projection and camera views; known-height template placement.
 - Save and reopen of IWE documents, including the copy of the image beside the document.
 - Test character with mouse and keyboard, walls, and path following.
-- Automated suite: 215 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
+- Automated suite: 224 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
 
 ## Open technical debts
 

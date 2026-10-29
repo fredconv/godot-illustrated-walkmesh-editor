@@ -7,7 +7,7 @@ const STAGE_FRAME_LIMIT := 5000
 ## Measured on 2026-10-29: the fitted camera misses the two templates by 10.6 % (near one too small,
 ## far one too large). This scene looks down steeply, which the line fitted to the templates models
 ## less well than the 2.5 % of the gentler demo scene. The bound is a regression guard, not a goal:
-## the plugin does not show this residual to the person calibrating yet.
+## the dock shows this residual and warns above 5 % (tests/test_fit_report.gd).
 const FIT_BOUND := 0.12
 
 

@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Calibration quality in the perspective panel. After a fit, each height reference shows how far the camera is from it (signed percent), a warning appears above 5% (the steep village scene misses by 10.6%), and the panel gives the horizon row and names the zones on or above it, which the export leaves out.
 - Test walk in the dock preview. A character walks the preview floor when you click it, with a base speed, x1/x2/x5/x10 presets that can change during the walk, pause and resume, and reset. The settings are preview-only: not saved in the document, not exported. `tests/editor_selftest/` runs it in the real editor runtime.
 - A click-to-move request made before the navigation server has loaded its regions is repeated instead of being lost (seen in an editor run).
 - The perspective export warns about a doorway narrower than the character's diameter, naming the zone and where it is. The planner still cannot route around it, so this is a report, not a fix. Tests also pin that a cutout stays an obstacle when another zone overlaps its zone elsewhere, and that ground covered by a second zone is walkable under the union rule.

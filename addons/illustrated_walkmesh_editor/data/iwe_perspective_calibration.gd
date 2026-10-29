@@ -116,6 +116,48 @@ func fit_to_scale_anchors(anchors: Array, image_size: Vector2i) -> String:
 	return ""
 
 
+## A fit that misses a height reference by more than this fraction is reported to the person.
+const RESIDUAL_WARNING := 0.05
+
+
+## How far the camera is from each height reference, as a signed fraction of the reference's
+## apparent height: positive when the character would look taller than the reference, negative
+## when shorter. One entry per anchor, in order. A reference that lies on or above the horizon (no
+## floor under it) is reported as INF.
+func reference_residuals(anchors: Array, image_size: Vector2i) -> PackedFloat64Array:
+	const PROJECTOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_perspective_projector.gd")
+	var viewport_size := reference_viewport_size
+	var fit_scale: float = PROJECTOR.image_scale_in_viewport(image_size, viewport_size)
+	var residuals := PackedFloat64Array()
+	for anchor in anchors:
+		if anchor == null or anchor.apparent_height_px <= 0.0 or fit_scale <= 0.0:
+			residuals.append(INF)
+			continue
+		var screen_point: Vector2 = PROJECTOR.image_to_viewport(anchor.position, image_size, viewport_size)
+		var predicted := _apparent_height_at(screen_point, viewport_size, PROJECTOR)
+		var expected: float = anchor.apparent_height_px * fit_scale
+		residuals.append(INF if predicted <= 0.0 else (predicted - expected) / expected)
+	return residuals
+
+
+## The image row where the horizon of this camera falls, or INF when the camera looks so far down
+## that the horizon is not in front of it. Rows above this one show no floor.
+func horizon_image_row(image_size: Vector2i) -> float:
+	const PROJECTOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_perspective_projector.gd")
+	var viewport_size := reference_viewport_size
+	var half_height := float(viewport_size.y) * 0.5
+	var focal := half_height / tan(deg_to_rad(clampf(field_of_view_degrees, 1.0, 179.0)) * 0.5)
+	var pitch := deg_to_rad(-camera_rotation_degrees.x)
+	if absf(pitch) >= PI * 0.5 - 0.001:
+		return INF
+	var horizon_screen_row := half_height - focal * tan(pitch)
+	var top: Vector2 = PROJECTOR.image_to_viewport(Vector2.ZERO, image_size, viewport_size)
+	var bottom: Vector2 = PROJECTOR.image_to_viewport(Vector2(0.0, image_size.y), image_size, viewport_size)
+	if bottom.y <= top.y:
+		return INF
+	return (horizon_screen_row - top.y) / (bottom.y - top.y) * image_size.y
+
+
 ## Apparent height, in reference-viewport pixels, of a character whose feet appear at the
 ## given reference-viewport point. Returns 0 when that point does not hit the floor.
 func _apparent_height_at(screen_point: Vector2, viewport_size: Vector2i, projector: GDScript) -> float:

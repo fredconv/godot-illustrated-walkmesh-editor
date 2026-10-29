@@ -51,7 +51,7 @@ Status classes: **Validated** (implemented, automated tests, checked in the real
 | Feature | Status | Implementation | Missing | Automated | Manual | Priority |
 |---|---|---|---|---|---|---|
 | Height references (templates) | Validated | place, move, resize, delete | | e2e 04, document | | Must |
-| Fit camera from references | Partial | least-squares line on screen row | **No residual shown.** 10.6% miss on the steep e2e scene versus 2.5% on the demo. No horizon warning (P1-3) | stability, e2e 04 | Judging the fit by eye | Should |
+| Fit camera from references | Validated | least-squares line on screen row; residual per reference, warning above 5%, horizon row and zones above it (M4) | The line models steep views less well (10.6% on the e2e scene, now shown and warned) | stability, e2e 04, `test_fit_report` (9) | Look of the label in the dock | Should |
 | Calibration independent of dock size | Validated | P1-4, explicit reference frame | | 15 | Resize with the mouse | Must |
 | Perspective preview (dock) | Needs validation | static render of the stage | **No character, no playback.** Reloads the PNG at every spin-box step (audit P2) | stability, e2e 04 | Preview in a narrow dock | Must |
 | Perspective export | Validated | walls, navigation, templates, cameras, optional player | Silent drops above the horizon (P1-3); exported nodes carry no region ID (audit P2); 6.4 MB embedded picture (P1-8) | full workflow, e2e 04 | Opening the exported scene and running it (F5) | Must |
@@ -207,7 +207,7 @@ Complexity: **S** a day or less · **M** two to four days · **L** one to two we
 | ID | Milestone | Depends on | Acceptance criteria | Size |
 |---|---|---|---|---|
 | M3 | **In-editor test playback and speed controls.** A character in the dock preview (reusing `IWEWalkmeshCharacter`), a compact bar with Base Speed, x1/x2/x5/x10, Pause, Reset. The multiplier is an editor preference, not document data; the base speed is a character property | M1 | Walk the village path at x10 in the dock; changing speed during the walk takes effect at once; nothing saved in the document or the export changes | L |
-| M4 | **Calibration usability.** Show the fit residual per reference, warn when it exceeds a threshold, horizon warning | none | The e2e steep scene shows its 10.6% residual and a warning | M |
+| M4 | **DONE 2026-10-29. Calibration usability.** Show the fit residual per reference, warn when it exceeds a threshold, horizon warning | none | The e2e steep scene shows its 10.6% residual and a warning | M |
 | M5 | **UI/UX pass.** Needs an approved target first (section 3): workspaces, lock button, region properties, narrow-dock layout, first-run guidance | decision on the target | Agreed checklist; no control cut off at a 380 px dock | M to L |
 | M6 | **Structural clean-up.** One selection model, controllers extracted from the dock, geometry module for passage rules, a public API for tests | M1 | Characterisation tests written first; dock under 1,000 lines | L |
 | M11 | **Region types and explicit connections** (connection, collision only, width) | M6 | A bridge drawn as a connection with a width; a collision-only region blocks without navigation | L |

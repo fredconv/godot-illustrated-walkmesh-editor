@@ -93,6 +93,7 @@ var _test_walk_controls: VBoxContainer
 var _base_speed_input: SpinBox
 var _speed_buttons: Array[Button] = []
 var _pause_button: Button
+var _fit_report_label: Label
 var _reset_walker_button: Button
 var _selected_group_id := ""
 var _has_illustration := false
@@ -384,6 +385,12 @@ func _build_test_walk_controls() -> void:
 	panel.add_child(_test_walk_controls)
 	panel.move_child(_test_walk_controls, _test_walk_button.get_index() + 1)
 	_test_walk_button.toggled.connect(_set_test_walk)
+	_fit_report_label = Label.new()
+	_fit_report_label.name = "FitReportLabel"
+	_fit_report_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_fit_report_label.custom_minimum_size = Vector2(0, 0)
+	panel.add_child(_fit_report_label)
+	panel.move_child(_fit_report_label, _fit_references_button.get_index() + 1)
 	_base_speed_input.value_changed.connect(_perspective_preview.set_base_speed)
 	_pause_button.toggled.connect(_set_test_walk_paused)
 	_reset_walker_button.pressed.connect(_perspective_preview.reset_test_character)
@@ -419,6 +426,58 @@ func _refresh_perspective_preview() -> void:
 		return
 	_perspective_preview.configure(_document, texture, _document.perspective_calibration, _scale_3d.value)
 	_perspective_preview.set_top_view(_perspective_top_view_button.button_pressed)
+	_refresh_fit_report()
+
+
+## What the person needs to judge the calibration: how far the camera is from each height reference,
+## and where the horizon falls. Zones above it are not exported.
+func get_fit_report() -> Dictionary:
+	var report := {"residuals": PackedFloat64Array(), "worst": 0.0, "warn": false, "horizon_row": INF, "zones_above_horizon": PackedStringArray(), "lines": PackedStringArray()}
+	if _document == null or _document.perspective_calibration == null or not _has_illustration:
+		return report
+	var calibration: IWEPerspectiveCalibration = _document.perspective_calibration
+	var lines := PackedStringArray()
+	var residuals := calibration.reference_residuals(_document.scale_anchors, _document.image_size)
+	var worst := 0.0
+	for index in residuals.size():
+		var anchor: IWEScaleAnchor = _document.scale_anchors[index]
+		if is_inf(residuals[index]):
+			lines.append("%s: no floor under it (on or above the horizon)" % anchor.name)
+			worst = INF
+		else:
+			lines.append("%s: %+.1f%%" % [anchor.name, residuals[index] * 100.0])
+			worst = maxf(worst, absf(residuals[index]))
+	report.residuals = residuals
+	report.worst = worst
+	report.warn = worst > IWEPerspectiveCalibration.RESIDUAL_WARNING
+	if report.warn and not is_inf(worst):
+		lines.append("The camera misses a reference by more than %d%%. Check the heights, or adjust the camera by hand." % roundi(IWEPerspectiveCalibration.RESIDUAL_WARNING * 100.0))
+	var horizon_row := calibration.horizon_image_row(_document.image_size)
+	report.horizon_row = horizon_row
+	var above := PackedStringArray()
+	for region in _document.regions:
+		if region.visible and region.points.size() >= 3:
+			for point in region.points:
+				if point.y <= horizon_row:
+					above.append(region.name)
+					break
+	report.zones_above_horizon = above
+	if is_finite(horizon_row) and horizon_row > 0.0 and horizon_row < _document.image_size.y:
+		lines.append("Horizon at image row %d." % roundi(horizon_row))
+	if not above.is_empty():
+		lines.append("On or above the horizon, so not exported: %s." % ", ".join(above))
+	report.lines = lines
+	return report
+
+
+func _refresh_fit_report() -> void:
+	if _fit_report_label == null:
+		return
+	var report := get_fit_report()
+	var lines: PackedStringArray = report.lines
+	_fit_report_label.text = "
+".join(lines)
+	_fit_report_label.add_theme_color_override("font_color", Color("ffb454") if report.warn or not report.zones_above_horizon.is_empty() else Color("b8c4d0"))
 
 
 func _sync_calibration_inputs() -> void:
@@ -512,7 +571,8 @@ func _fit_camera_to_references() -> void:
 	_history.add_do_method(_apply_calibration_snapshot.bind(after))
 	_history.add_undo_method(_apply_calibration_snapshot.bind(before))
 	_history.commit_action()
-	_status_label.text = "Camera fitted to %d height references." % _document.scale_anchors.size()
+	var report := get_fit_report()
+	_status_label.text = "Camera fitted to %d height references. Largest miss %.1f%%%s" % [_document.scale_anchors.size(), report.worst * 100.0, " (above %d%%, see the perspective panel)" % roundi(IWEPerspectiveCalibration.RESIDUAL_WARNING * 100.0) if report.warn else "."]
 
 
 func _apply_calibration_snapshot(calibration: IWEPerspectiveCalibration) -> void:
@@ -1196,6 +1256,7 @@ func _tree_item_activated(item: TreeItem) -> void:
 func _refresh_regions(selected_id: String = "", selected_cutout_index: int = -1) -> void:
 	if not is_instance_valid(_document):
 		return
+	_refresh_fit_report()
 	var selected := selected_id
 	if selected_cutout_index >= 0:
 		_selected_cutout_region_id = selected
