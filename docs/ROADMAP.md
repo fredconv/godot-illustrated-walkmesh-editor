@@ -32,7 +32,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 | Explicit manual connection (bridge between two regions) | Todo | Width, allowed flag, optional direction |
 | Connection only between regions that touch or are explicitly linked | Todo | Single-point contact is never a passage |
 | Collision-only region (no navigation effect) | Todo | |
-| Passage narrower than character radius is blocked | Todo | Needs physical radius setting |
+| Passage narrower than character radius is blocked | Partial | Reported by the export (warning with the zone and position); the planner does not avoid it yet |
 | Connections exported in 2D and 3D | Todo | |
 
 ## Step 3 — Layer Manager architecture
@@ -90,7 +90,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 - Perspective projection and camera views; known-height template placement.
 - Save and reopen of IWE documents, including the copy of the image beside the document.
 - Test character with mouse and keyboard, walls, and path following.
-- Automated suite: 197 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
+- Automated suite: 202 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
 
 ## Open technical debts
 

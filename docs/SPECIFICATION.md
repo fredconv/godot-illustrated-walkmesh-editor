@@ -64,7 +64,8 @@ The character must be able to walk from one zone to another when their polygons 
 - A contact at a single point does not create a passage.
 - Zones that overlap are walkable as one. The zone drawn first keeps the shared ground and a later zone's navigation stops on its outline, so each point is covered once and Godot links the meshes along that outline. Walls are removed only where another zone covers the edge. A zone entirely inside an earlier zone adds nothing. Ground inside an earlier zone's cutout stays walkable when a later zone covers it (audit P1-2).
 - Zones at different heights are not connected unless an explicit connection exists (to develop).
-- A passage narrower than the character's physical diameter is not traversable (to develop; requires the physical radius setting).
+- A passage narrower than the character's physical diameter is not traversable. The export reports each doorway (a covered run of an edge with a wall on both sides) that is narrower than the diameter, so the author can widen it; the path planner itself does not avoid such a passage yet (the character stops in front of it). A run that reaches a zone corner is not judged.
+- A cutout (lake, building, fountain) blocks the ground of its own zone. Under the union rule, ground that another zone also covers stays walkable: draw the second zone around the obstacle, not over it, when the obstacle must stay closed.
 
 Status: **Completed** for zones that share an edge (in full or in part) or overlap, on one floor (tested headlessly and end to end). Explicit connections, width checks, and level handling are to develop.
 

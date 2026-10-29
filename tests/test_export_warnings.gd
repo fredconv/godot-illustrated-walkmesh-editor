@@ -91,3 +91,32 @@ func test_a_clean_export_has_no_warnings_and_warnings_are_not_saved_with_the_sce
 
 func test_take_warnings_accepts_a_missing_scene() -> void:
 	assert_int(SCENE_GENERATOR.take_warnings(null).size()).is_equal(0)
+
+
+func _two_rooms_with_a_door(door_height: float) -> Array:
+	# A corridor touches the middle of a room's right wall: the doorway is door_height wide.
+	var room := _zone("Room", _rect(100, 380, 300, 250))
+	var corridor := _zone("Corridor", _rect(400, 500, 350, door_height))
+	return [room, corridor]
+
+
+func test_a_doorway_narrower_than_the_character_is_reported() -> void:
+	var root := _export(_two_rooms_with_a_door(3.0))
+	var warnings := SCENE_GENERATOR.take_warnings(root)
+	assert_int(warnings.size()).is_equal(1)
+	assert_str(warnings[0]).contains("Room").contains("narrower than the character")
+	root.free()
+
+
+func test_a_doorway_the_character_fits_through_is_not_reported() -> void:
+	var root := _export(_two_rooms_with_a_door(60.0))
+	assert_int(SCENE_GENERATOR.take_warnings(root).size()).is_equal(0)
+	root.free()
+
+
+func test_a_fully_shared_edge_is_not_judged_as_a_doorway() -> void:
+	var left := _zone("Left", _rect(100, 380, 300, 250))
+	var right := _zone("Right", _rect(400, 380, 300, 250))
+	var root := _export([left, right])
+	assert_int(SCENE_GENERATOR.take_warnings(root).size()).is_equal(0)
+	root.free()

@@ -160,6 +160,7 @@ static func build_perspective_scene(document: Resource, texture: Texture2D, cali
 	if viewport_size.x <= 0 or viewport_size.y <= 0:
 		return null
 	var warnings := PackedStringArray()
+	var passage_warnings: Array = []
 	var root := Node3D.new()
 	root.name = _safe_node_name(document.resource_name if not document.resource_name.is_empty() else "IWEPerspectiveStage")
 	root.set_meta("iwe_projection_source", "image-space")
@@ -232,7 +233,7 @@ static func build_perspective_scene(document: Resource, texture: Texture2D, cali
 	for region in document.regions:
 		if not region.visible or region.points.size() < 3:
 			continue
-		var projected_region := _make_projected_navigation_region(region, document.image_size, viewport_size, calibration, document.regions)
+		var projected_region := _make_projected_navigation_region(region, document.image_size, viewport_size, calibration, document.regions, passage_warnings)
 		if projected_region == null:
 			warnings.append("Zone \"%s\" was not exported: part of it lies at or above the horizon of the calibrated camera, where the floor cannot be projected. Move it below the horizon or recalibrate the camera." % region.name)
 			continue
@@ -268,6 +269,7 @@ static func build_perspective_scene(document: Resource, texture: Texture2D, cali
 		mannequin.material_override = mannequin_material
 		anchor_node.add_child(mannequin)
 		mannequin.owner = root
+	warnings.append_array(PackedStringArray(passage_warnings))
 	if not warnings.is_empty():
 		root.set_meta(WARNINGS_META, warnings)
 	if add_player:
@@ -465,7 +467,7 @@ static func _make_projected_image_mesh(image_size: Vector2i, viewport_size: Vect
 	return mesh
 
 
-static func _make_projected_navigation_region(region: Resource, image_size: Vector2i, viewport_size: Vector2i, calibration: IWEPerspectiveCalibration, all_regions: Array = []) -> NavigationRegion3D:
+static func _make_projected_navigation_region(region: Resource, image_size: Vector2i, viewport_size: Vector2i, calibration: IWEPerspectiveCalibration, all_regions: Array = [], passage_warnings: Array = []) -> NavigationRegion3D:
 	var source_mesh := _make_navigation_mesh(region, all_regions)
 	var source_vertices := source_mesh.get_vertices()
 	var projected_vertices := PackedVector3Array()
@@ -486,14 +488,14 @@ static func _make_projected_navigation_region(region: Resource, image_size: Vect
 	nav_region.navigation_mesh = navigation_mesh
 	_add_walkable_surface(nav_region, navigation_mesh)
 	_add_projected_contour_guides(nav_region, region, image_size, viewport_size, calibration)
-	_add_projected_collision(nav_region, region, navigation_mesh, image_size, viewport_size, calibration, all_regions)
+	_add_projected_collision(nav_region, region, navigation_mesh, image_size, viewport_size, calibration, all_regions, passage_warnings)
 	return nav_region
 
 
 ## Physics for a walkable region: a floor shaped like the walkable triangles, and invisible
 ## walls along every boundary edge (outer contour and each cutout). Walls rise to the
 ## character height so a character cannot step over them.
-static func _add_projected_collision(nav_region: NavigationRegion3D, region: Resource, navigation_mesh: NavigationMesh, image_size: Vector2i, viewport_size: Vector2i, calibration: IWEPerspectiveCalibration, all_regions: Array = []) -> void:
+static func _add_projected_collision(nav_region: NavigationRegion3D, region: Resource, navigation_mesh: NavigationMesh, image_size: Vector2i, viewport_size: Vector2i, calibration: IWEPerspectiveCalibration, all_regions: Array = [], passage_warnings: Array = []) -> void:
 	var body := StaticBody3D.new()
 	body.name = "Collision"
 	body.collision_layer = 1
@@ -523,7 +525,9 @@ static func _add_projected_collision(nav_region: NavigationRegion3D, region: Res
 			# edge opens half of it.
 			var edge_start: Vector2 = contour[index]
 			var edge_end: Vector2 = contour[(index + 1) % contour.size()]
-			for piece in _uncovered_edge_pieces(edge_start, edge_end, region, all_regions):
+			var wall_pieces := _uncovered_edge_pieces(edge_start, edge_end, region, all_regions)
+			_collect_narrow_passages(region, edge_start, edge_end, wall_pieces, image_size, viewport_size, calibration, passage_warnings)
+			for piece in wall_pieces:
 				var piece_start: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(edge_start.lerp(edge_end, piece.x), image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
 				var piece_end: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(edge_start.lerp(edge_end, piece.y), image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
 				if piece_start == null or piece_end == null:
@@ -545,6 +549,23 @@ static func _add_projected_collision(nav_region: NavigationRegion3D, region: Res
 	wall_collision.shape = wall_shape
 	body.add_child(wall_collision)
 	wall_collision.owner = nav_region.owner
+
+
+## A doorway is a run of an edge that another zone covers, with wall on both sides of it on the
+## same edge. When it is narrower than the character's diameter the character cannot get through,
+## and the path planner does not know that, so it is reported (spec 3.5). A run that reaches a
+## corner of the zone is not judged: its width depends on the neighbouring edge.
+static func _collect_narrow_passages(region: Resource, edge_start: Vector2, edge_end: Vector2, wall_pieces: Array[Vector2], image_size: Vector2i, viewport_size: Vector2i, calibration: IWEPerspectiveCalibration, passage_warnings: Array) -> void:
+	var diameter := maxf(calibration.character_height_units, 2.0) * 0.16 * 2.0
+	for index in range(wall_pieces.size() - 1):
+		var door_start: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(edge_start.lerp(edge_end, wall_pieces[index].y), image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
+		var door_end: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(edge_start.lerp(edge_end, wall_pieces[index + 1].x), image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
+		if door_start == null or door_end == null:
+			continue
+		var width := Vector2(door_start.x, door_start.z).distance_to(Vector2(door_end.x, door_end.z))
+		if width < diameter:
+			var middle := edge_start.lerp(edge_end, (wall_pieces[index].y + wall_pieces[index + 1].x) * 0.5)
+			passage_warnings.append("A passage in zone \"%s\" near (%d, %d) is narrower than the character (%.0f units wide, the character needs %.0f). Click-to-move will stall there. Widen the passage or lower the character height." % [region.name, middle.x, middle.y, width, diameter])
 
 
 ## The parts of the edge a-b (image space) that no other walkable zone covers, as (start, end)

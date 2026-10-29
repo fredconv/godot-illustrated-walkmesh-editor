@@ -175,3 +175,37 @@ func test_an_overlap_does_not_open_a_path_across_ground_no_zone_covers() -> void
 	var right := _zone("right", _rect(600, 380, 200, 200))
 	var reached: Vector2 = await _walk([left, right], Vector2(200, 480), Vector2(700, 480))
 	assert_float(reached.x).override_failure_message("crossed a gap at %s" % reached).is_less(360.0)
+
+
+func test_a_cutout_stays_an_obstacle_when_another_zone_overlaps_its_zone_elsewhere() -> void:
+	# A lake cut out of the first zone, and a second zone that overlaps the first but not the lake.
+	var ground := _zone("ground", _rect(0, 0, 300, 200))
+	ground.subtraction_polygons.append(_rect(50, 50, 60, 60))
+	ground.subtraction_names.append("Lake")
+	var path := _zone("path", _rect(200, 20, 200, 60))
+	var all := [ground, path]
+	assert_float(_mesh_area(ground, all)).override_failure_message("the lake is still a hole").is_equal_approx(300.0 * 200.0 - 60.0 * 60.0, AREA_TOLERANCE)
+	assert_float(_mesh_area(path, all)).is_equal_approx(100.0 * 60.0, AREA_TOLERANCE)
+	for mesh_owner in all:
+		var mesh: NavigationMesh = SCENE_GENERATOR._make_navigation_mesh(mesh_owner, all)
+		var vertices := mesh.get_vertices()
+		for polygon_index in mesh.get_polygon_count():
+			var polygon := PackedVector2Array()
+			for vertex_index in mesh.get_polygon(polygon_index):
+				polygon.append(Vector2(vertices[vertex_index].x, vertices[vertex_index].z))
+			var centre := Vector2.ZERO
+			for corner in polygon:
+				centre += corner
+			centre /= float(polygon.size())
+			assert_bool(Rect2(50, 50, 60, 60).has_point(centre)).override_failure_message("a navigation polygon sits on the lake at %s" % centre).is_false()
+
+
+func test_a_zone_drawn_over_a_lake_makes_that_part_walkable_as_the_union_rule_says() -> void:
+	# Union semantics: the lake blocks only where no zone covers it. A second zone drawn over half of
+	# the lake walks across that half, the same as the walls do.
+	var ground := _zone("ground", _rect(0, 0, 300, 200))
+	ground.subtraction_polygons.append(_rect(100, 50, 100, 100))
+	ground.subtraction_names.append("Lake")
+	var bridge := _zone("bridge", _rect(150, 80, 200, 40))
+	var all := [ground, bridge]
+	assert_float(_mesh_area(bridge, all)).is_equal_approx(50.0 * 40.0 + 50.0 * 40.0, AREA_TOLERANCE)
