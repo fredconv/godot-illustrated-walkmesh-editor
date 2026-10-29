@@ -1364,7 +1364,11 @@ func _load_external_texture(path: String) -> Texture2D:
 	if path.is_empty():
 		return null
 	if path.begins_with("res://") or path.begins_with("user://"):
-		return load(path) as Texture2D
+		if ResourceLoader.exists(path):
+			return load(path) as Texture2D
+		# A picture that a save just copied is not an imported resource yet (the editor imports
+		# it on its next scan, and never in a plain folder), so read the file itself.
+		path = ProjectSettings.globalize_path(path)
 	var image := Image.load_from_file(path)
 	if image.is_empty():
 		return null
