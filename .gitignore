@@ -16,6 +16,7 @@
 crash.*
 /reports/
 /logs/
+/tests/e2e/_output/
 
 # OS metadata
 .DS_Store
