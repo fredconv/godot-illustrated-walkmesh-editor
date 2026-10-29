@@ -106,8 +106,12 @@ static func start_stage(tree: SceneTree, document: Resource) -> Array:
 	var root: Node3D = SCENE_GENERATOR.build_perspective_scene(document, texture, calibration, WORLD_SCALE, true)
 	var player := root.get_node("Player") as CharacterBody3D
 	tree.root.add_child(root)
-	for _frame in 12:
+	# A fixed number of frames is not enough on a busy machine: the navigation map can take longer
+	# to settle, and a path asked for before that is empty. Wait for the character's own signal.
+	var frames := 0
+	while (frames < 12 or not player._navigation_settled) and frames < 600:
 		await tree.physics_frame
+		frames += 1
 	return [root, player]
 
 

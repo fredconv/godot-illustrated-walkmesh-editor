@@ -293,6 +293,7 @@ static func _make_player(document: Resource, calibration: IWEPerspectiveCalibrat
 	# Walls sit on the boundary, so the character's centre stops one radius inside them. The
 	# navigation snap tolerance must exceed that radius or the character gets pulled to the edge.
 	player.set("snap_tolerance", height * 0.16 * 3.0)
+	player.set("path_clearance", height * 0.16 * 1.1)
 	var shape := CapsuleShape3D.new()
 	shape.radius = height * 0.16
 	shape.height = height

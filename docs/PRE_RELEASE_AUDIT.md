@@ -7,7 +7,7 @@ This document answers one question: **what is left before the first public pre-r
 ## 1. Executive summary
 
 - **The core chain works and is test-backed.** Importing an illustration, drawing zones and cutouts, connecting zones by a shared edge, calibrating a perspective camera from height references, exporting a perspective scene, and walking a test character around the obstacles all work, from an empty document, on new assets (`tests/e2e/`, 31 tests, plus a scripted pass in the real editor).
-- **All audit blockers are closed.** P0-1, P0-2, P1-1, P1-4, P1-5, P1-6 are fixed with tests. P1-2, P1-3, P1-7, P1-8, P1-9, P1-10 are still open.
+- **All audit blockers are closed.** P0-1, P0-2, P1-1, P1-2, P1-3, P1-4, P1-5, P1-6, P1-10 are fixed with tests (M1 is complete). P1-7, P1-8, P1-9 are still open (M2).
 - **The end-to-end run found three problems the unit tests did not.** (1) A zone that shares only *part* of another zone's edge is connected for navigation but still walled, so the character stalls. (2) The camera fit missed the two height references by 10.6% on a steeply viewed scene, and the plugin does not show the residual. (3) A picture copied beside a saved document could not be reopened until the editor had imported it (fixed in this pass, see section 5).
 - **The large features are not started.** Layers, transparent PNG elements, occlusion, parallax, triggers, portals, region types, explicit connections. They exist as design documents only. The foreground fountain of the new scene cannot yet hide the character.
 - **The editor UI is one tall dock.** There is no recorded UI/UX redesign plan in the repository or in the project notes I could access, so "the target UI" is **unverified** (section 3). I have listed concrete gaps instead of inventing a design.
@@ -34,14 +34,14 @@ Status classes: **Validated** (implemented, automated tests, checked in the real
 | Feature | Status | Implementation | Missing | Automated | Manual | Priority |
 |---|---|---|---|---|---|---|
 | Draw, select, move, edit vertices, add/remove point, undo/redo | Needs validation | `iwe_canvas.gd`, dock | Mouse interaction never driven by a test | e2e 02/03, document, region tree | **All mouse editing** | Must |
-| Duplicate region | Partial | `_duplicate_selected_region` | The outline moves 16 px, its **cutouts do not** (P1-10, pinned by an e2e test) | e2e 03 | | Must |
+| Duplicate region | Validated | `_duplicate_selected_region` | The outline and its cutouts move together (P1-10 fixed) | e2e 03 | | Must |
 | Rename, hide, delete | Validated | | Undo of a deletion re-adds the region at the end of the list (changes draw/export order; audit P2) | e2e 03 | | Must |
 | Lock a region | Partial | model and canvas respect `locked` | No button | | | Should |
 | Flat groups | Validated | | Undo of *Create group* can leave orphans (audit P2, not re-verified) | e2e 02 | | Must |
 | Nested groups | Not started | | | | | Optional |
 | Cutouts (named, several per region) | Validated | merged union subtracted once (P1-1) | Cutouts that enclose an island also block the island | cutout geometry 8, e2e 02 | | Must |
 | Cutouts without stable IDs | Partial | indexed + parallel name array | Stable IDs and a reference validator (prerequisite for layers) | | | Should |
-| Union of zones in the user's sense (walk from zone to zone) | Partial | exact **full** shared edge = doorway; verified end to end across yard, crossroads and bridge | Partly shared edges (navigation connects, wall stays: stall); overlapping zones (P1-2) | walkable connections, e2e 04 (3 tests) | | Must |
+| Union of zones in the user's sense (walk from zone to zone) | Validated | exact **full** shared edge = doorway; verified end to end across yard, crossroads and bridge | Partly shared edges and overlapping zones are both walkable (N-1 and P1-2 fixed, `test_overlapping_zones`, e2e 04) | walkable connections, e2e 04 (3 tests) | | Must |
 | Explicit union / intersection / XOR commands | Not started | | The README lists them as planned | e2e 02 pins their absence | | Optional |
 | Region types (connection, collision only, special) | Not started | every region is walkable | | | | Should |
 | Explicit connections, passage width | Not started | | | | | Should |
@@ -197,7 +197,7 @@ Complexity: **S** a day or less · **M** two to four days · **L** one to two we
 
 | ID | Milestone | Depends on | Acceptance criteria | Size |
 |---|---|---|---|---|
-| M1 | **Navigation and collision consistency.** Partly shared edges (N-1), overlapping zones (P1-2, or a documented decision not to support them), warnings for dropped zones and walls (P1-3), corner clearance for click-to-move (N-2), duplicate with cutouts (P1-10) | none | The e2e tests that pin N-1, P1-10 flip to the correct behaviour; a doorway of any width crossable by click-to-move; a warning names every dropped zone; no stall in the e2e walk | L |
+| M1 | **DONE 2026-10-29. Navigation and collision consistency.** Partly shared edges (N-1), overlapping zones (P1-2, or a documented decision not to support them), warnings for dropped zones and walls (P1-3), corner clearance for click-to-move (N-2), duplicate with cutouts (P1-10) | none | The e2e tests that pin N-1, P1-10 flip to the correct behaviour; a doorway of any width crossable by click-to-move; a warning names every dropped zone; no stall in the e2e walk | L |
 | M2 | **Persistence and export integrity.** Relative picture path (P1-7), no embedded pixels in exports (P1-8), explicit schema version write, refusal of newer versions and a migration policy (P1-9), stable cutout IDs, reference validator, region ID on exported nodes | none | Save, move the folder, reopen; an export of a project-folder picture is under 1 MB; a v2 file is refused with a message and untouched; v1 fixtures still load | L |
 | M12 | **Manual QA with a mouse**, list in section 6 | M1, M2 | Every item checked and recorded in `docs/DEVELOPMENT.md` | M |
 | M13 | **Release preparation.** Addon-only ZIP, `0.1.0-alpha.1` in `plugin.cfg` and changelog, screenshots, the village scene as a second example, doc sync (4.3), asset provenance, release checklist | M1, M2, M12 | A clean project opens with only the addon folder; every claim in README is covered by a test or marked experimental | M |

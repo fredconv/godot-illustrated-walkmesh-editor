@@ -32,6 +32,11 @@ const SPEED_PRESETS := [1.0, 2.0, 5.0, 10.0]
 @export var snap_tolerance := 0.1
 ## Frames without progress along a click-to-move path before the path is abandoned.
 @export var blocked_frames_limit := 20
+## Distance a click-to-move path keeps from obstacle corners and outer corners, in world units.
+## The navigation planner returns paths that touch corners, and a character with a physical
+## radius stalls on them. Set it to the character radius (the generator does). Zero keeps the
+## planner's path unchanged.
+@export var path_clearance := 0.0
 
 ## Testing multiplier, never saved and never exported: it only makes a path test shorter.
 ## Effective speed is move_speed * speed_multiplier. Set it with set_speed_multiplier().
@@ -84,9 +89,62 @@ func move_to(world_target: Vector3) -> void:
 		return
 	_pending_target = null
 	var target := NavigationServer3D.map_get_closest_point(map, world_target)
-	_path = NavigationServer3D.map_get_path(map, global_position, target, true)
+	_path = _with_corner_clearance(map, NavigationServer3D.map_get_path(map, global_position, target, true))
 	_path_index = 0
 	_blocked_frames = 0
+
+
+## Moves each corner of a planned path away from the edge of the walkable area, up to
+## path_clearance, so a character with a radius can round it. The first and last points stay,
+## and a corner only moves to a spot that is still walkable and has less wall around it.
+func _with_corner_clearance(map: RID, path: PackedVector3Array) -> PackedVector3Array:
+	if path_clearance <= 0.0 or path.size() < 3:
+		return path
+	var cleared := path.duplicate()
+	for index in range(1, path.size() - 1):
+		cleared[index] = _clear_of_edges(map, path[index])
+	return cleared
+
+
+const CLEARANCE_DIRECTIONS := 16
+
+
+func _clear_of_edges(map: RID, point: Vector3) -> Vector3:
+	var blocked := _blocked_directions(map, point)
+	if blocked.is_empty():
+		return point
+	var away := Vector3.ZERO
+	for direction in blocked:
+		away -= direction
+	if away.length() < 0.001:
+		return point
+	away = away.normalized()
+	var best := point
+	var best_blocked := blocked.size()
+	for fraction in [0.25, 0.5, 0.75, 1.0]:
+		var candidate: Vector3 = point + away * path_clearance * fraction
+		candidate.y = point.y
+		var snapped := NavigationServer3D.map_get_closest_point(map, candidate)
+		if snapped.distance_to(candidate) > 0.001:
+			continue
+		var count := _blocked_directions(map, candidate).size()
+		if count < best_blocked:
+			best = candidate
+			best_blocked = count
+	return best
+
+
+## Directions on the floor in which the walkable area ends within path_clearance of the point.
+func _blocked_directions(map: RID, point: Vector3) -> Array[Vector3]:
+	var blocked: Array[Vector3] = []
+	for step in CLEARANCE_DIRECTIONS:
+		var angle := TAU * float(step) / float(CLEARANCE_DIRECTIONS)
+		var direction := Vector3(cos(angle), 0.0, sin(angle))
+		var probe := point + direction * path_clearance
+		var closest := NavigationServer3D.map_get_closest_point(map, probe)
+		if closest.distance_to(probe) > path_clearance * 0.05:
+			blocked.append(direction)
+	return blocked
 
 
 ## Sets a manual move direction on the floor plane. Keyboard input uses this too.

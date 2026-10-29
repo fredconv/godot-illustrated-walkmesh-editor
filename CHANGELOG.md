@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Click-to-move keeps a clearance from corners (audit N-2). The planner's paths touched obstacle and doorway corners, which a character with a radius could not round. `IWEWalkmeshCharacter.path_clearance` (default 0, set to the character radius by the export) moves each corner of a planned path away from the edge while it stays walkable.
 - Perspective export warnings (audit P1-3). A zone or template that lies at or above the horizon of the calibrated camera used to disappear from the export without a word. Each one is now named in the Output panel, the dock status shows the count, and `IWESceneGenerator.take_warnings(root)` returns them for scripts.
 - Overlapping zones are walkable as one (audit P1-2). Click-to-move crosses from one zone to another where they overlap, in both directions and across chains of three. The zone drawn first keeps the shared ground; a later zone's navigation mesh stops on its outline.
 - End-to-end validation scenario on new assets (`tests/e2e/`): the village background and the fountain foreground, authored from an empty document. 31 tests cover import, polygons, cutout union, undo and redo, save and reopen, calibration, perspective export, and walking around the fountain at several speeds. Known defects found by it are pinned by tests that say so. `docs/PRE_RELEASE_AUDIT.md` is the pre-release inventory and the proposed plan to the first release.
