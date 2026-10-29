@@ -6,8 +6,6 @@ const DOCUMENT_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/
 
 var _dock: Control
 var _document := DOCUMENT_SCRIPT.new()
-var _undo_redo: EditorUndoRedoManager
-var _undo_context := RefCounted.new()
 
 
 func _get_plugin_name() -> String:
@@ -16,9 +14,9 @@ func _get_plugin_name() -> String:
 
 func _enter_tree() -> void:
 	_dock = DOCK_SCENE.instantiate() as Control
-	_undo_redo = get_undo_redo()
 	add_control_to_dock(DOCK_SLOT_RIGHT_UL, _dock)
-	_dock.set_document(_document, _undo_redo, _undo_context)
+	# The dock keeps its own per-document undo history, separate from the editor's.
+	_dock.set_document(_document)
 
 
 func _exit_tree() -> void:

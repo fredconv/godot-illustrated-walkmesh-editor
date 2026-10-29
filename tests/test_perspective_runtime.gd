@@ -8,7 +8,6 @@ const CALIBRATION_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/da
 const PERSPECTIVE_PROJECTOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_perspective_projector.gd")
 const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_scene_generator.gd")
 const DOCK_SCENE := preload("res://addons/illustrated_walkmesh_editor/ui/iwe_dock.tscn")
-const DOCK_UNDO_STUB := preload("res://tests/dock_undo_stub.gd")
 
 
 func _make_document() -> Resource:
@@ -136,7 +135,7 @@ func _screen_height_at(image_point: Vector2, calibration: IWEPerspectiveCalibrat
 func test_dock_fit_button_recalibrates_camera_and_undoes() -> void:
 	var dock: Control = DOCK_SCENE.instantiate()
 	var document := _make_document()
-	dock.set_document(document, DOCK_UNDO_STUB.new(), RefCounted.new())
+	dock.set_document(document)
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	scene_tree.root.add_child(dock)
 	await scene_tree.process_frame

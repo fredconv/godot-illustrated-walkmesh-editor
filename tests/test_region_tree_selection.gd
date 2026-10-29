@@ -7,7 +7,6 @@ const DOCUMENT_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/
 const REGION_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region.gd")
 const GROUP_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region_group.gd")
 const DOCK_SCENE := preload("res://addons/illustrated_walkmesh_editor/ui/iwe_dock.tscn")
-const DOCK_UNDO_STUB := preload("res://tests/dock_undo_stub.gd")
 
 
 func _rect(x: float, y: float, w: float, h: float) -> PackedVector2Array:
@@ -36,7 +35,7 @@ func _make_dock_with_regions() -> Control:
 	right.points = _rect(300, 0, 200, 200)
 	document.add_region(right)
 	var dock: Control = DOCK_SCENE.instantiate()
-	dock.set_document(document, DOCK_UNDO_STUB.new(), RefCounted.new())
+	dock.set_document(document)
 	(Engine.get_main_loop() as SceneTree).root.add_child(dock)
 	return dock
 

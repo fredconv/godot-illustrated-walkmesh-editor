@@ -69,8 +69,10 @@ const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/
 
 var _zoom := 1.0
 var _document: Resource
-var _undo_redo: Object
-var _undo_context: Object
+## Undo history of the current document only. It is replaced (and the old one freed)
+## whenever the document changes, so actions can never apply to another document, and the
+## editor's own histories are never touched.
+var _history: UndoRedo
 var _pending_document_path := ""
 var _pending_image_source := ""
 var _selected_group_id := ""
@@ -87,13 +89,34 @@ var _canvas_area_parent: Node
 var _canvas_area_index := 0
 
 
-func set_document(document: Resource, undo_redo: Object, undo_context: Object) -> void:
+func set_document(document: Resource) -> void:
 	_document = document
-	_undo_redo = undo_redo
-	_undo_context = undo_context
 	if is_node_ready():
-		_canvas.set_undo_context(_undo_context)
 		_replace_document(_document)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and _history != null:
+		_history.free()
+		_history = null
+
+
+## Starts a fresh history for the current document. The previous one is freed with every
+## action it held, including references to regions and anchors of the previous document.
+func _reset_history() -> void:
+	if _history != null:
+		_history.free()
+	_history = UndoRedo.new()
+	_history.version_changed.connect(_update_history_buttons)
+	_canvas.set_undo_redo(_history)
+	_update_history_buttons()
+
+
+func _update_history_buttons() -> void:
+	if not is_node_ready() or _history == null:
+		return
+	_undo_button.disabled = not _history.has_undo()
+	_redo_button.disabled = not _history.has_redo()
 
 
 func _ready() -> void:
@@ -104,7 +127,8 @@ func _ready() -> void:
 	_zoom_out_button.pressed.connect(_change_zoom.bind(1.0 / 1.2))
 	_zoom_in_button.pressed.connect(_change_zoom.bind(1.2))
 	_canvas.zoom_requested.connect(_change_zoom)
-	_canvas.set_undo_redo(_undo_redo)
+	_canvas.undo_requested.connect(_undo)
+	_canvas.redo_requested.connect(_redo)
 	_canvas.region_created.connect(_create_region)
 	_canvas.subtraction_created.connect(_create_subtraction)
 	_canvas.region_selected.connect(_select_region)
@@ -167,8 +191,7 @@ func _ready() -> void:
 	_rename_button.pressed.connect(_rename_selected_region)
 	_rename_group_button.pressed.connect(_rename_selected_group)
 	_rename_cutout_button.pressed.connect(_rename_selected_cutout)
-	_canvas.set_undo_context(_undo_context)
-	_canvas.set_undo_redo(_undo_redo)
+	_reset_history()
 	_canvas.set_document(_document)
 	if _document != null:
 		_canvas.set_scale_anchors(_document.scale_anchors, _document.default_template_height_px)
@@ -275,10 +298,10 @@ func _set_calibration_value(property_name: StringName, value: Variant) -> void:
 	var previous: Variant = calibration.get(property_name)
 	if previous == value:
 		return
-	_undo_redo.create_action("Adjust IWE perspective calibration", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_apply_calibration_value", property_name, value)
-	_undo_redo.add_undo_method(self, "_apply_calibration_value", property_name, previous)
-	_undo_redo.commit_action()
+	_history.create_action("Adjust IWE perspective calibration")
+	_history.add_do_method(_apply_calibration_value.bind(property_name, value))
+	_history.add_undo_method(_apply_calibration_value.bind(property_name, previous))
+	_history.commit_action()
 
 
 func _apply_calibration_value(property_name: StringName, value: Variant) -> void:
@@ -299,10 +322,10 @@ func _fit_camera_to_references() -> void:
 	if not error.is_empty():
 		_status_label.text = "Fit failed: %s" % error
 		return
-	_undo_redo.create_action("Fit IWE perspective camera", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_apply_calibration_snapshot", after)
-	_undo_redo.add_undo_method(self, "_apply_calibration_snapshot", before)
-	_undo_redo.commit_action()
+	_history.create_action("Fit IWE perspective camera")
+	_history.add_do_method(_apply_calibration_snapshot.bind(after))
+	_history.add_undo_method(_apply_calibration_snapshot.bind(before))
+	_history.commit_action()
 	_status_label.text = "Camera fitted to %d height references." % _document.scale_anchors.size()
 
 
@@ -364,25 +387,25 @@ func get_document() -> Resource:
 
 
 func _undo() -> void:
-	_undo_redo.undo(_undo_context)
+	if _history != null:
+		_history.undo()
 
 
 func _redo() -> void:
-	_undo_redo.redo(_undo_context)
+	if _history != null:
+		_history.redo()
 
 
+## A new document starts with an empty history. Creating it is not undoable: undoing it would
+## have to bring back another document's history.
 func _new_document() -> void:
-	var previous := _document
-	var replacement: Resource = DOCUMENT_SCRIPT.new()
-	_undo_redo.create_action("Create IWE document", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_replace_document", replacement)
-	_undo_redo.add_undo_method(self, "_replace_document", previous)
-	_undo_redo.commit_action()
+	_replace_document(DOCUMENT_SCRIPT.new())
 
 
 func _replace_document(document: Resource) -> void:
 	_stop_tools()
 	_document = document
+	_reset_history()
 	_set_perspective_mode(false)
 	_migrate_document_groups()
 	_canvas.set_document(_document)
@@ -535,10 +558,10 @@ func _create_region(points: PackedVector2Array) -> void:
 	region.name = "Region %d" % (_document.regions.size() + 1)
 	region.group_id = _selected_group_id
 	region.points = points
-	_undo_redo.create_action("Create IWE region", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_add_region", region)
-	_undo_redo.add_undo_method(self, "_remove_region", region.id)
-	_undo_redo.commit_action()
+	_history.create_action("Create IWE region")
+	_history.add_do_method(_add_region.bind(region))
+	_history.add_undo_method(_remove_region.bind(region.id))
+	_history.commit_action()
 
 
 func _create_scale_anchor(image_position: Vector2, height_px: float) -> void:
@@ -546,10 +569,10 @@ func _create_scale_anchor(image_position: Vector2, height_px: float) -> void:
 		return
 	var anchor: IWEScaleAnchor = SCALE_ANCHOR_SCRIPT.create_anchor(image_position, height_px)
 	anchor.name = "Template %d" % (_document.scale_anchors.size() + 1)
-	_undo_redo.create_action("Place IWE scale template", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_add_scale_anchor", anchor)
-	_undo_redo.add_undo_method(self, "_remove_scale_anchor", anchor.id)
-	_undo_redo.commit_action()
+	_history.create_action("Place IWE scale template")
+	_history.add_do_method(_add_scale_anchor.bind(anchor))
+	_history.add_undo_method(_remove_scale_anchor.bind(anchor.id))
+	_history.commit_action()
 
 
 func _add_scale_anchor(anchor: IWEScaleAnchor) -> void:
@@ -605,10 +628,10 @@ func _move_scale_anchor(anchor_id: String, before: Vector2, after: Vector2) -> v
 	var anchor := _find_scale_anchor(anchor_id)
 	if anchor == null or before == after:
 		return
-	_undo_redo.create_action("Move IWE scale template", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_set_scale_anchor_position", anchor_id, after)
-	_undo_redo.add_undo_method(self, "_set_scale_anchor_position", anchor_id, before)
-	_undo_redo.commit_action()
+	_history.create_action("Move IWE scale template")
+	_history.add_do_method(_set_scale_anchor_position.bind(anchor_id, after))
+	_history.add_undo_method(_set_scale_anchor_position.bind(anchor_id, before))
+	_history.commit_action()
 
 
 func _set_scale_anchor_position(anchor_id: String, value: Vector2) -> void:
@@ -630,10 +653,10 @@ func _set_selected_template_height(value: float) -> void:
 	if is_equal_approx(anchor.apparent_height_px, value):
 		return
 	var before := anchor.apparent_height_px
-	_undo_redo.create_action("Resize IWE scale template", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_set_scale_anchor_height", anchor.id, value)
-	_undo_redo.add_undo_method(self, "_set_scale_anchor_height", anchor.id, before)
-	_undo_redo.commit_action()
+	_history.create_action("Resize IWE scale template")
+	_history.add_do_method(_set_scale_anchor_height.bind(anchor.id, value))
+	_history.add_undo_method(_set_scale_anchor_height.bind(anchor.id, before))
+	_history.commit_action()
 
 
 func _scale_anchor_height_by(anchor_id: String, factor: float) -> void:
@@ -661,10 +684,10 @@ func _delete_scale_anchor_by_id(anchor_id: String) -> void:
 	if anchor == null:
 		return
 	var saved := anchor.duplicate(true) as IWEScaleAnchor
-	_undo_redo.create_action("Delete IWE scale template", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_remove_scale_anchor", anchor.id)
-	_undo_redo.add_undo_method(self, "_add_scale_anchor", saved)
-	_undo_redo.commit_action()
+	_history.create_action("Delete IWE scale template")
+	_history.add_do_method(_remove_scale_anchor.bind(anchor.id))
+	_history.add_undo_method(_add_scale_anchor.bind(saved))
+	_history.commit_action()
 
 
 func _set_template_mode(enabled: bool) -> void:
@@ -695,10 +718,10 @@ func _create_subtraction(region_id: String, points: PackedVector2Array) -> void:
 	var names_before := _get_cutout_names(region)
 	var names_after := names_before.duplicate()
 	names_after.append("Cutout %d" % (after.size()))
-	_undo_redo.create_action("Subtract polygon from IWE region", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_set_region_cutouts", region_id, {"polygons": after, "names": names_after})
-	_undo_redo.add_undo_method(self, "_set_region_cutouts", region_id, {"polygons": before, "names": names_before})
-	_undo_redo.commit_action()
+	_history.create_action("Subtract polygon from IWE region")
+	_history.add_do_method(_set_region_cutouts.bind(region_id, {"polygons": after, "names": names_after}))
+	_history.add_undo_method(_set_region_cutouts.bind(region_id, {"polygons": before, "names": names_before}))
+	_history.commit_action()
 
 
 func _set_region_cutouts(region_id: String, cutouts: Dictionary) -> void:
@@ -751,10 +774,10 @@ func _delete_selected_region() -> void:
 	if region == null:
 		return
 	var removed := region.duplicate(true) as IWERegion
-	_undo_redo.create_action("Delete IWE region", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_remove_region", region.id)
-	_undo_redo.add_undo_method(self, "_add_region", removed)
-	_undo_redo.commit_action()
+	_history.create_action("Delete IWE region")
+	_history.add_do_method(_remove_region.bind(region.id))
+	_history.add_undo_method(_add_region.bind(removed))
+	_history.commit_action()
 
 
 func _duplicate_selected_region() -> void:
@@ -764,10 +787,10 @@ func _duplicate_selected_region() -> void:
 	var copy := region.duplicate_region()
 	for index in copy.points.size():
 		copy.points[index] += Vector2(16.0, 16.0)
-	_undo_redo.create_action("Duplicate IWE region", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_add_region", copy)
-	_undo_redo.add_undo_method(self, "_remove_region", copy.id)
-	_undo_redo.commit_action()
+	_history.create_action("Duplicate IWE region")
+	_history.add_do_method(_add_region.bind(copy))
+	_history.add_undo_method(_remove_region.bind(copy.id))
+	_history.commit_action()
 
 
 func _region_item_selected() -> void:
@@ -980,10 +1003,10 @@ func _rename_cutout(region_id: String, cutout_index: int, new_name: String) -> v
 	if names[cutout_index] == new_name:
 		return
 	var previous_name := names[cutout_index]
-	_undo_redo.create_action("Rename IWE cutout", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_set_cutout_name", region_id, {"index": cutout_index, "name": new_name})
-	_undo_redo.add_undo_method(self, "_set_cutout_name", region_id, {"index": cutout_index, "name": previous_name})
-	_undo_redo.commit_action()
+	_history.create_action("Rename IWE cutout")
+	_history.add_do_method(_set_cutout_name.bind(region_id, {"index": cutout_index, "name": new_name}))
+	_history.add_undo_method(_set_cutout_name.bind(region_id, {"index": cutout_index, "name": previous_name}))
+	_history.commit_action()
 
 
 func _set_cutout_name(region_id: String, cutout: Dictionary) -> void:
@@ -1042,10 +1065,10 @@ func _rename_region(region_id: String, new_name: String) -> void:
 	if region == null or region.name == new_name:
 		return
 	var previous_name := region.name
-	_undo_redo.create_action("Rename IWE region", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_set_region_name", region_id, new_name)
-	_undo_redo.add_undo_method(self, "_set_region_name", region_id, previous_name)
-	_undo_redo.commit_action()
+	_history.create_action("Rename IWE region")
+	_history.add_do_method(_set_region_name.bind(region_id, new_name))
+	_history.add_undo_method(_set_region_name.bind(region_id, previous_name))
+	_history.commit_action()
 
 
 func _set_region_name(region_id: String, value: String) -> void:
@@ -1060,10 +1083,10 @@ func _rename_group(group_id: String, new_name: String) -> void:
 	if group == null or group.name == new_name:
 		return
 	var previous_name := group.name
-	_undo_redo.create_action("Rename IWE group", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_set_group_name", group_id, new_name)
-	_undo_redo.add_undo_method(self, "_set_group_name", group_id, previous_name)
-	_undo_redo.commit_action()
+	_history.create_action("Rename IWE group")
+	_history.add_do_method(_set_group_name.bind(group_id, new_name))
+	_history.add_undo_method(_set_group_name.bind(group_id, previous_name))
+	_history.commit_action()
 
 
 func _set_group_name(group_id: String, value: String) -> void:
@@ -1080,10 +1103,10 @@ func _set_region_visibility(region_id: String, value: bool, create_action: bool 
 	if region == null or region.visible == value:
 		return
 	if create_action:
-		_undo_redo.create_action("Toggle IWE region visibility", UndoRedo.MERGE_DISABLE, _undo_context)
-		_undo_redo.add_do_method(self, "_set_region_visibility", region_id, value)
-		_undo_redo.add_undo_method(self, "_set_region_visibility", region_id, region.visible)
-		_undo_redo.commit_action()
+		_history.create_action("Toggle IWE region visibility")
+		_history.add_do_method(_set_region_visibility.bind(region_id, value))
+		_history.add_undo_method(_set_region_visibility.bind(region_id, region.visible))
+		_history.commit_action()
 		return
 	region.visible = value
 	_visibility_button.text = "Show region" if not value else "Hide region"
@@ -1210,10 +1233,10 @@ func _create_group_named(group_name: String) -> void:
 	if not _has_illustration or _document == null:
 		return
 	var group: IWERegionGroup = GROUP_SCRIPT.create_group(group_name)
-	_undo_redo.create_action("Create IWE group", UndoRedo.MERGE_DISABLE, _undo_context)
-	_undo_redo.add_do_method(self, "_add_group", group)
-	_undo_redo.add_undo_method(self, "_remove_group", group.id)
-	_undo_redo.commit_action()
+	_history.create_action("Create IWE group")
+	_history.add_do_method(_add_group.bind(group))
+	_history.add_undo_method(_remove_group.bind(group.id))
+	_history.commit_action()
 
 
 func _add_group(group: IWERegionGroup) -> void:

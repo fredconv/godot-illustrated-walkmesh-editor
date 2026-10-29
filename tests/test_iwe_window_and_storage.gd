@@ -4,7 +4,6 @@ const DOCUMENT_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/
 const REGION_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region.gd")
 const SCALE_ANCHOR_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_scale_anchor.gd")
 const DOCK_SCENE := preload("res://addons/illustrated_walkmesh_editor/ui/iwe_dock.tscn")
-const DOCK_UNDO_STUB := preload("res://tests/dock_undo_stub.gd")
 const TEST_FOLDER := "res://iwdock_test_storage"
 
 
@@ -14,7 +13,7 @@ func after_test() -> void:
 
 func _make_dock() -> Control:
 	var dock: Control = DOCK_SCENE.instantiate()
-	dock.set_document(DOCUMENT_SCRIPT.new(), DOCK_UNDO_STUB.new(), RefCounted.new())
+	dock.set_document(DOCUMENT_SCRIPT.new())
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	scene_tree.root.add_child(dock)
 	return dock

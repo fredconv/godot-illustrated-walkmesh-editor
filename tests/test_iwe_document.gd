@@ -9,8 +9,6 @@ const PERSPECTIVE_PROJECTOR := preload("res://addons/illustrated_walkmesh_editor
 const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_scene_generator.gd")
 const CANVAS_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/ui/iwe_canvas.gd")
 const DOCK_SCENE := preload("res://addons/illustrated_walkmesh_editor/ui/iwe_dock.tscn")
-const UNDO_STUB := preload("res://tests/undo_history_stub.gd")
-const DOCK_UNDO_STUB := preload("res://tests/dock_undo_stub.gd")
 
 
 func test_document_serializes_illustration_coordinates() -> void:
@@ -68,9 +66,7 @@ func test_region_hit_testing_and_locked_state_data() -> void:
 func test_dock_requires_image_and_group_then_creates_polygon() -> void:
 	var dock: Control = DOCK_SCENE.instantiate()
 	var document: Resource = DOCUMENT_SCRIPT.new()
-	var undo_history: RefCounted = DOCK_UNDO_STUB.new()
-	var undo_context := RefCounted.new()
-	dock.set_document(document, undo_history, undo_context)
+	dock.set_document(document)
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	scene_tree.root.add_child(dock)
 	await scene_tree.process_frame
@@ -142,7 +138,6 @@ func test_dock_requires_image_and_group_then_creates_polygon() -> void:
 	assert_str(canvas.get_selected_region().id).is_equal(document.regions[0].id)
 	var quad := PackedVector2Array([Vector2(8, 8), Vector2(24, 8), Vector2(24, 24), Vector2(8, 24)])
 	dock._create_region(quad)
-	canvas.set_undo_redo(UNDO_STUB.new())
 	var points_button: Button = dock.get_node("%PointsButton")
 	points_button.button_pressed = true
 	canvas._handle_left_click(Vector2(8, 8))
@@ -212,7 +207,7 @@ func test_canvas_vertex_edit_supports_undo_and_redo() -> void:
 	var canvas: Control = CANVAS_SCRIPT.new()
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	scene_tree.root.add_child(canvas)
-	var history: RefCounted = UNDO_STUB.new()
+	var history := UndoRedo.new()
 	canvas.set_undo_redo(history)
 	var region: Resource = REGION_SCRIPT.new()
 	region.id = "editable_region"
@@ -233,6 +228,7 @@ func test_canvas_vertex_edit_supports_undo_and_redo() -> void:
 	history.redo()
 	assert_vector(region.points[0]).is_equal(Vector2(10, 10))
 	assert_vector(document.regions[0].points[0]).is_equal(Vector2(10, 10))
+	history.free()
 	canvas.queue_free()
 
 
@@ -240,7 +236,7 @@ func test_add_vertex_on_polygon_edge_is_undoable() -> void:
 	var canvas: Control = CANVAS_SCRIPT.new()
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	scene_tree.root.add_child(canvas)
-	var history: RefCounted = UNDO_STUB.new()
+	var history := UndoRedo.new()
 	canvas.set_undo_redo(history)
 	var region: Resource = REGION_SCRIPT.new()
 	region.id = "edge_region"
@@ -259,6 +255,7 @@ func test_add_vertex_on_polygon_edge_is_undoable() -> void:
 	assert_object(canvas.get_selected_region()).is_not_null()
 	history.undo()
 	assert_int(region.points.size()).is_equal(4)
+	history.free()
 	canvas.queue_free()
 
 
@@ -270,9 +267,8 @@ func test_scale_template_can_be_placed_moved_resized_and_undone() -> void:
 	var anchor: IWEScaleAnchor = SCALE_ANCHOR_SCRIPT.create_anchor(Vector2(100, 160), 80.0)
 	anchor.name = "Traveler"
 	document.scale_anchors.append(anchor)
-	var history: RefCounted = DOCK_UNDO_STUB.new()
 	scene_tree.root.add_child(dock)
-	dock.set_document(document, history, RefCounted.new())
+	dock.set_document(document)
 	await scene_tree.process_frame
 	dock._has_illustration = true
 	dock._update_workflow_controls()
@@ -282,9 +278,9 @@ func test_scale_template_can_be_placed_moved_resized_and_undone() -> void:
 	assert_int(document.scale_anchors.size()).is_equal(2)
 	assert_vector(document.scale_anchors[1].position).is_equal(Vector2(240, 200))
 	assert_float(document.scale_anchors[1].apparent_height_px).is_equal(160.0)
-	history.undo()
+	dock._undo()
 	assert_int(document.scale_anchors.size()).is_equal(1)
-	history.redo()
+	dock._redo()
 	assert_int(document.scale_anchors.size()).is_equal(2)
 	canvas._handle_scale_anchor_click(Vector2(100, 160))
 	var motion := InputEventMouseMotion.new()
@@ -295,18 +291,18 @@ func test_scale_template_can_be_placed_moved_resized_and_undone() -> void:
 	moved.pressed = false
 	canvas._gui_input(moved)
 	assert_vector(anchor.position).is_equal(Vector2(130, 140))
-	history.undo()
+	dock._undo()
 	assert_vector(anchor.position).is_equal(Vector2(100, 160))
-	history.redo()
+	dock._redo()
 	assert_vector(anchor.position).is_equal(Vector2(130, 140))
 	var height_input: SpinBox = dock.get_node("%TemplateHeightInput")
 	height_input.value = 120.0
 	assert_float(anchor.apparent_height_px).is_equal(120.0)
-	history.undo()
+	dock._undo()
 	assert_float(anchor.apparent_height_px).is_equal(80.0)
 	dock.get_node("%DeleteTemplateButton").pressed.emit()
 	assert_int(document.scale_anchors.size()).is_equal(1)
-	history.undo()
+	dock._undo()
 	assert_int(document.scale_anchors.size()).is_equal(2)
 	dock.queue_free()
 	await scene_tree.process_frame
@@ -315,9 +311,7 @@ func test_scale_template_can_be_placed_moved_resized_and_undone() -> void:
 func test_dock_perspective_mode_shows_preview_and_places_known_height_anchor() -> void:
 	var dock: Control = DOCK_SCENE.instantiate()
 	var document: Resource = DOCUMENT_SCRIPT.new()
-	var history: RefCounted = DOCK_UNDO_STUB.new()
-	var context := RefCounted.new()
-	dock.set_document(document, history, context)
+	dock.set_document(document)
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	scene_tree.root.add_child(dock)
 	await scene_tree.process_frame
@@ -440,7 +434,7 @@ func test_vertex_selection_persists_after_mouse_release_and_can_move() -> void:
 	var canvas: Control = CANVAS_SCRIPT.new()
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	scene_tree.root.add_child(canvas)
-	var history: RefCounted = UNDO_STUB.new()
+	var history := UndoRedo.new()
 	canvas.set_undo_redo(history)
 	var region: Resource = REGION_SCRIPT.new()
 	region.id = "persistent_vertex"
@@ -474,6 +468,7 @@ func test_vertex_selection_persists_after_mouse_release_and_can_move() -> void:
 	canvas._gui_input(release)
 	assert_vector(region.points[0]).is_equal(Vector2(35, 50))
 	assert_vector(region.subtraction_polygons[0][0]).is_equal(Vector2(60, 70))
+	history.free()
 	canvas.queue_free()
 
 
@@ -481,7 +476,7 @@ func test_remove_selected_vertex_keeps_three_point_minimum() -> void:
 	var canvas: Control = CANVAS_SCRIPT.new()
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	scene_tree.root.add_child(canvas)
-	var history: RefCounted = UNDO_STUB.new()
+	var history := UndoRedo.new()
 	canvas.set_undo_redo(history)
 	var region: Resource = REGION_SCRIPT.new()
 	region.id = "remove_region"
@@ -499,6 +494,7 @@ func test_remove_selected_vertex_keeps_three_point_minimum() -> void:
 	canvas.set_selected_vertex(0)
 	canvas.remove_selected_vertex()
 	assert_int(region.points.size()).is_equal(3)
+	history.free()
 	canvas.queue_free()
 
 
@@ -670,7 +666,7 @@ func test_dock_exports_project_scenes_with_selected_scale_and_camera_option() ->
 	var dock: Control = DOCK_SCENE.instantiate()
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	scene_tree.root.add_child(dock)
-	dock.set_document(document, DOCK_UNDO_STUB.new(), RefCounted.new())
+	dock.set_document(document)
 	await scene_tree.process_frame
 	dock._pending_image_source = source_path
 	dock._has_illustration = true

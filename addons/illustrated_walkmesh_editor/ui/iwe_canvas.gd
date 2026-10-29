@@ -2,6 +2,9 @@
 extends Control
 
 signal zoom_requested(factor: float)
+## Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y while the canvas has focus. The dock owns the history.
+signal undo_requested
+signal redo_requested
 signal region_created(points: PackedVector2Array)
 signal subtraction_created(region_id: String, points: PackedVector2Array)
 signal region_selected(region_id: String)
@@ -29,8 +32,7 @@ var _regions: Array[IWERegion] = []
 var _selected_id := ""
 var _selected_vertex := -1
 var _draft := PackedVector2Array()
-var _undo_redo: Object
-var _undo_context: Object
+var _history: UndoRedo
 var _document: IWEDocument
 var _vertex_before := PackedVector2Array()
 var _vertex_dragged := false
@@ -58,12 +60,8 @@ func _ready() -> void:
 	focus_mode = Control.FOCUS_ALL
 
 
-func set_undo_redo(undo_redo: Object) -> void:
-	_undo_redo = undo_redo
-
-
-func set_undo_context(undo_context: Object) -> void:
-	_undo_context = undo_context
+func set_undo_redo(history: UndoRedo) -> void:
+	_history = history
 
 
 func set_document(document: IWEDocument) -> void:
@@ -312,6 +310,12 @@ func _gui_input(event: InputEvent) -> void:
 		_dragging_vertex = false
 		_vertex_dragged = false
 		accept_event()
+	elif event is InputEventKey and event.pressed and not event.echo and event.is_command_or_control_pressed() and event.keycode in [KEY_Z, KEY_Y]:
+		if event.keycode == KEY_Y or event.shift_pressed:
+			redo_requested.emit()
+		else:
+			undo_requested.emit()
+		accept_event()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_ENTER and _draft.size() >= 3:
 		_finish_draft()
 		accept_event()
@@ -470,28 +474,24 @@ func _get_selected_region() -> IWERegion:
 
 
 func commit_vertex_move(region_id: String, before: PackedVector2Array, after: PackedVector2Array, action_name := "Move polygon vertex") -> void:
-	if before == after or _undo_redo == null:
+	if before == after or _history == null:
 		return
-	if _undo_redo is EditorUndoRedoManager:
-		_undo_redo.create_action(action_name, UndoRedo.MERGE_DISABLE, _undo_context)
-		_undo_redo.add_do_method(self, "set_region_points", region_id, after)
-		_undo_redo.add_undo_method(self, "set_region_points", region_id, before)
-		_undo_redo.commit_action()
-	else:
-		_undo_redo.record(self, region_id, before, after)
+	_history.create_action(action_name)
+	_history.add_do_method(set_region_points.bind(region_id, after))
+	_history.add_undo_method(set_region_points.bind(region_id, before))
+	_history.commit_action()
 	region_changed.emit(region_id, before, after)
 
 
 func commit_region_move(region_id: String, before: PackedVector2Array, after: PackedVector2Array, before_subtractions: Array[PackedVector2Array], after_subtractions: Array[PackedVector2Array]) -> void:
 	if before == after and before_subtractions == after_subtractions:
 		return
-	if _undo_redo is EditorUndoRedoManager:
-		_undo_redo.create_action("Move polygon", UndoRedo.MERGE_DISABLE, _undo_context)
-		_undo_redo.add_do_method(self, "set_region_geometry", region_id, after, after_subtractions)
-		_undo_redo.add_undo_method(self, "set_region_geometry", region_id, before, before_subtractions)
-		_undo_redo.commit_action()
-	else:
-		_undo_redo.record(self, region_id, before, after)
+	if _history == null:
+		return
+	_history.create_action("Move polygon")
+	_history.add_do_method(set_region_geometry.bind(region_id, after, after_subtractions))
+	_history.add_undo_method(set_region_geometry.bind(region_id, before, before_subtractions))
+	_history.commit_action()
 	region_changed.emit(region_id, before, after)
 
 
