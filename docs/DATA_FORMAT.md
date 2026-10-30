@@ -50,12 +50,12 @@ When Godot asks IWE to save and the document has no file yet, IWE writes an ordi
 - Adding an optional field with a default value does not require a new schema version.
 - Renaming, removing, or changing the meaning of a field requires a new schema version and a migration.
 - A document with a higher schema version than the plugin supports is not loaded. The dock reports both versions and the file is not changed. A version below 1 is refused as invalid.
-- When a version 2 exists, opening a version-1 file migrates it in memory and writes nothing until the author saves. The plugin has no migration code yet, because no second version exists.
+- Opening a version-1 file migrates it in memory (`migrate_to_current`) and writes nothing until the author saves.
 - Exports never modify the source document.
 
-## Planned changes (not yet implemented)
+## Design notes for later versions
 
-Schema version 2 is planned with the Layer Manager (see `LAYER_MANAGER_DESIGN.md`). It adds layers, visual elements, a per-region kind and explicit draw order. Nothing in this section is implemented yet, so no version 2 document exists.
+Version 2 is implemented in the reduced form described above (flat layers and visual elements). The Layer Manager design (`LAYER_MANAGER_DESIGN.md`) also proposes a per-region kind and an explicit draw order; those are not implemented, and the migration rules below stay the policy for them.
 
 ### Migration from version 1 to version 2
 

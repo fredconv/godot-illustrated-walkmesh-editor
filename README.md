@@ -31,7 +31,7 @@ Three levels, so you know what you can rely on today. The [roadmap](docs/ROADMAP
 
 ### Available
 
-Implemented and covered by automated tests. Most were also checked in the editor; the 2D export has so far been tested headless only.
+Implemented, covered by automated tests, and exercised in the real Godot 4.7.1 editor with real mouse and keyboard events (the record is in [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md); a few items it lists were not performed).
 
 - **Illustration.** Import a PNG, JPG, or WebP image, then pan and zoom. Authored geometry is stored in image pixels, so zoom never changes it.
 - **Walkable polygons.** Draw, select, move, and edit polygons vertex by vertex. Add or remove points, duplicate, rename, hide, and delete. Edits support undo and redo, with a separate history per document.
@@ -45,12 +45,20 @@ Implemented and covered by automated tests. Most were also checked in the editor
 
 ### Experimental
 
-Implemented and tested headless, but the editor interaction has not been checked end to end. Expect rough edges and possible changes.
+Implemented, tested headless and tried in the real editor, but newer and less proven than the list above. Expect rough edges and possible changes.
 
 - **Perspective calibration.** Place character height references at different depths, then fit the camera to them. The illustration is warped onto a flat virtual floor. This does not infer terrain height or hidden depth.
 - **Perspective export.** The calibrated stage gets collision walls on the outer outlines of walkable zones. Shared edges stay open.
 - **Test character.** The perspective stage can include a character that walks on click or with the keyboard, stays inside walkable areas, and is drawn at the size the calibrated camera gives its position. The `Test walk` mode of the dock shows it in the preview, with a base speed and x1, x2, x5 and x10 presets, pause and reset.
 - **Calibration report.** After a fit, each height reference shows how far the camera is from it, with a warning above 5%, the horizon row, and the zones above it (which are not exported).
+
+### Known limits
+
+- A picture occludes the character at one depth (its ground point). That suits a fountain or a house, not a long railing seen at an angle.
+- A doorway narrower than the character is reported when you export but the character cannot walk through it (it is wider than the gap).
+- Pictures are positioned by typing numbers, and there is no lock button for a region yet.
+- In a dock narrower than about 400 px the perspective preview is small.
+- Close Godot or disable the plugin with unsaved changes: IWE asks, or writes a recovery copy to `user://iwe_recovery/`.
 
 ### Planned
 
@@ -69,9 +77,9 @@ Open `examples/perspective_calibration_demo.tscn` to see a ready-made perspectiv
 
 ## Installation
 
-IWE is pre-release. The Asset Library is not available yet, so install it from the repository.
+IWE is pre-release. The Asset Library is not available yet. Download `illustrated_walkmesh_editor-0.1.0-alpha.1.zip` from the GitHub release (it holds only the addon and the licence), or take the folder from the repository.
 
-1. Copy the `addons/illustrated_walkmesh_editor/` folder into the `addons/` folder of your Godot 4.7 project. Create `addons/` if it does not exist.
+1. Unzip into your project, or copy the `addons/illustrated_walkmesh_editor/` folder into the `addons/` folder of your Godot 4.7 project. Create `addons/` if it does not exist.
 2. Open the project in Godot 4.7.
 3. Enable the plugin under **Project → Project Settings → Plugins** by ticking **Illustrated Walkmesh Editor**.
 4. The **IWE** dock appears in the right-hand dock area.
@@ -82,7 +90,7 @@ For a full walkthrough, see the [user guide](docs/USER_GUIDE.md).
 
 ## Roadmap
 
-The planned order of work is in [`docs/ROADMAP.md`](docs/ROADMAP.md). Layers, pictures and depth occlusion are in. Next are the validation of the editor with a mouse, release preparation, then region types and explicit connections. Intersection and XOR are planned as scoped, non-destructive modifiers.
+The planned order of work is in [`docs/ROADMAP.md`](docs/ROADMAP.md). Layers, pictures and depth occlusion are in, and the editor was validated with a mouse for this first alpha. Next are region types and explicit connections. Intersection and XOR are planned as scoped, non-destructive modifiers.
 
 ## Contributing
 
@@ -91,7 +99,7 @@ Bug reports, feature requests, and pull requests are welcome. Read [CONTRIBUTING
 ## Repository layout
 
 - `addons/illustrated_walkmesh_editor/`: the plugin (the only folder you need to install).
-- `examples/`: the perspective demo scene and its generator.
+- `examples/`: the perspective demo scene and its generator, and a finished [village document](examples/village/README.md) with a foreground fountain.
 - `prototypes/`: standalone experiments that are not part of the plugin (for example, transparency modes for occlusion).
 - `tests/`: headless regression tests (GdUnit4).
 - `docs/`: specification, architecture, guides, and design notes.

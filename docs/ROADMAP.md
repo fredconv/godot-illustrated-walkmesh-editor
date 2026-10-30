@@ -12,7 +12,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 |---|---|---|
 | Create, select, move, vertex insert/remove/move | Done | Minimum three vertices enforced |
 | Move whole region | Done | |
-| Duplicate, rename, hide, delete | Done | Duplicate moves the outline but not its cutouts (audit P1-10, open) |
+| Duplicate, rename, hide, delete | Done | Duplicate moves the outline and its cutouts together (audit P1-10, fixed) |
 | Unsaved-change protection (modified mark, prompts, Godot quit dialog) | Done | Audit P1-6; recovery copy for a never-saved document |
 | Replace the illustration without losing the calibration | Done | Audit P1-5; another size asks first; undoable |
 | Overlapping cutouts remove their union once | Done | Merged before subtraction; enclosed islands are still blocked (known limitation) |
@@ -39,10 +39,10 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 
 | Item | Status | Notes |
 |---|---|---|
-| Schema version on `IWEDocument` | Done | Written in every file, a newer or invalid version is refused with a message and the file untouched, files without the field load as version 1 (audit P1-9). No migration exists yet because only version 1 exists |
+| Schema version on `IWEDocument` | Done | Written in every file, a newer or invalid version is refused with a message and the file untouched, files without the field load as version 1 (audit P1-9). Version 2 adds the layers; a version 1 file is migrated in memory |
 | Portable picture reference | Done | Saving always copies the picture beside the document and stores `assets/...`; a moved folder reopens; Save As brings its own copy (audit P1-7) |
 | Cutout identifiers, region identifier on exported nodes, reference validator | Done | `subtraction_ids`, `iwe_region_id` and `iwe_cutout_id` metadata, `validate_references()` reports on open |
-| Layer tree resource (`IWELayer`), create/rename/delete/reorder | Todo | |
+| Layers (`IWELayer`), create/rename/delete | Done | A flat list with Background and Foreground defaults. Nesting and reordering are not done |
 | Nested groups | Todo | Currently flat |
 | Regions reference a layer id, not replaced by it | Todo | Navigation never reads layer order |
 | Move geometry between layers | Todo | |
