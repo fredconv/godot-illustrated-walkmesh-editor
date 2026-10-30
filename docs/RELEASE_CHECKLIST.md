@@ -1,6 +1,6 @@
 # Release checklist for `0.1.0-alpha.1` and `0.1.0-alpha.2`
 
-State on 2026-10-30: `0.1.0-alpha.1` is published (tag `v0.1.0-alpha.1`, left as it is). A defect found afterwards changed the addon, so `0.1.0-alpha.2` is prepared in the follow-up pull request (see "Release `0.1.0-alpha.2`" at the bottom). The addon-only package was tested in an empty project for both. Items that were not performed stay unticked and say why.
+State on 2026-10-30: `0.1.0-alpha.1` and `0.1.0-alpha.2` are published pre-releases, each kept under its own immutable tag. `alpha.2` contains the post-release Undo ordering fix and updated example, screenshots and documentation. The addon-only package was tested in an empty project. Items not performed stay unticked and say why.
 
 ## Before the release (owner decisions)
 
@@ -80,11 +80,11 @@ These were the only checks available before M12, when the Godot MCP and Windows 
 
 ## Preparation (M13)
 
-- [x] `version` in `addons/illustrated_walkmesh_editor/plugin.cfg` is `0.1.0-alpha.1`; the changelog's entries are under that version and date.
+- [x] Each published tag contains the matching plugin version and changelog entry: `0.1.0-alpha.1` and `0.1.0-alpha.2`.
 - [x] Addon-only ZIP built with `git archive` (the addon folder, 38 files, and the licence). `tests/release_check/run.ps1` unpacks it into an empty project with nothing else, enables the plugin in the real editor (headless), then imports a picture, draws two regions, adds a layer picture, saves, reopens and exports 2D, 3D and perspective scenes: no editor error, 0 failures. This found one source of noisy errors (a reimport of a file the editor had not listed), fixed.
 - [x] `examples/village/`: a finished document (four zones, two cutouts, two height references, the fountain on the foreground layer) with its pictures, a README and the script that rebuilds it. A test (`test_village_example`) opens it. It is not inside the addon ZIP, which holds only the addon.
 - [x] Every shipped image is one of the three in `assets/img/` (copied into `examples/village/assets/`). `assets/README.md` records them as illustrations created or modified by the project owner, with permission to use and redistribute them confirmed by the owner on 2026-10-30. No image is inside the addon ZIP.
-- [ ] New README screenshots were not made: a rendering of the two dock tabs was started and not run (the command was declined). The README keeps `assets/screenshots/perspective_demo.png`.
+- [x] README screenshots were rendered from the plugin itself for `alpha.2`: both dock tabs and the character occluded behind/in front of the fountain. They show only the Godot window.
 - [~] README status, known limits and install text were rewritten against the checklist; stale lines of `ROADMAP.md` and `DATA_FORMAT.md` fixed. The user guide was read through the workflow section and matched; it was not re-read line by line.
 - [x] CI green on the branch before the merge (headless suite, 302 tests).
 
@@ -101,4 +101,4 @@ Why a new number: Undo of a region deletion put the region back at the end of th
 - [x] Follow-up branch `chore/post-alpha-finalization` and a pull request into `develop`; no direct push to a protected branch.
 - [x] Full headless suite and the packaged-addon smoke test (`tests/release_check/run.ps1`) pass on the branch (numbers in the pull request).
 - [x] CI green on the pull request before the merge.
-- [ ] Merge, tag `v0.1.0-alpha.2`, GitHub pre-release with `illustrated_walkmesh_editor-0.1.0-alpha.2.zip` (see the final report for what was done).
+- [x] PR #2 merged into `develop` as `a544fcb` on 2026-10-30; `main` was not touched. The post-merge CI run 41036267866 passed. Tag `v0.1.0-alpha.2` points to `a544fcb`; the GitHub pre-release includes `illustrated_walkmesh_editor-0.1.0-alpha.2.zip` (77,494 bytes, SHA-256 `8f821d57a8fd83cbc168880530e4e3381a5bb274b4a3db3b04c512f78a6aa4de`).
