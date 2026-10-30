@@ -224,29 +224,29 @@ albedo_color = Color(1, 0.7411765, 0.2901961, 1)
 radius = 24.0896
 height = 150.56
 
-[node name="VillageStage" type="Node3D" unique_id=1626534815]
+[node name="VillageStage" type="Node3D" unique_id=304095390]
 metadata/iwe_projection_source = "image-space"
 
-[node name="PerspectiveStage" type="Node3D" parent="." unique_id=2000525544]
+[node name="PerspectiveStage" type="Node3D" parent="." unique_id=630611070]
 transform = Transform3D(0.01, 0, 0, 0, 0.01, 0, 0, 0, 0.01, 0, 0, 0)
 
-[node name="CameraRig" type="Node3D" parent="PerspectiveStage" unique_id=287973963]
+[node name="CameraRig" type="Node3D" parent="PerspectiveStage" unique_id=1597822706]
 
-[node name="PerspectiveCamera" type="Camera3D" parent="PerspectiveStage/CameraRig" unique_id=50966777]
+[node name="PerspectiveCamera" type="Camera3D" parent="PerspectiveStage/CameraRig" unique_id=1067383855]
 transform = Transform3D(1, 0, 0, 0, 0.8834185, 0.4685848, 0, -0.4685848, 0.8834185, 836, 523.36975, 1458.55)
 cull_mask = 1048573
 current = true
 fov = 45.0
 far = 2000.0
 
-[node name="IllustrationBackdrop" type="MeshInstance3D" parent="PerspectiveStage/CameraRig/PerspectiveCamera" unique_id=2036917815]
+[node name="IllustrationBackdrop" type="MeshInstance3D" parent="PerspectiveStage/CameraRig/PerspectiveCamera" unique_id=1789419328]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1800)
 layers = 4
 material_override = SubResource("StandardMaterial3D_04jc4")
 cast_shadow = 0
 mesh = SubResource("QuadMesh_w8lre")
 
-[node name="TopCamera" type="Camera3D" parent="PerspectiveStage/CameraRig" unique_id=1294031536]
+[node name="TopCamera" type="Camera3D" parent="PerspectiveStage/CameraRig" unique_id=1246298453]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 605.4119, 2359.2988, 485.44122)
 keep_aspect = 0
 cull_mask = 1048571
@@ -254,150 +254,150 @@ projection = 1
 size = 23.347332
 far = 100.0
 
-[node name="PerspectiveProjectedIllustration" type="MeshInstance3D" parent="PerspectiveStage" unique_id=1547007762]
+[node name="PerspectiveProjectedIllustration" type="MeshInstance3D" parent="PerspectiveStage" unique_id=386270017]
 layers = 2
 material_override = SubResource("StandardMaterial3D_iitxc")
 cast_shadow = 0
 mesh = SubResource("ArrayMesh_566o5")
 
-[node name="ProjectedWalkableRegions" type="Node3D" parent="PerspectiveStage" unique_id=229307322]
+[node name="ProjectedWalkableRegions" type="Node3D" parent="PerspectiveStage" unique_id=583591516]
 
-[node name="Chemins" type="Node3D" parent="PerspectiveStage/ProjectedWalkableRegions" unique_id=1827282181]
+[node name="Chemins" type="Node3D" parent="PerspectiveStage/ProjectedWalkableRegions" unique_id=621105330]
 
-[node name="Region 1" type="NavigationRegion3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins" unique_id=2026711001]
+[node name="Region 1" type="NavigationRegion3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins" unique_id=983215750]
 navigation_mesh = SubResource("NavigationMesh_jh80g")
-metadata/iwe_region_id = "region_af2b8847d3bc7029"
+metadata/iwe_region_id = "region_edc29858b48f9a6b"
 
-[node name="Walkable surface" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 1" unique_id=1430286500]
+[node name="Walkable surface" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 1" unique_id=1296417671]
 material_override = SubResource("StandardMaterial3D_0phjy")
 mesh = SubResource("ArrayMesh_hlstx")
 
-[node name="Walkable outline" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 1" unique_id=1707833226]
+[node name="Walkable outline" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 1" unique_id=1428797519]
 material_override = SubResource("StandardMaterial3D_ph8yc")
 mesh = SubResource("ArrayMesh_2g6mo")
 
-[node name="Collision" type="StaticBody3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 1" unique_id=1271816974]
+[node name="Collision" type="StaticBody3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 1" unique_id=400202455]
 collision_mask = 0
 
-[node name="Floor" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 1/Collision" unique_id=64011205]
+[node name="Floor" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 1/Collision" unique_id=1683533849]
 shape = SubResource("ConcavePolygonShape3D_0h54h")
 
-[node name="Walls" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 1/Collision" unique_id=772810322]
+[node name="Walls" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 1/Collision" unique_id=700671631]
 shape = SubResource("ConcavePolygonShape3D_0dnav")
 
-[node name="Region 2" type="NavigationRegion3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins" unique_id=995567184]
+[node name="Region 2" type="NavigationRegion3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins" unique_id=445312109]
 navigation_mesh = SubResource("NavigationMesh_wfbtv")
-metadata/iwe_region_id = "region_194273189274ee11"
+metadata/iwe_region_id = "region_ee199a2c52d75310"
 
-[node name="Walkable surface" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 2" unique_id=1263612636]
+[node name="Walkable surface" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 2" unique_id=358864164]
 material_override = SubResource("StandardMaterial3D_uoj73")
 mesh = SubResource("ArrayMesh_t47pa")
 
-[node name="Walkable outline" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 2" unique_id=1936328887]
+[node name="Walkable outline" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 2" unique_id=1529785994]
 material_override = SubResource("StandardMaterial3D_pjyxj")
 mesh = SubResource("ArrayMesh_6cklo")
 
-[node name="Cutout 1" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 2" unique_id=212709670]
+[node name="Cutout 1" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 2" unique_id=1521282432]
 material_override = SubResource("StandardMaterial3D_rg73y")
 mesh = SubResource("ArrayMesh_plnj5")
-metadata/iwe_cutout_id = "cutout_1fa80076695eebbb"
+metadata/iwe_cutout_id = "cutout_a2bbe8c50fadffa3"
 
-[node name="Collision" type="StaticBody3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 2" unique_id=1781383802]
+[node name="Collision" type="StaticBody3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 2" unique_id=1736225423]
 collision_mask = 0
 
-[node name="Floor" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 2/Collision" unique_id=2143819128]
+[node name="Floor" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 2/Collision" unique_id=1683109772]
 shape = SubResource("ConcavePolygonShape3D_s26y4")
 
-[node name="Walls" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 2/Collision" unique_id=1761018107]
+[node name="Walls" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 2/Collision" unique_id=1239808989]
 shape = SubResource("ConcavePolygonShape3D_fi5b0")
 
-[node name="Region 3" type="NavigationRegion3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins" unique_id=1155654612]
+[node name="Region 3" type="NavigationRegion3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins" unique_id=1750517136]
 navigation_mesh = SubResource("NavigationMesh_krx6r")
-metadata/iwe_region_id = "region_ab1fbbb878e78fb5"
+metadata/iwe_region_id = "region_8e6e84106e222082"
 
-[node name="Walkable surface" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 3" unique_id=831890041]
+[node name="Walkable surface" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 3" unique_id=1653713681]
 material_override = SubResource("StandardMaterial3D_kt440")
 mesh = SubResource("ArrayMesh_ww2xc")
 
-[node name="Walkable outline" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 3" unique_id=491996936]
+[node name="Walkable outline" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 3" unique_id=1813805209]
 material_override = SubResource("StandardMaterial3D_ijhy1")
 mesh = SubResource("ArrayMesh_qlq1n")
 
-[node name="Collision" type="StaticBody3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 3" unique_id=1363712323]
+[node name="Collision" type="StaticBody3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 3" unique_id=1213747908]
 collision_mask = 0
 
-[node name="Floor" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 3/Collision" unique_id=1672923784]
+[node name="Floor" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 3/Collision" unique_id=824699826]
 shape = SubResource("ConcavePolygonShape3D_r7fn4")
 
-[node name="Walls" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 3/Collision" unique_id=1133062613]
+[node name="Walls" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 3/Collision" unique_id=18519358]
 shape = SubResource("ConcavePolygonShape3D_w5pbo")
 
-[node name="Region 4" type="NavigationRegion3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins" unique_id=1569018902]
+[node name="Region 4" type="NavigationRegion3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins" unique_id=1295764488]
 navigation_mesh = SubResource("NavigationMesh_h8mvj")
-metadata/iwe_region_id = "region_ac81ab472362e557"
+metadata/iwe_region_id = "region_b394d972979d7e89"
 
-[node name="Walkable outline" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 4" unique_id=1750621531]
+[node name="Walkable outline" type="MeshInstance3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 4" unique_id=2097455537]
 material_override = SubResource("StandardMaterial3D_7hwsa")
 mesh = SubResource("ArrayMesh_u6n0j")
 
-[node name="Collision" type="StaticBody3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 4" unique_id=2009763175]
+[node name="Collision" type="StaticBody3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 4" unique_id=1090916457]
 collision_mask = 0
 
-[node name="Floor" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 4/Collision" unique_id=1677009955]
+[node name="Floor" type="CollisionShape3D" parent="PerspectiveStage/ProjectedWalkableRegions/Chemins/Region 4/Collision" unique_id=1588768282]
 shape = SubResource("ConcavePolygonShape3D_13gto")
 
-[node name="Template 1" type="Node3D" parent="PerspectiveStage" unique_id=1369626676]
+[node name="Template 1" type="Node3D" parent="PerspectiveStage" unique_id=1640126105]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 522.2192, 0, 983.44214)
-metadata/iwe_anchor_id = "scale_a46060198da5892a"
+metadata/iwe_anchor_id = "scale_d7bb428eaa529e6d"
 metadata/iwe_image_position = Vector2(300, 880)
 metadata/iwe_reference_apparent_height_px = 230.0
 
-[node name="Known-height character template" type="MeshInstance3D" parent="PerspectiveStage/Template 1" unique_id=645777618]
+[node name="Known-height character template" type="MeshInstance3D" parent="PerspectiveStage/Template 1" unique_id=1478821506]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 75.28, 0)
 material_override = SubResource("StandardMaterial3D_vkrqs")
 mesh = SubResource("CapsuleMesh_dweiw")
 
-[node name="Template 2" type="Node3D" parent="PerspectiveStage" unique_id=1670705783]
+[node name="Template 2" type="Node3D" parent="PerspectiveStage" unique_id=1760591661]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1046.3024, 0, 87.35315)
-metadata/iwe_anchor_id = "scale_d6af215cbecdf776"
+metadata/iwe_anchor_id = "scale_42bdfb1a9d34b971"
 metadata/iwe_image_position = Vector2(1000, 330)
 metadata/iwe_reference_apparent_height_px = 105.0
 
-[node name="Known-height character template" type="MeshInstance3D" parent="PerspectiveStage/Template 2" unique_id=810878418]
+[node name="Known-height character template" type="MeshInstance3D" parent="PerspectiveStage/Template 2" unique_id=1468394618]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 75.28, 0)
 material_override = SubResource("StandardMaterial3D_v6l6u")
 mesh = SubResource("CapsuleMesh_ywg75")
 
-[node name="ActionZones" type="Node3D" parent="PerspectiveStage" unique_id=1053716443]
+[node name="ActionZones" type="Node3D" parent="PerspectiveStage" unique_id=749414924]
 
-[node name="Door to the cellar" type="Area3D" parent="PerspectiveStage/ActionZones" unique_id=502566941]
+[node name="Door to the cellar" type="Area3D" parent="PerspectiveStage/ActionZones" unique_id=1522960622]
 script = ExtResource("2_72oal")
-zone_id = "zone_df67cdc129553d7f"
+zone_id = "zone_75349090b55a09bc"
 target_scene = "res://examples/integration/level_cellar.tscn"
 entry_id = "from_village"
-metadata/iwe_action_zone_id = "zone_df67cdc129553d7f"
+metadata/iwe_action_zone_id = "zone_75349090b55a09bc"
 
-[node name="Shape" type="CollisionPolygon3D" parent="PerspectiveStage/ActionZones/Door to the cellar" unique_id=1379606661]
+[node name="Shape" type="CollisionPolygon3D" parent="PerspectiveStage/ActionZones/Door to the cellar" unique_id=1903988000]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 112.92, 0)
 depth = 225.84
-polygon = PackedVector2Array(1322.8364, 585.4811, 1430.2268, 585.48126, 1339.0411, 762.05554, 1248.1301, 762.0555)
+polygon = PackedVector2Array(107.796265, -27.147217, 231.22064, -27.147095, 335.49292, 276.87085, 233.34863, 276.8706)
 
-[node name="EntryPoints" type="Node3D" parent="PerspectiveStage" unique_id=2011387996]
+[node name="EntryPoints" type="Node3D" parent="PerspectiveStage" unique_id=1802455312]
 
-[node name="start" type="Marker3D" parent="PerspectiveStage/EntryPoints" unique_id=2015014396]
+[node name="start" type="Marker3D" parent="PerspectiveStage/EntryPoints" unique_id=1585139750]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 495.2852, 0, 918.8314)
 script = ExtResource("3_k6ety")
 entry_id = "start"
 is_default = true
 facing_degrees = nan
-metadata/iwe_entry_point_id = "entry_b230ca4424dfe923"
+metadata/iwe_entry_point_id = "entry_691f2a21523aa582"
 
-[node name="from_cellar" type="Marker3D" parent="PerspectiveStage/EntryPoints" unique_id=1870894884]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1241.3516, 0, 681.1052)
+[node name="from_cellar" type="Marker3D" parent="PerspectiveStage/EntryPoints" unique_id=129852854]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 332.6357, 0, 404.43066)
 script = ExtResource("3_k6ety")
 entry_id = "from_cellar"
-facing_degrees = 90.0
-metadata/iwe_entry_point_id = "entry_bae961a78d3a1ae0"
+facing_degrees = 180.0
+metadata/iwe_entry_point_id = "entry_b937d7226379b48a"
 
-[node name="StageRuntime" type="Node" parent="." unique_id=635655980]
+[node name="StageRuntime" type="Node" parent="." unique_id=779931196]
 script = ExtResource("4_igpoj")

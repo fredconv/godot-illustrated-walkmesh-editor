@@ -282,7 +282,8 @@ func test_the_example_levels_send_the_external_character_to_the_cellar_and_back(
 	assert_float(arrived.global_position.distance_to(from_village.global_position)).override_failure_message("arrived at the entry point the door names").is_less(0.05)
 	assert_bool(IWEStageTravel.is_traveling).override_failure_message("the travel ended once the character arrived").is_false()
 	await _wait_for_navigation(arrived)
-	# And back up the stairs: the village receives the character at "from_cellar", facing west.
+	# And back up the stairs: the village receives the character at "from_cellar", in front of the door,
+	# facing the camera.
 	arrived.speed_multiplier = 10.0
 	arrived.walk_to(_centre_of_zone(cellar, "Stairs up"))
 	var back := await _wait_for_scene("LevelVillage", 900)
@@ -290,5 +291,5 @@ func test_the_example_levels_send_the_external_character_to_the_cellar_and_back(
 	var returned := back.get_node("Hero") as CharacterBody3D
 	var from_cellar := back.find_child("from_cellar", true, false) as Node3D
 	assert_float(returned.global_position.distance_to(from_cellar.global_position)).is_less(0.05)
-	assert_float(returned.rotation.y).override_failure_message("the entry point faces west").is_equal_approx(deg_to_rad(90.0), 0.05)
+	assert_float(absf(wrapf(returned.rotation.y, -PI, PI))).override_failure_message("the entry point faces the camera").is_equal_approx(PI, 0.05)
 	assert_bool(IWEStageTravel.is_traveling).is_false()

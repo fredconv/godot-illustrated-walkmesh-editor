@@ -4,8 +4,8 @@ A small game made of two levels, played with a character that is **not** the plu
 
 - Click the floor: the character walks there, round the fountain, with its own controller (`external_character.gd`).
 - `PageUp` / `PageDown` change its speed (x1, x2, x5, x10), `Home` returns to x1.
-- Walk onto the bridge, to the zone at its far end (the door): the game loads `level_cellar.tscn` and the character appears at the entry point `from_village`.
-- In the cellar, walk into the stairs zone: the village loads again and the character appears at `from_cellar`, facing west.
+- Walk to the door of the house: the game loads `level_cellar.tscn` and the character appears at the entry point `from_village`.
+- In the cellar, walk into the stairs zone: the village loads again and the character appears at `from_cellar`, in front of the house door, facing the camera.
 
 | File | What it is |
 |---|---|

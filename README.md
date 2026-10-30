@@ -24,7 +24,19 @@ The character is hidden behind the foreground fountain when it stands farther fr
 |---|---|
 | ![The character is hidden behind the fountain](assets/screenshots/occlusion_behind.png) | ![The character is drawn in front of the fountain](assets/screenshots/occlusion_front.png) |
 
-The screenshots are made from the plugin itself with the village example (`pwsh tests/render_check/readme_shots.ps1`).
+The first screenshots are rendered from the plugin itself with the village example (`pwsh tests/render_check/readme_shots.ps1`).
+
+**Action zones and entry points**, in the real Godot 4.7.1 editor, with the whole interface detached into its own window (the orange rectangle in front of the house door is an action zone that loads another scene; the marker is an entry point):
+
+![The IWE interface in its own window: an action zone in front of the house door, an entry point, and their properties](assets/screenshots/editor_action_zones_window.png)
+
+**A walk through the door, in a running game** (`examples/integration/`, a character with its own controller): the character starts in the yard, walks into the zone in front of the house door, the cellar loads and the character appears at its entry point; walking into the stairs zone brings it back in front of the door.
+
+| In the village | After the door: the cellar | Back by the stairs |
+|---|---|---|
+| ![The village level, the character in the yard](assets/screenshots/game_village_start.png) | ![The cellar level, the character at its entry point](assets/screenshots/game_cellar_arrival.png) | ![The village again, the character in front of the house door](assets/screenshots/game_village_return.png) |
+
+These were taken from a separate editor and game window on a temporary copy of the project (no other window is in them).
 
 ## Documentation
 

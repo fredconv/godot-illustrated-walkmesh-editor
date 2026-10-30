@@ -5,7 +5,7 @@ extends SceneTree
 ## them. From the repository root:
 ##   Godot --headless --path . -s examples/integration/build_integration_example.gd
 ##
-## village  --door-->  cellar        a zone at the end of the bridge loads the cellar
+## village  --door-->  cellar        a zone in front of the house door loads the cellar
 ## village  <--stairs--  cellar      a zone in the cellar loads the village again
 ## Each level arrives at the entry point the zone names.
 
@@ -132,15 +132,17 @@ func _author_village() -> IWEDocument:
 	dock._fit_camera_to_references()
 	var document: IWEDocument = dock._document
 	document.resource_name = "VillageStage"
-	var door := IWEActionZone.create_zone("Door to the cellar", _square(Vector2(1440, 590), 60.0))
+	# The door of the house is drawn at the top edge of the yard, around (350, 300) on the illustration.
+	var door := IWEActionZone.create_zone("Door to the cellar", _square(Vector2(350, 345), 45.0))
 	door.target_scene = FOLDER.path_join("level_cellar.tscn")
 	door.entry_id = "from_village"
 	document.action_zones.append(door)
 	var start := IWEEntryPoint.create_entry("start", Vector2(300, 800))
 	start.is_default = true
 	document.entry_points.append(start)
-	var from_cellar := IWEEntryPoint.create_entry("from_cellar", Vector2(1330, 590))
-	from_cellar.facing_degrees = 90.0
+	var from_cellar := IWEEntryPoint.create_entry("from_cellar", Vector2(350, 440))
+	# 180 degrees faces the camera: the character comes out of the door and looks at us.
+	from_cellar.facing_degrees = 180.0
 	document.entry_points.append(from_cellar)
 	dock.queue_free()
 	return document
