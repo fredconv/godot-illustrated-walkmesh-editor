@@ -1,39 +1,32 @@
-# HANDOFF — état au 2026-10-30
+# HANDOFF — état au 2026-10-30 (après la préparation de 0.1.0-alpha.3)
 
-Fichier de reprise pour une nouvelle session Claude Code. Il ne remplace pas `docs/`; il dit où on en est et quoi faire ensuite.
+Fichier de reprise pour une nouvelle session. Il ne remplace pas `docs/`; il dit où on en est et quoi faire ensuite.
 
 ## Contexte
-- Plugin Godot « Illustrated Walkmesh Editor » (`addons/illustrated_walkmesh_editor/`), Godot 4.7.1, projet `New_plugin_path_creator`.
-- Branche `feature/region-editing`, PR #1 ouverte. **Ne pas** fusionner, tagger, publier, ni toucher `main`/`develop`, ni force-push (consigne du propriétaire, toujours valable).
-- Périmètre de la première release (décidé par le propriétaire) : import d'image, régions, union/exclusions, perspective et calibration, personnage de référence, calques arrière-plan et premier plan, occlusion, aperçu 3D avec vitesses, sauvegarde et export. Interface en deux onglets (Création, Test) avec sections repliables.
+- Plugin Godot « Illustrated Walkmesh Editor » (`addons/illustrated_walkmesh_editor/`), Godot 4.7.1.
+- Branche de travail `feature/stage-transitions` (partie de `develop`). Les pré-releases `v0.1.0-alpha.1` et `v0.1.0-alpha.2` sont publiées et ne doivent ni être remplacées ni supprimées. `main` n'est jamais touchée directement : tout passe par une branche et une PR vers `develop`. Pas de force-push.
+- Le propriétaire a demandé de ne déclarer le plugin « stable » qu'une fois le périmètre de base implémenté, intégré, testé et documenté. Les images du dépôt sont les siennes, avec autorisation d'usage et de redistribution confirmée : ne pas les remplacer pour une raison de licence.
+- Décision V1/V2 : en V1 les images de calque sont préparées en amont (même canevas que le fond) ; l'édition à la souris (déplacer, redimensionner) est V2.
 
-## Fait (tout est poussé sauf les derniers changements listés plus bas)
-M1 à M5, calques/images/occlusion (schéma v2), fusion de régions, onglets, test de marche avec vitesses, rapport de calibration, M12 (deux passes dans l'éditeur réel avec Godot MCP + Windows MCP). 301 tests headless passent. Dernières preuves et défauts corrigés : `docs/RELEASE_CHECKLIST.md` (section « M12 results »).
-
-## Changements locaux non commités au moment de la rédaction
-- `addons/illustrated_walkmesh_editor/ui/iwe_dock.gd` : noms par défaut uniques (`_free_name`), échec d'export visible dans le dock, création du dossier d'export, chargement d'illustration manquante sans plantage.
-- `tests/test_dock_tabs.gd`, `tests/test_picture_paths.gd` : tests de régression correspondants.
-- `docs/RELEASE_CHECKLIST.md`, `CHANGELOG.md` : résultats de la seconde passe M12.
-- À commiter avec : `git add -A addons tests docs CHANGELOG.md HANDOFF.md` (sans `project.godot`, `scenes/`, `addons/phantom_camera/` ni `prototypes/occlusion/*.uid` : fichiers de l'utilisateur ou générés).
+## Fait dans cette session (alpha.3)
+- **Zones d'action et points d'entrée** (format de document version 3, migration 1 et 2 en mémoire), édition dans le dock, export 2D, 3D plat et perspective, runtime sans autoload : `IWEStageTravel`, `IWEStageRuntime`, `IWETransitionZone(2D)`, `IWEEntryMarker(2D)`. Voir `docs/STAGE_TRANSITIONS.md`.
+- **Personnage externe** : groupe `iwe_traveller`, `IWENavigationPath`, `examples/integration/` (deux niveaux reliés). Voir `docs/INTEGRATION.md`.
+- **Vitesse** : touches PageUp / PageDown / Home dans le jeu (`debug_speed_keys`), boutons du dock pour l'aperçu seulement.
+- **Interface** : le bouton `Window` détache toute l'interface ; infobulles, aide de la barre d'état, compteurs dans les titres de sections.
+- 392 tests headless, contrôle de rendu GPU étendu, ZIP de l'addon testé en projet vierge, validation dans un éditeur et un jeu réels isolés (`docs/RELEASE_CHECKLIST.md`, section « Base scope for 0.1.0-alpha.3 »).
 
 ## Ne pas toucher
-`project.godot` (modifié par l'utilisateur : plugins et MCP), le dossier `scenes/`, `addons/phantom_camera/`. Ce sont des changements locaux de l'utilisateur.
+`project.godot` (modifié par l'utilisateur), le dossier `scenes/`, `addons/phantom_camera/`, `prototypes/occlusion/*.uid` : changements locaux de l'utilisateur. **Ne jamais** faire `git add addons` ni `git add -A` : ajouter les chemins explicitement (`addons/illustrated_walkmesh_editor`, `tests`, `docs`, `examples`, `assets`).
 
-## Outils (MCP)
-- Godot MCP : serveur de Claude Code sur le port 6506 (l'autre serveur, 6505, est l'outil `hermes`/CreativeOS : ne pas l'arrêter).
-- Windows MCP : attendre `ControlStatus` = `ready` avant de cliquer ; ne pas contourner `USER_CONTROL`.
-- Les serveurs sont enregistrés pour la clé de projet en minuscules `c:/Users/...` (VS Code) et en majuscules (terminal). Si les outils MCP manquent après un redémarrage : `claude mcp list` depuis un `c:` minuscule.
-- Lancer l'éditeur : `C:\Users\fredc\AppData\Roaming\Godot\app_userdata\Godots\versions\Godot_v4_7_1-stable_win64_exe\Godot_v4.7.1-stable_win64.exe --editor --path C:\Users\fredc\Documents\new-plugin-path-creator`. Dans l'éditeur, après une mise à jour du plugin : scanner le système de fichiers puis désactiver/réactiver le plugin.
-- Tests headless : `Godot_v4.7-stable_win64_console.exe --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd --add "res://tests" --ignoreHeadlessMode` (binaire dans `C:\Users\fredc\Downloads\Godot_v4.7-stable_win64.exe\`).
-- Rendu réel : `pwsh tests/render_check/run.ps1 -Godot <console.exe>` ; auto-test éditeur : `pwsh tests/editor_selftest/run.ps1 -Godot <console.exe>`.
-- Écrire des fichiers de scripts via des fichiers (outil Write) plutôt que des heredocs Bash contenant des apostrophes : ils cassent l'analyseur du shell.
+## Outils
+- Tests headless : `Godot_v4.7-stable_win64_console.exe --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd --add "res://tests" --ignoreHeadlessMode` (binaire dans `C:\Users\fredc\Downloads\Godot_v4.7-stable_win64.exe\`). Lancer `--import` avant pour régénérer le cache des classes et les fichiers `.uid` (à commiter pour les nouveaux scripts).
+- Contrôle de rendu GPU : `pwsh tests/render_check/run.ps1 -Godot <console.exe>` (ouvre une fenêtre, quelques minutes). Captures du README : `pwsh tests/render_check/readme_shots.ps1`.
+- Test du ZIP : `pwsh tests/release_check/run.ps1 -Godot <console.exe> -Zip <fichier.zip>`.
+- Reconstruire les exemples : `examples/village/build_village_example.gd`, `examples/integration/build_integration_example.gd` (voir leurs README).
+- Validation dans l'éditeur réel : lancer un éditeur isolé sur une copie temporaire du projet, déplacer sa fenêtre sur un autre écran avec `SetWindowPos`, ne capturer que la région de cette fenêtre, vérifier `ControlStatus` avant chaque série de clics, ne jamais toucher l'éditeur de l'utilisateur. Le mode « fenêtre unique » de l'éditeur empêche l'onglet Game intégré et le détachement du dock lui-même.
+- Éviter les heredocs Bash contenant des apostrophes : écrire les scripts avec l'outil Write.
 
-## Reste à faire avant « prêt pour la production »
-1. **Commiter et pousser** les changements locaux ci-dessus, puis vérifier la CI (`gh run list --branch feature/region-editing`).
-2. **M12, points non joués** (voir la coche `[ ]`/`[~]` du checklist) : boîte de fermeture de Godot avec un document modifié (la session précédente a été bloquée par la couche de permissions : à faire avec les nouveaux droits ou par un humain), détachement du dock lui-même, zone touchant la moitié d'une arête, changement du champ de vision, une zone au-dessus de l'horizon à l'export, flèches du clavier pendant l'édition.
-3. **Limites connues à traiter** : image qui n'occulte que par une seule profondeur ; porte plus étroite que le personnage signalée mais pas évitée ; aperçu petit à 375 px ; bloc de propriétés de région et bouton de verrouillage absents ; images positionnées au clavier (pas de glisser à la souris).
-4. **M13, préparation de la release** (sans publier) : version `0.1.0-alpha.1` dans `plugin.cfg` et changelog, ZIP « addon seul » testé dans un projet vide, exemple du village, licences des images, captures d'écran, relecture du README et du guide. Détail : `docs/RELEASE_CHECKLIST.md`.
-5. **Fin** : mettre à jour `docs/PRE_RELEASE_AUDIT.md` (section 7.1) et le rapport final ; la fusion, le tag et la publication restent au propriétaire.
-
-## Prochaine étape immédiate
-Commiter/pousser (point 1), puis rejouer dans l'éditeur réel les éléments `[ ]` de M12 qui restent faisables, en commençant par la boîte de fermeture avec document modifié.
+## Reste à faire
+1. Fusionner la PR de cette branche dans `develop` (CI verte), puis taguer `v0.1.0-alpha.3` et publier la pré-release avec `illustrated_walkmesh_editor-0.1.0-alpha.3.zip` (le ZIP se fabrique avec `git archive` de `origin/develop`, voir `docs/RELEASE_CHECKLIST.md`). La PR #3 (`codex/release-checklist-alpha2`, documentation) peut entrer en conflit sur `docs/RELEASE_CHECKLIST.md`.
+2. Pas encore fait du périmètre : édition des sommets d'une zone, interactions avec bouton, conditions, personnage riggé et animé, vérification à toutes les largeurs du dock. Les limites sont décrites dans `README.md` et la checklist.
+3. V2 : édition visuelle des images de calque (`docs/ROADMAP.md`, section V2).
