@@ -1,0 +1,105 @@
+[gd_resource type="Resource" script_class="IWEDocument" format=3]
+
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/data/iwe_region_group.gd" id="1_xu0mg"]
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/data/iwe_layer.gd" id="2_1q0lc"]
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/data/iwe_perspective_calibration.gd" id="3_swxun"]
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/data/iwe_region.gd" id="4_88fh7"]
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/data/iwe_scale_anchor.gd" id="5_g6pet"]
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/data/iwe_document.gd" id="6_7l0vr"]
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/data/iwe_visual_element.gd" id="7_g46fr"]
+
+[sub_resource type="Resource" id="Resource_povjy"]
+script = ExtResource("1_xu0mg")
+id = "group_3245492819d9c28b"
+name = "Chemins"
+
+[sub_resource type="Resource" id="Resource_pjybg"]
+script = ExtResource("2_1q0lc")
+id = "layer_background"
+name = "Background"
+kind = 0
+
+[sub_resource type="Resource" id="Resource_i1kxd"]
+script = ExtResource("2_1q0lc")
+id = "layer_foreground"
+name = "Foreground"
+
+[sub_resource type="Resource" id="Resource_v7lgk"]
+script = ExtResource("3_swxun")
+camera_position = Vector3(836, 523.36975, 1458.55)
+camera_rotation_degrees = Vector3(-27.942472, 0, 0)
+character_height_units = 150.56
+reference_viewport_size = Vector2i(1152, 648)
+
+[sub_resource type="Resource" id="Resource_du1ao"]
+script = ExtResource("4_88fh7")
+id = "region_b843e39b40731de1"
+group_id = "group_3245492819d9c28b"
+name = "Region 1"
+points = PackedVector2Array(60, 300, 500, 300, 500, 900, 60, 900)
+subtraction_names = PackedStringArray()
+subtraction_ids = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_bxj6j"]
+script = ExtResource("4_88fh7")
+id = "region_f29ecdd17a8e8c10"
+group_id = "group_3245492819d9c28b"
+name = "Region 2"
+points = PackedVector2Array(500, 300, 1200, 300, 1200, 540, 1260, 540, 1260, 640, 1200, 640, 1200, 900, 500, 900)
+subtraction_polygons = Array[PackedVector2Array]([PackedVector2Array(1105, 515, 1082.925, 572.4025, 1020.061, 621.06604, 925.9782, 653.5819, 815, 665, 704.0218, 653.5819, 609.939, 621.06604, 547.07495, 572.4025, 525, 515, 547.07495, 457.59747, 609.939, 408.934, 704.0218, 376.4181, 815, 365, 925.9782, 376.4181, 1020.061, 408.934, 1082.925, 457.59747), PackedVector2Array(1000, 480, 1130, 480, 1130, 660, 1000, 660)])
+subtraction_names = PackedStringArray("Cutout 1", "Cutout 2")
+subtraction_ids = PackedStringArray("cutout_425b0e7ad6f00222", "cutout_3a0d9eea1fcff5d3")
+
+[sub_resource type="Resource" id="Resource_eroni"]
+script = ExtResource("4_88fh7")
+id = "region_19da2262bb8c5fe0"
+group_id = "group_3245492819d9c28b"
+name = "Region 3"
+points = PackedVector2Array(1260, 540, 1520, 540, 1520, 640, 1260, 640)
+subtraction_names = PackedStringArray()
+subtraction_ids = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_rwy7t"]
+script = ExtResource("4_88fh7")
+id = "region_d301b7367a82987c"
+group_id = "group_3245492819d9c28b"
+name = "Region 4"
+points = PackedVector2Array(400, 700, 700, 700, 700, 860, 400, 860)
+subtraction_names = PackedStringArray()
+subtraction_ids = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_17qil"]
+script = ExtResource("5_g6pet")
+id = "scale_97d22063a3a769fb"
+name = "Template 1"
+position = Vector2(300, 880)
+apparent_height_px = 230.0
+
+[sub_resource type="Resource" id="Resource_6jsqy"]
+script = ExtResource("5_g6pet")
+id = "scale_e626845e8e7256f1"
+name = "Template 2"
+position = Vector2(1000, 330)
+apparent_height_px = 105.0
+
+[sub_resource type="Resource" id="Resource_7loe1"]
+script = ExtResource("7_g46fr")
+id = "element_90f5593d8d329e8c"
+name = "foreground_template"
+layer_id = "layer_foreground"
+texture_path = "assets/elements/24542227425d.png"
+texture_size = Vector2i(1672, 941)
+ground_anchor = Vector2(815, 590)
+
+[resource]
+script = ExtResource("6_7l0vr")
+illustration_path = "assets/illustration_efe1cf791bf0.png"
+image_size = Vector2i(1672, 941)
+groups = Array[ExtResource("1_xu0mg")]([SubResource("Resource_povjy")])
+regions = Array[ExtResource("4_88fh7")]([SubResource("Resource_du1ao"), SubResource("Resource_bxj6j"), SubResource("Resource_eroni"), SubResource("Resource_rwy7t")])
+layers = Array[ExtResource("2_1q0lc")]([SubResource("Resource_pjybg"), SubResource("Resource_i1kxd")])
+visual_elements = Array[ExtResource("7_g46fr")]([SubResource("Resource_7loe1")])
+scale_anchors = Array[ExtResource("5_g6pet")]([SubResource("Resource_17qil"), SubResource("Resource_6jsqy")])
+perspective_calibration = SubResource("Resource_v7lgk")
+document_path = "res://examples/village/village.tres"
+schema_version = 2

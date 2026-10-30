@@ -24,7 +24,19 @@ The character is hidden behind the foreground fountain when it stands farther fr
 |---|---|
 | ![The character is hidden behind the fountain](assets/screenshots/occlusion_behind.png) | ![The character is drawn in front of the fountain](assets/screenshots/occlusion_front.png) |
 
-The screenshots are made from the plugin itself with the village example (`pwsh tests/render_check/readme_shots.ps1`).
+The first screenshots are rendered from the plugin itself with the village example (`pwsh tests/render_check/readme_shots.ps1`).
+
+**Action zones and entry points**, in the real Godot 4.7.1 editor, with the whole interface detached into its own window (the orange rectangle in front of the house door is an action zone that loads another scene; the marker is an entry point):
+
+![The IWE interface in its own window: an action zone in front of the house door, an entry point, and their properties](assets/screenshots/editor_action_zones_window.png)
+
+**A walk through the door, in a running game** (`examples/integration/`, a character with its own controller): the character starts in the yard, walks into the zone in front of the house door, the cellar loads and the character appears at its entry point; walking into the stairs zone brings it back in front of the door.
+
+| In the village | After the door: the cellar | Back by the stairs |
+|---|---|---|
+| ![The village level, the character in the yard](assets/screenshots/game_village_start.png) | ![The cellar level, the character at its entry point](assets/screenshots/game_cellar_arrival.png) | ![The village again, the character in front of the house door](assets/screenshots/game_village_return.png) |
+
+These were taken from a separate editor and game window on a temporary copy of the project (no other window is in them).
 
 ## Documentation
 
@@ -51,7 +63,9 @@ Implemented, covered by automated tests, and exercised in the real Godot 4.7.1 e
 - **Save and reopen.** Save an IWE document as a `.tres` file. The illustration is copied next to it, and reopening restores regions, cutouts, and templates.
 - **Floating window.** Open the illustration editor in a large separate window.
 - **Layers and pictures.** A Background and a Foreground layer; place transparent PNG or WebP pictures on them (position, scale, opacity, ground point), hide, lock or fade a layer, with undo. A picture can be drawn behind the character, in front of it, or by depth, so the character walks behind a fountain and in front of it. Pictures never block walking. The perspective and 2D exports include them. In V1 a picture is prepared beforehand at the resolution and framing you want (add transparent pixels around it so it lines up with the background); position, scale, opacity and ground point can be corrected by typing numbers. Moving and resizing it with the mouse is planned for V2.
-- **Dock in two tabs.** *Creation* (layers, regions, tools, references, camera) and *Test* (test character, export, validation), with foldable sections.
+- **Dock in two tabs.** *Creation* (layers, regions, tools, action zones, references, camera) and *Test* (test character, export, validation), with foldable sections. The `Window` button detaches the whole interface into its own window and back, keeping the document, the history, the selection, the tool, the zoom, the tab and the folded sections.
+- **Scene transitions.** Draw an action zone (a door, a staircase), choose the scene it loads and the entry point to arrive at, and place entry points in the other scene. The export writes zones, entry markers and a runtime node; your game needs no autoload and no particular character, only the group `iwe_traveller`. A zone can also warp a character to another place of the same scene. See [docs/STAGE_TRANSITIONS.md](docs/STAGE_TRANSITIONS.md).
+- **Your own character.** An exported stage works with any `CharacterBody3D`: the perspective and the occlusion behind foreground pictures come from the 3D scene itself. A working example with its own controller, two connected levels and a helper for paths that keep clear of walls is in `examples/integration/` ([docs/INTEGRATION.md](docs/INTEGRATION.md)). The stage needs the plugin's `runtime/` scripts at run time.
 
 ### Experimental
 
@@ -67,6 +81,9 @@ Implemented, tested headless and tried in the real editor, but newer and less pr
 - A picture occludes the character at one depth (its ground point). That suits a fountain or a house, not a long railing seen at an angle.
 - A doorway narrower than the character is reported when you export but the character cannot walk through it (it is wider than the gap).
 - A layer picture is prepared beforehand to line up with the background (V1); there is no mouse moving or resizing of pictures until V2. Numbers can be typed for small corrections. There is no lock button for a region yet.
+- The shape of an action zone cannot be edited vertex by vertex (move it as a whole, or delete it and draw it again). Interactions that need a button press and conditions are not built in; the action is an open string and your game can handle its own through the zone's signal.
+- The speed keys of the running game (`PageUp`, `PageDown`, `Home`) belong to the stage's test player; turn `debug_speed_keys` off before you ship. The dock's speed buttons act only on the editor preview.
+- Tested with Godot 4.7.1 on Windows. The documents are in format version 3: a plugin of `0.1.0-alpha.2` or earlier refuses them without touching them.
 - In a dock narrower than about 400 px the perspective preview is small.
 - Close Godot or disable the plugin with unsaved changes: IWE asks, or writes a recovery copy to `user://iwe_recovery/`.
 
@@ -88,7 +105,7 @@ Open `examples/perspective_calibration_demo.tscn` to see a ready-made perspectiv
 
 ## Installation
 
-IWE is pre-release. The Asset Library is not available yet. Download `illustrated_walkmesh_editor-0.1.0-alpha.2.zip` from the GitHub release (it holds only the addon and the licence), or take the folder from the repository.
+IWE is pre-release. The Asset Library is not available yet. Download `illustrated_walkmesh_editor-0.1.0-alpha.3.zip` from the GitHub release (it holds only the addon and the licence), or take the folder from the repository.
 
 1. Unzip into your project, or copy the `addons/illustrated_walkmesh_editor/` folder into the `addons/` folder of your Godot 4.7 project. Create `addons/` if it does not exist.
 2. Open the project in Godot 4.7.
@@ -120,7 +137,7 @@ Third-party addons used during development are not part of this repository. UniB
 
 ## Status
 
-Pre-release (`0.1.0-alpha.2`). Expect breaking changes to the saved document format until a stable version is announced. Do not use it for production data without keeping a backup.
+Pre-release (`0.1.0-alpha.3`). Expect breaking changes to the saved document format until a stable version is announced. Do not use it for production data without keeping a backup.
 
 ## About the Project & AI-Assisted Development
 

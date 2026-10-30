@@ -11,7 +11,15 @@ Two versions are tracked separately:
 | Plugin version | `addons/illustrated_walkmesh_editor/plugin.cfg` (`version`) | The release of the plugin code. |
 | Document schema version | `IWEDocument.schema_version` | The layout of saved documents. |
 
-The current document schema is **2**, written explicitly in every saved file. Documents saved before the field existed, and documents saved as version 1, load as 1 and are migrated in memory when opened (see below).
+The current document schema is **3**, written explicitly in every saved file. Documents saved before the field existed, and documents saved as version 1 or 2, are migrated in memory when opened (see below) and written as version 3 only when the author saves. A plugin that only knows version 2 (`0.1.0-alpha.1` and `alpha.2`) refuses a version 3 file with a message and does not touch it.
+
+## Version 3 additions
+
+- `action_zones`: list of `IWEActionZone` (`id`, `name`, `points` in illustration pixels, `action` as a string, `target_scene`, `entry_id`, `enabled`, `params` dictionary). `action` is `scene_transition`, `warp` or any string of the game's own: an unknown action is kept as it is. `params` is saved and exported untouched.
+- `entry_points`: list of `IWEEntryPoint` (`id`, `entry_id` the name other scenes use, `position`, `facing_degrees` with NaN meaning "keep the traveller's direction", `is_default`).
+- Migration from version 1 or 2: none needed beyond the version 1 rule below; both lists are empty in an older file. Layers, pictures, regions, groups, cutouts, templates and the calibration are not touched. The migration can run again without effect, and the file on disk is not modified until the author saves.
+- Test fixtures of the older formats are kept in `tests/fixtures/` (`iwe_document_old_panel_reference.tres` is version 1, `iwe_document_schema2_village.tres` is the example published with `0.1.0-alpha.2`). The tests check that each opens, keeps its content through the migration, and is byte-identical on disk after being opened.
+- Exported nodes carry `iwe_action_zone_id` and `iwe_entry_point_id` metadata; the exported scene format does not depend on the document format.
 
 ## Version 2 additions
 
@@ -55,7 +63,7 @@ When Godot asks IWE to save and the document has no file yet, IWE writes an ordi
 
 ## Design notes for later versions
 
-Version 2 is implemented in the reduced form described above (flat layers and visual elements). The Layer Manager design (`LAYER_MANAGER_DESIGN.md`) also proposes a per-region kind and an explicit draw order; those are not implemented, and the migration rules below stay the policy for them.
+Version 2 is implemented in the reduced form described above (flat layers and visual elements). The Layer Manager design (`LAYER_MANAGER_DESIGN.md`) also proposes a per-region kind and an explicit draw order; those are not implemented, and the migration rules below stay the policy for them. Version 3 followed those rules: two optional lists with empty defaults, a version bump, a migration that adds nothing.
 
 ### Migration from version 1 to version 2
 

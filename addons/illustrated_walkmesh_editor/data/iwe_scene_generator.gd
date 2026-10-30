@@ -4,6 +4,11 @@ extends RefCounted
 const REGION_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_region.gd")
 const PERSPECTIVE_PROJECTOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_perspective_projector.gd")
 const CHARACTER_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/runtime/iwe_walkmesh_character.gd")
+const TRANSITION_ZONE_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/runtime/iwe_transition_zone.gd")
+const TRANSITION_ZONE_2D_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/runtime/iwe_transition_zone_2d.gd")
+const ENTRY_MARKER_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/runtime/iwe_entry_marker.gd")
+const ENTRY_MARKER_2D_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/runtime/iwe_entry_marker_2d.gd")
+const STAGE_RUNTIME_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/runtime/iwe_stage_runtime.gd")
 
 ## Render layers used by perspective stages. The game camera shows the illustration as a
 ## screen-aligned backdrop (exact pixels, including sky above the horizon); the top camera
@@ -48,6 +53,7 @@ static func build_2d_scene(document: Resource, texture: Texture2D, world_scale: 
 		nav_region.navigation_polygon = _make_navigation_polygon(region, document.regions)
 		navigation.add_child(nav_region)
 		nav_region.owner = root
+	_add_2d_action_zones(document, template, root)
 	if add_camera:
 		var camera := Camera2D.new()
 		camera.name = "Camera2D"
@@ -128,6 +134,7 @@ static func build_3d_scene(document: Resource, texture: Texture2D, world_scale: 
 		mannequin.material_override = mannequin_material
 		anchor_node.add_child(mannequin)
 		mannequin.owner = root
+	_add_flat_3d_action_zones(document, template, root)
 	if add_camera:
 		var camera := Camera3D.new()
 		camera.name = "Camera3D"
@@ -387,6 +394,7 @@ static func build_perspective_scene(document: Resource, texture: Texture2D, cali
 		mannequin.material_override = mannequin_material
 		anchor_node.add_child(mannequin)
 		mannequin.owner = root
+	_add_perspective_action_zones(document, template, root, calibration, viewport_size, warnings)
 	warnings.append_array(PackedStringArray(passage_warnings))
 	if not warnings.is_empty():
 		root.set_meta(WARNINGS_META, warnings)
@@ -410,8 +418,12 @@ static func _make_player(document: Resource, calibration: IWEPerspectiveCalibrat
 	var player := CharacterBody3D.new()
 	player.name = "Player"
 	player.set_script(CHARACTER_SCRIPT)
+	# Transition zones react to this group; the arrival of a transition places its members.
+	player.add_to_group(IWEStageTravel.TRAVELLER_GROUP, true)
 	player.position = Vector3(start.x, calibration.floor_height, start.z) * world_scale
 	player.set("move_speed", height * 1.5)
+	# A test player: PageUp / PageDown / Home change its speed while the game runs.
+	player.set("debug_speed_keys", true)
 	# Walls sit on the boundary, so the character's centre stops one radius inside them. The
 	# navigation snap tolerance must exceed that radius or the character gets pulled to the edge.
 	player.set("snap_tolerance", height * 0.16 * 3.0)
@@ -1017,6 +1029,170 @@ static func _assign_line_mesh(guide: MeshInstance3D, line_points: PackedVector3A
 	material.no_depth_test = true
 	guide.mesh = mesh
 	guide.material_override = material
+
+
+# ---- action zones and entry points -------------------------------------------------------------------
+
+
+## Copies the settings of an action zone onto the node that detects it. The zone scripts are runtime
+## scripts, so the values are set by name and saved with the scene.
+static func _configure_zone_node(node: Node, zone: IWEActionZone) -> void:
+	node.set("zone_id", zone.id)
+	node.set("action", zone.action)
+	node.set("target_scene", zone.target_scene)
+	node.set("entry_id", zone.entry_id)
+	node.set("enabled", zone.enabled)
+	node.set("params", zone.params.duplicate(true))
+	node.set_meta("iwe_action_zone_id", zone.id)
+
+
+static func _configure_entry_node(node: Node, entry: IWEEntryPoint) -> void:
+	node.set("entry_id", entry.entry_id)
+	node.set("is_default", entry.is_default)
+	node.set("facing_degrees", entry.facing_degrees)
+	node.set_meta("iwe_entry_point_id", entry.id)
+
+
+## The node every reachable scene needs: it applies the arrival of a transition when the scene is ready.
+static func _add_stage_runtime(root: Node) -> void:
+	var runtime := Node.new()
+	runtime.name = "StageRuntime"
+	runtime.set_script(STAGE_RUNTIME_SCRIPT)
+	root.add_child(runtime)
+	runtime.owner = root
+
+
+static func _has_action_content(document: Resource) -> bool:
+	return not document.action_zones.is_empty() or not document.entry_points.is_empty()
+
+
+static func _add_2d_action_zones(document: Resource, template: Node2D, root: Node) -> void:
+	if not _has_action_content(document):
+		return
+	var zones_node := Node2D.new()
+	zones_node.name = "ActionZones"
+	template.add_child(zones_node)
+	zones_node.owner = root
+	for zone in document.action_zones:
+		if zone.points.size() < 3:
+			continue
+		var area := Area2D.new()
+		area.name = _safe_node_name(zone.name)
+		area.set_script(TRANSITION_ZONE_2D_SCRIPT)
+		_configure_zone_node(area, zone)
+		zones_node.add_child(area)
+		area.owner = root
+		var shape := CollisionPolygon2D.new()
+		shape.name = "Shape"
+		shape.polygon = zone.points.duplicate()
+		area.add_child(shape)
+		shape.owner = root
+	var entries_node := Node2D.new()
+	entries_node.name = "EntryPoints"
+	template.add_child(entries_node)
+	entries_node.owner = root
+	for entry in document.entry_points:
+		var marker := Marker2D.new()
+		marker.name = _safe_node_name(entry.entry_id)
+		marker.set_script(ENTRY_MARKER_2D_SCRIPT)
+		marker.position = entry.position
+		_configure_entry_node(marker, entry)
+		entries_node.add_child(marker)
+		marker.owner = root
+	_add_stage_runtime(root)
+
+
+## A flat 3D stage lies on the XZ plane in illustration pixels, like its walkable regions.
+static func _add_flat_3d_action_zones(document: Resource, template: Node3D, root: Node) -> void:
+	if not _has_action_content(document):
+		return
+	var depth := 200.0
+	var zones_node := Node3D.new()
+	zones_node.name = "ActionZones"
+	template.add_child(zones_node)
+	zones_node.owner = root
+	for zone in document.action_zones:
+		if zone.points.size() < 3:
+			continue
+		_add_zone_volume(zones_node, root, zone, zone.points, 0.0, depth)
+	var entries_node := Node3D.new()
+	entries_node.name = "EntryPoints"
+	template.add_child(entries_node)
+	entries_node.owner = root
+	for entry in document.entry_points:
+		var marker := Marker3D.new()
+		marker.name = _safe_node_name(entry.entry_id)
+		marker.set_script(ENTRY_MARKER_SCRIPT)
+		marker.position = Vector3(entry.position.x, 0.0, entry.position.y)
+		_configure_entry_node(marker, entry)
+		entries_node.add_child(marker)
+		marker.owner = root
+	_add_stage_runtime(root)
+
+
+## The perspective stage: every vertex goes through the same floor projection as the walkable regions, so
+## a zone covers the part of the floor it covers on the illustration. A zone with a vertex at or above
+## the horizon cannot be projected and is left out with a warning, like a region.
+static func _add_perspective_action_zones(document: Resource, template: Node3D, root: Node, calibration: IWEPerspectiveCalibration, viewport_size: Vector2i, warnings: PackedStringArray) -> void:
+	if not _has_action_content(document):
+		return
+	var depth := maxf(calibration.character_height_units, 2.0) * 1.5
+	var zones_node := Node3D.new()
+	zones_node.name = "ActionZones"
+	template.add_child(zones_node)
+	zones_node.owner = root
+	for zone in document.action_zones:
+		if zone.points.size() < 3:
+			continue
+		var floor_polygon := PackedVector2Array()
+		for point in zone.points:
+			var floor_point: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(point, document.image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
+			if floor_point == null:
+				floor_polygon.clear()
+				break
+			floor_polygon.append(Vector2(floor_point.x, floor_point.z))
+		if floor_polygon.size() < 3:
+			warnings.append("Action zone \"%s\" was not exported: part of it lies at or above the horizon of the calibrated camera, where the floor cannot be projected. Move it below the horizon or recalibrate the camera." % zone.name)
+			continue
+		_add_zone_volume(zones_node, root, zone, floor_polygon, calibration.floor_height, depth)
+	var entries_node := Node3D.new()
+	entries_node.name = "EntryPoints"
+	template.add_child(entries_node)
+	entries_node.owner = root
+	for entry in document.entry_points:
+		var entry_floor: Variant = PERSPECTIVE_PROJECTOR.image_point_to_floor(entry.position, document.image_size, viewport_size, calibration.camera_position, calibration.camera_rotation_degrees, calibration.field_of_view_degrees, calibration.floor_height)
+		if entry_floor == null:
+			warnings.append("Entry point \"%s\" was not exported: it lies at or above the horizon of the calibrated camera." % entry.entry_id)
+			continue
+		var marker := Marker3D.new()
+		marker.name = _safe_node_name(entry.entry_id)
+		marker.set_script(ENTRY_MARKER_SCRIPT)
+		marker.position = Vector3(entry_floor.x, calibration.floor_height, entry_floor.z)
+		_configure_entry_node(marker, entry)
+		entries_node.add_child(marker)
+		marker.owner = root
+	_add_stage_runtime(root)
+
+
+## A trigger volume over a polygon on the floor: an Area3D with a CollisionPolygon3D standing on the
+## floor plane and extruded upward by `depth`. `floor_polygon` holds (x, z) pairs.
+static func _add_zone_volume(parent: Node3D, root: Node, zone: IWEActionZone, floor_polygon: PackedVector2Array, floor_y: float, depth: float) -> void:
+	var area := Area3D.new()
+	area.name = _safe_node_name(zone.name)
+	area.set_script(TRANSITION_ZONE_SCRIPT)
+	_configure_zone_node(area, zone)
+	parent.add_child(area)
+	area.owner = root
+	var shape := CollisionPolygon3D.new()
+	shape.name = "Shape"
+	# Rotating a quarter turn around X lays the polygon's (x, y) plane on the floor as (x, z); the
+	# extrusion then runs along the vertical axis, centred on the node.
+	shape.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	shape.position = Vector3(0.0, floor_y + depth * 0.5, 0.0)
+	shape.depth = depth
+	shape.polygon = floor_polygon
+	area.add_child(shape)
+	shape.owner = root
 
 
 static func _safe_node_name(value: String) -> String:

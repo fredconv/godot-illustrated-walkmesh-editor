@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0-alpha.3] — 2026-10-30
+
+### Added
+- **Action zones, entry points and scene travel (document format version 3).** A zone drawn on the illustration changes the scene or warps within it when a character walks into it; an entry point is where a character appears on arrival. The Creation tab has a new section *Action zones and entry points* (draw, select, move, configure, remove, all undoable). The 2D, flat 3D and perspective exports write `IWETransitionZone` / `IWETransitionZone2D` areas, `IWEEntryMarker` / `IWEEntryMarker2D` markers and a `StageRuntime` node, and only when the document has zones or entry points. Runtime classes with no autoload and no fixed character: `IWEStageTravel`, `IWEStageRuntime`, `IWETransitionZone`, `IWEEntryMarker`. A traveller is any node of the group `iwe_traveller`. The action is a string with a free `params` dictionary, so later actions need no format change. See `docs/STAGE_TRANSITIONS.md`.
+- `IWENavigationPath`: plain static helpers (`with_corner_clearance`, `plan`) so a character of your own can follow a path on the exported navigation without stalling on obstacle corners. The plugin's character uses it too.
+- `debug_speed_keys` on the stage character: `PageUp` / `PageDown` step through x1, x2, x5, x10 and `Home` returns to x1 in a running game; the exporter turns it on for the test player it adds. `speed_multiplier_changed` signal.
+- `examples/integration/`: a character with its own controller, two connected levels (village and cellar) and the script that rebuilds them. `docs/INTEGRATION.md`: what an exported stage needs at run time, how to use your own character, speed, depth and lighting.
+- Tests: action zone and entry point data, migration of real version 1 and version 2 documents, the transition runtime (double trigger, missing scene, fallbacks, warp, real `change_scene_to_file`), export of zones in the three exports, the whole trip with an external character, apparent size and depth ordering at several depths, speed keys while walking, the authoring panel, and the interface window. The GPU render check now also renders an external character hidden behind and shown in front of the fountain.
+
+### Changed
+- **The `Window` button now detaches the whole interface** (toolbar, tabs, panels, tools, canvas and dialogs), not only the illustration, and brings it back with the document, the history, the selection, the tool, the zoom, the tab and the folded sections unchanged. A notice with a button stays in the dock.
+- The document format is **version 3**. Version 1 and 2 documents open and migrate in memory and are changed on disk only when saved. `0.1.0-alpha.1` and `alpha.2` refuse a version 3 file without touching it.
+
 ## [0.1.0-alpha.2] — 2026-10-30
 
 ### Fixed

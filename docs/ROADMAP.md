@@ -82,6 +82,25 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 | Environment-only and navigation-only exports | Todo | |
 | Exports include layers and connections | Todo | After steps 2–5 |
 
+## Stage transitions and integration (base scope)
+
+Decided by the owner after the first alpha; contract in [`STAGE_TRANSITIONS.md`](STAGE_TRANSITIONS.md) and [`INTEGRATION.md`](INTEGRATION.md).
+
+| Item | Status | Notes |
+|---|---|---|
+| Action zones and entry points in the document | Done | Format version 3; version 1 and 2 documents migrate in memory and are not changed on disk |
+| Authoring: draw, select, move, configure, remove, with undo | Done | Creation tab, section *Action zones and entry points*. Vertex editing of a zone is not done |
+| Export in 2D, flat 3D and perspective | Done | Zones, markers and a `StageRuntime` node only when the document has some |
+| Scene transition with a named entry point | Done | Real scene change tested between two example levels |
+| Fallbacks and no double trigger | Done | Default entry, first entry, none; refused travels do not lock; one fire per zone |
+| Warp inside a scene | Done | `warp` action and `IWEStageRuntime.warp_to` |
+| Open action model for later actions | Done | String action and `params`; an unknown action is kept and exported with a signal |
+| Interactions that need a button press, conditions, one-way zones | Todo | Not in this version; they fit the same record |
+| Use with a character of the developer's own | Done | Group `iwe_traveller`; `IWENavigationPath` helper; example in `examples/integration/` |
+| Speed keys in the running game | Done | `debug_speed_keys`, PageUp / PageDown / Home |
+| The Window button detaches the whole interface | Done | State kept; dialogs follow |
+| A rigged and animated character | Not verified | The example is a lit capsule model with no rig |
+
 ## V2 — Visual editing of layer pictures
 
 Decided on 2026-10-30 ([`DECISIONS.md`](DECISIONS.md)). V1 does not depend on any of this: layer pictures are prepared in advance and aligned with the background by the author.
@@ -105,7 +124,7 @@ Decided on 2026-10-30 ([`DECISIONS.md`](DECISIONS.md)). V1 does not depend on an
 - Perspective projection and camera views; known-height template placement.
 - Save and reopen of IWE documents, including the copy of the image beside the document.
 - Test character with mouse and keyboard, walls, and path following.
-- Automated suite: 297 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
+- Automated suite: 392 headless GdUnit4 tests, including the end-to-end scenarios (`tests/e2e/`), the transition and integration tests, and the real-GPU render check.
 
 ## Open technical debts
 

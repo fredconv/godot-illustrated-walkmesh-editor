@@ -9,6 +9,10 @@ extends Resource
 ## Version 2: visual layers and the transparent pictures placed on them. Empty in a version 1 file.
 @export var layers: Array[IWELayer] = []
 @export var visual_elements: Array[IWEVisualElement] = []
+## Version 3: zones that do something when a character walks into them, and the places where a
+## character appears when it arrives. Empty in a version 1 or 2 file.
+@export var action_zones: Array[IWEActionZone] = []
+@export var entry_points: Array[IWEEntryPoint] = []
 @export var scale_anchors: Array[IWEScaleAnchor] = []
 @export_range(1.0, 10000.0, 1.0) var default_template_height_px := 160.0
 @export var perspective_calibration: IWEPerspectiveCalibration = IWEPerspectiveCalibration.new()
@@ -21,13 +25,15 @@ extends Resource
 @export var schema_version := 1
 
 ## The document format this plugin writes and understands.
-## Version 2 added layers and visual elements (docs/DATA_FORMAT.md).
-const CURRENT_SCHEMA_VERSION := 2
+## Version 2 added layers and visual elements, version 3 added action zones and entry points
+## (docs/DATA_FORMAT.md).
+const CURRENT_SCHEMA_VERSION := 3
 
 
 ## Brings an older document up to the current format, in memory only. The file on disk is not
 ## touched until the author saves. Repeatable: running it again changes nothing. Regions, groups,
-## cutouts, templates and the calibration are never modified or reordered.
+## cutouts, templates, the calibration, layers and pictures are never modified or reordered. Version 3
+## adds two lists that are empty in an older file, so it needs no data of its own.
 func migrate_to_current() -> void:
 	ensure_default_layers()
 	if schema_version < CURRENT_SCHEMA_VERSION:
@@ -61,6 +67,28 @@ func find_layer(layer_id: String) -> IWELayer:
 	for layer in layers:
 		if layer.id == layer_id:
 			return layer
+	return null
+
+
+func find_action_zone(zone_id: String) -> IWEActionZone:
+	for zone in action_zones:
+		if zone.id == zone_id:
+			return zone
+	return null
+
+
+func find_entry_point(entry_point_id: String) -> IWEEntryPoint:
+	for entry in entry_points:
+		if entry.id == entry_point_id:
+			return entry
+	return null
+
+
+## The entry point other scenes reach by this name, or null.
+func find_entry_by_name(entry_name: String) -> IWEEntryPoint:
+	for entry in entry_points:
+		if entry.entry_id == entry_name:
+			return entry
 	return null
 
 
@@ -138,6 +166,39 @@ func validate_references() -> PackedStringArray:
 		elif anchor_ids.has(anchor.id):
 			problems.append("Height reference identifier \"%s\" is used more than once." % anchor.id)
 		anchor_ids[anchor.id] = true
+	var zone_ids := {}
+	for zone in action_zones:
+		if zone.id.is_empty():
+			problems.append("Action zone \"%s\" has no identifier." % zone.name)
+		elif zone_ids.has(zone.id):
+			problems.append("Action zone identifier \"%s\" is used more than once." % zone.id)
+		zone_ids[zone.id] = true
+		if zone.points.size() < 3:
+			problems.append("Action zone \"%s\" has fewer than three points." % zone.name)
+		if not IWEActionZone.is_known_action(zone.action):
+			problems.append("Action zone \"%s\" has an action this plugin does not know (%s); it is kept and exported as it is." % [zone.name, zone.action])
+		if zone.needs_target_scene() and zone.target_scene.is_empty():
+			problems.append("Action zone \"%s\" changes the scene but no scene is chosen." % zone.name)
+		if zone.action == IWEActionZone.ACTION_WARP and (zone.entry_id.is_empty() or find_entry_by_name(zone.entry_id) == null):
+			problems.append("Action zone \"%s\" warps to an entry point (%s) that this document does not have." % [zone.name, zone.entry_id])
+	var entry_ids := {}
+	var entry_names := {}
+	var default_count := 0
+	for entry in entry_points:
+		if entry.id.is_empty():
+			problems.append("An entry point has no identifier.")
+		elif entry_ids.has(entry.id):
+			problems.append("Entry point identifier \"%s\" is used more than once." % entry.id)
+		entry_ids[entry.id] = true
+		if entry.entry_id.strip_edges().is_empty():
+			problems.append("An entry point has no name; transitions cannot reach it.")
+		elif entry_names.has(entry.entry_id):
+			problems.append("Entry point name \"%s\" is used by more than one entry point; a transition would reach the first." % entry.entry_id)
+		entry_names[entry.entry_id] = true
+		if entry.is_default:
+			default_count += 1
+	if default_count > 1:
+		problems.append("More than one entry point is marked as the default; the first one is used.")
 	return problems
 
 

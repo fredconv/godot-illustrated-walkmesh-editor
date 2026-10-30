@@ -58,10 +58,47 @@ The owner's own editor was never touched. A separate editor was started on a tem
 - **Undocking the dock: not possible in this configuration** (see the dock item above).
 - **Not performed by hand** (covered headless only): a zone touching half an edge, changing the field of view, a zone above the horizon at export, arrow keys while editing, the speed presets during a walk, the other foldable sections.
 
+## Base scope for `0.1.0-alpha.3` (2026-10-30): what was proven and how
+
+The owner asked for the base scope to be implemented, integrated, tested and documented before any stable release: scene transitions with entry points, an external character, the whole-interface window, a clearer interface, speed checks. `[x]` means performed, `[~]` partly, `[ ]` not performed. The evidence column says which kind of check it is: **real editor** (mouse and keyboard sent with Windows MCP into a separate, isolated Godot editor window on a temporary project, moved to another display, never the owner's editor), **real game** (the game window of that editor), **real GPU** (`tests/render_check`), **headless** (GdUnit4 or the editor runtime without a window), **code read**.
+
+| | Item | Evidence |
+|---|---|---|
+| [x] | Draw an action zone with the mouse (four corners, then the first corner), see it listed, selected and highlighted | **Real editor** |
+| [x] | Set its scene and entry point by typing; the list line reads `Zone 1: level_cellar.tscn at from_village` | **Real editor** |
+| [x] | Place an entry point with a click; the first one is the default; name, default and direction fields appear | **Real editor** |
+| [x] | The section title shows counts that stay visible when folded (`0 zones, 0 entries`, then `1 zone, 0 entries`); the status line explains the active tool; tooltips on the controls | **Real editor** and headless (every control of the dock is checked for a tooltip) |
+| [x] | The `Window` button detaches the whole interface into a window titled `IWE - Illustrated Walkmesh Editor`; the Open dialog opened from it appears in that window; the document opened there | **Real editor** |
+| [x] | `Dock` brings it back with the same state: `village *`, Undo enabled, zoom 83%, same tab and scroll, same lists, the entry-point tool still active | **Real editor** (and headless, field by field, in `test_interface_window`) |
+| [x] | Save writes format version 3 with the zone, its scene and the entry point; New then Open brings them back, the document clean | **Real editor**, then the file read from disk |
+| [x] | The village example (format version 2, published with alpha.2) opens in this version | **Real editor** |
+| [x] | Run the integration example (`level_village.tscn`, F6), click in the game window with the external character, `PageUp` three times (x10): the character walks into the door zone, the cellar loads, the character appears at its entry point | **Real game** |
+| [x] | Click the stairs zone in the cellar: the village loads again and the character is in front of the house door at `from_cellar` | **Real game** |
+| [x] | The same trip with real `change_scene_to_file` between the two level files, the external character walking by its own controller | Headless (`test_external_character_integration`) |
+| [x] | An external character is hidden behind the fountain at three depths (0 pixels) and shown in front of it at three depths (18,495 pixels) | **Real GPU** (`tests/render_check`) |
+| [x] | Apparent size at the near and far references and in between, and depth order at four spots behind and four in front, for a character that is not the plugin's | Headless |
+| [x] | Navigation by an external controller: across zones, round the fountain, an unreachable target ends on the nearest walkable point, the walls hold | Headless, with real physics |
+| [x] | Speed: `PageUp` / `PageDown` / `Home` on the exported test player, changed in the middle of a walk (x5 gives about five times the step); the multiplier is in no saved scene | Headless; the keys were also pressed in the **real game**, where the walk visibly sped up (the speed was not measured there) |
+| [x] | Speed in the dock (x1, x2, x5, x10, pause, reset, base speed) acts on the editor preview only and applies while walking | Headless (`test_preview_walk`, `test_preview_speed`); presets were pressed in the **real editor** in the second M12 pass |
+| [x] | Migration: a real version 1 file and the version 2 example published with alpha.2 open, keep every part, and are byte-identical on disk after being opened | Headless |
+| [x] | Double trigger, refused travel, missing scene, broken scene file, missing entry point, no entry marker, warp, unknown action | Headless |
+| [x] | The addon-only package (58 files) enables in an empty project and runs import, regions, a zone, an entry point, a layer picture, save, reopen and the three exports | **Real editor runtime** (headless editor), `tests/release_check` |
+| [~] | Moving an action zone and an entry point by dragging, deleting them with Delete, undoing | Headless (events sent to the canvas); **not** performed by hand |
+| [~] | Dock narrow width with the new section | Seen at about 390 px in the real editor (the section fits; the fields and the hints wrap); not checked at other widths |
+| [ ] | Game embedded in the editor's Game tab | Not possible: Godot says "Game embedding not available in single window mode" |
+| [ ] | Undocking the dock tab itself | Disabled by Godot's Single Window Mode (see above); the `Window` button is the supported way |
+| [ ] | A rigged and animated character | Not available: the example is a lit capsule model. It proves size, depth and navigation, not skeletal animation |
+| [ ] | Real-editor check of an unknown action, of `warp`, of the 2D export with zones | Covered headless only |
+
+Two findings of this pass, both fixed: the example controller shuttled around a waypoint at x10 (steps longer than the distance left), and my first example put the door where the test scenario's bridge is, over the pond of the illustration; the door now stands at the house door.
+
 ## Remaining limits (accepted for an alpha)
 
 - A picture occludes at one depth (its ground point).
 - A doorway narrower than the character is reported at export but cannot be crossed.
+- The shape of an action zone cannot be edited vertex by vertex. Interactions that need a button press and conditions are not built in (the action is an open string and the game can handle its own).
+- A character with a body stalls on obstacle corners unless its path keeps clear of walls (`IWENavigationPath` does that) and it counts waypoints as reached within about its radius; a corridor narrower than the body cannot be crossed.
+- An exported stage needs the plugin's `runtime/` scripts at run time.
 - Layer pictures are prepared beforehand in V1 (same canvas as the background, transparent pixels around the object); moving and resizing them with the mouse is V2 by the owner's decision of 2026-10-30. The numeric fields remain. There is no region lock button or properties block.
 - The preview is small in a dock narrower than about 400 px.
 - Godot's Single Window Mode (an editor setting) disables Make Floating, so the dock cannot be undocked while it is on. The quit dialog was driven in the real editor (Cancel and Save & Quit); Don't Save and the never-saved document were not clicked.
@@ -71,7 +108,7 @@ The owner's own editor was never touched. A separate editor was started on a tem
 
 Done in this work and reproducible, but not a substitute for the list above:
 
-- 304 headless GdUnit4 tests, including dock operations driven through the same signals the canvas emits.
+- 392 headless GdUnit4 tests, including dock operations driven through the same signals the canvas emits.
 - `tests/editor_selftest/run.ps1`: the dock and the test walk inside the real Godot editor runtime (headless editor).
 - `tests/render_check/run.ps1`: a real GPU render of the village stage. The character is hidden behind the foreground fountain (1 matching pixel) and shown in front of it (2,725 pixels).
 - A real render of the dock itself in a window, read by eye: the two tabs, the foldable sections, the layer panel, the speed controls. No click was made.

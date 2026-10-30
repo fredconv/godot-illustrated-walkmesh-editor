@@ -87,8 +87,26 @@ func _init() -> void:
 	_ground_reset = Button.new()
 	_ground_reset.text = "Bottom centre"
 	_ground_row.add_child(_ground_reset)
+	_describe_controls()
 	_connect_controls()
 	_update_visibility()
+
+
+## Short explanations for the fields of the selected layer or picture.
+func _describe_controls() -> void:
+	_layer_name.tooltip_text = "The name of the layer."
+	_layer_visible.tooltip_text = "A hidden layer is not drawn on the illustration or in the exports."
+	_layer_locked.tooltip_text = "A locked layer refuses edits to itself and to its pictures."
+	_layer_opacity.tooltip_text = "How opaque the whole layer is (1 is fully visible)."
+	_element_name.tooltip_text = "The name of the picture."
+	_element_layer.tooltip_text = "The layer the picture is on."
+	_element_x.tooltip_text = "Position of the picture's left edge on the illustration, in illustration pixels."
+	_element_y.tooltip_text = "Position of the picture's top edge on the illustration, in illustration pixels."
+	_element_scale.tooltip_text = "Size of the picture (1 keeps its own size). In V1 a picture is prepared at the right size beforehand; use this for small corrections."
+	_element_opacity.tooltip_text = "How opaque this picture is (1 is fully visible)."
+	_ground_x.tooltip_text = "Ground point, horizontal position, in illustration pixels."
+	_ground_y.tooltip_text = "Ground point, vertical position, in illustration pixels."
+	_ground_reset.tooltip_text = "Put the ground point back at the bottom centre of the picture."
 
 
 func _button(parent: Control, node_name: String, text: String, tooltip: String) -> Button:

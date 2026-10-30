@@ -158,12 +158,12 @@ func test_detaching_and_reattaching_the_editor_never_changes_the_calibration() -
 	await _resize_dock(dock, Vector2(900, 700))
 	var before := _snapshot(dock._document.perspective_calibration)
 	var floors_before := _floors(dock._document.perspective_calibration)
-	dock._canvas_window_button.set_pressed(true)
+	dock._window_button.set_pressed(true)
 	for _frame in 6:
 		await get_tree().process_frame
 	assert_dict(_snapshot(dock._document.perspective_calibration)).override_failure_message("detached").is_equal(before)
 	assert_bool(dock.is_dirty()).is_false()
-	dock._canvas_window_button.set_pressed(false)
+	dock._window_button.set_pressed(false)
 	for _frame in 6:
 		await get_tree().process_frame
 	assert_dict(_snapshot(dock._document.perspective_calibration)).override_failure_message("reattached").is_equal(before)
