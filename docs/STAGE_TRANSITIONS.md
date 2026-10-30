@@ -33,11 +33,11 @@ In the village scene you draw a zone around the end of the bridge and set it to 
 | `id` | Stable identifier, never shown. |
 | `name` | Label, also the exported node name. |
 | `points` | The polygon, in illustration pixels. |
-| `action` | A **string**: `scene_transition`, `warp`, or any action of your own. |
+| `action` | A **string**: `scene_transition`, `warp`, `event`, or any action of your own. |
 | `target_scene` | `res://…` path. Used by `scene_transition`. |
 | `entry_id` | The entry point to arrive at (in the other scene for `scene_transition`, in this scene for `warp`). |
 | `enabled` | Whether the zone reacts. |
-| `params` | A free dictionary for settings of actions added later. Saved and exported untouched. |
+| `params` | A free dictionary. For `event`: `event` (the name) and `repeat` (fire every time). Saved and exported untouched, so later actions can add their own keys. |
 
 `IWEEntryPoint` (in `IWEDocument.entry_points`): `id` (stable), `entry_id` (the name other scenes use), `position` (illustration pixels), `facing_degrees` (NAN keeps the traveller's direction), `is_default`.
 
@@ -116,10 +116,34 @@ zone.triggered.connect(func(z, body): await fade_out(); IWEStageTravel.request(g
 
 `IWEStageRuntime.arrival_applied(entry_id, fallback, placed)` tells you when the character has arrived (for a fade in); `fallback` is `none`, `default`, `first` or `missing`. Turn `apply_on_ready` off to place the travellers yourself with `apply_arrival()`.
 
+### Custom events: an explosion, a gate that opens
+
+A zone whose action is **Trigger a custom event** does nothing by itself: when a character walks into it, the game receives the name you gave it. In the dock, pick the action *Trigger a custom event*, type a name (`explosion`, `open_gate`) and choose whether it fires once or **every time the character enters** it.
+
+```gdscript
+# One zone:
+$Stage/ActionZones/Trap.event_fired.connect(func(event_name, zone, body): explode(zone.global_position))
+
+# Or every zone of the scene, when your game has one place that reacts to events:
+for zone in get_tree().get_nodes_in_group("iwe_action_zone"):
+    zone.event_fired.connect(_on_zone_event)
+
+func _on_zone_event(event_name: String, zone: Node, body: Node) -> void:
+    match event_name:
+        "explosion": explode(zone.global_position)
+        "open_gate": $Gate.open()
+```
+
+- The zone emits `triggered` first, then `event_fired(event_name, zone, body)`. It fires once by default; a repeating event arms itself again when the character has left the zone. `rearm()` arms it by hand, and `enabled` turns it on and off, so a zone that is "the trigger of another thing" can be enabled by your game when the time comes (a gate that opens "further on" is a zone you enable, or a node you show).
+- An event never loads a scene or moves a character, and does not block a scene change that is under way.
+- The name and the repeat option are saved in the zone's `params` (`event`, `repeat`), so no format change: a document that holds events opens in this version and in later ones.
+
+**You do not have to use the plugin for this.** An exported stage is a normal Godot scene and a zone is a plain `Area3D` with a `CollisionPolygon3D`. Anything that Godot offers works next to it: add your own `Area3D` with a `CollisionShape3D` to the level scene, connect its `body_entered`, and react in your own script. The plugin's zones are useful when you want to **draw the area on the illustration** and have it follow the calibrated floor; a hand-made `Area3D` is simpler when the trigger does not have to match a place in the picture. Entry markers and zones can be read as ordinary nodes to place your own things at the same spots.
+
 ### Warp and the actions to come
 
 - **`warp`** moves the travellers to an entry point of the **same** scene (`IWEStageTravel.warp(tree, entry_id)`, or `IWEStageRuntime.warp_to(entry_id)` from code). It never changes the scene. Use it for a shortcut, a ladder, a teleporter.
-- **Your own actions.** `action` is a string. A zone whose action is not built in only emits `triggered` with its `action`, `target_scene`, `entry_id` and `params` (read them on the zone node); your game decides what to do. Order when a zone is entered: `triggered` is emitted first, so your handlers run before the built-in action and can turn `auto_handle` off for that zone; then the built-in action runs if `auto_handle` is still on.
+- **Your own actions.** `action` is a string. A zone whose action is not built in (and is not `event`) only emits `triggered` with its `action`, `target_scene`, `entry_id` and `params` (read them on the zone node); your game decides what to do. For the common case of "tell my game that something was entered", use the built-in custom event above. Order when a zone is entered: `triggered` is emitted first, so your handlers run before the built-in action and can turn `auto_handle` off for that zone; then the built-in action runs if `auto_handle` is still on.
 - Planned built-in actions (not implemented): interactions that need a button press, one-way zones, and actions with conditions. They fit the same record (`action` + `params`) without a format change.
 
 ## Limits of this version

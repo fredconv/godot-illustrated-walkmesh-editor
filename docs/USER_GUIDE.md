@@ -65,9 +65,15 @@ Import another picture into a document that already has one and only the picture
 
 The `Window` button moves the **whole IWE interface** (toolbar, tabs, panels, tools, canvas and dialogs) into a large separate window, which is useful for seeing the whole illustration at once. The dock keeps a notice with a `Bring it back to the dock` button. Close the window, click `Dock`, or use that button, to return everything to the dock. The document, the undo history, the selection, the active tool, the zoom, the tab and the folded sections are the same before and after: the interface is moved, never rebuilt. (The editor setting *Single Window Mode* prevents undocking the dock tab itself, not this button.)
 
+## When the height references contradict each other
+
+On a flat floor the same character looks smaller the higher its feet are in the picture, so the references must get smaller going up. If one does not (a reference higher in the picture than another, so farther away, but not smaller), `Fit camera to height references` **refuses** and says which two: *"Far" is higher in the picture than "Middle", so it is farther away, but it is not smaller (210 px against 170 px). Make it smaller, or check the other one. The camera was not changed.* Nothing is guessed and the camera stays as it was. Two references less than 3% of the picture height apart are not compared, so a few pixels of imprecision do not stop the fit.
+
+A reference that keeps the right order but is slightly off (for example a middle reference a little too tall) does not stop the fit: the camera is a best compromise, each reference shows how far it is from it, the one that is missed the most is named, and above 5% a warning appears. Fix that reference's height, or adjust the camera by hand.
+
 ## Moving between scenes: action zones and entry points
 
-A door, a staircase or the edge of a map is an **action zone**: draw it on the illustration, say what it does (change scene, or jump to an entry point of the same scene), choose the scene and the **entry point** to arrive at. In the scene that is reached, place an entry point with that name. The Creation tab has a section *Action zones and entry points* with the drawing tools, the lists and the properties. The full flow, what is exported, what your game needs and how the fallbacks work are in [STAGE_TRANSITIONS.md](STAGE_TRANSITIONS.md); using a character of your own and the runtime files you must ship are in [INTEGRATION.md](INTEGRATION.md).
+A door, a staircase or the edge of a map is an **action zone**: draw it on the illustration, say what it does (change scene, jump to an entry point of the same scene, or **trigger a custom event** such as an explosion or a gate that opens, which your game receives by name), choose the scene and the **entry point** to arrive at. In the scene that is reached, place an entry point with that name. The Creation tab has a section *Action zones and entry points* with the drawing tools, the lists and the properties. The full flow, what is exported, what your game needs and how the fallbacks work are in [STAGE_TRANSITIONS.md](STAGE_TRANSITIONS.md); using a character of your own and the runtime files you must ship are in [INTEGRATION.md](INTEGRATION.md).
 
 ## Connected zones
 

@@ -169,3 +169,11 @@
 **Reason:** The owner wants to cross large levels quickly in both places, but a testing multiplier must not leak into a document, an export or a shipped game.
 
 **Consequences:** `debug_speed_keys` must be turned off before shipping (documented). The multiplier is not stored in any scene (tested).
+
+## 2026-10-31 — A custom event is an action with a name, and a height reference that contradicts the others is refused
+
+**Decision:** (1) The action `event` makes a zone emit `event_fired(event_name, zone, body)` and nothing else; the name and a repeat option are stored in `params` (no format change). Every exported zone joins the group `iwe_action_zone`. A game can equally use its own `Area3D`: nothing forces it through the plugin. (2) `Fit camera to height references` checks the order before it fits: sorted by their row in the picture, heights must decrease going up (rows less than 3% of the frame apart are not compared). A reference that breaks it makes the fit fail with a sentence naming the two references, and the camera is not changed. A small mistake that keeps the order still produces the best-compromise camera, with the per-reference miss and the worst reference named.
+
+**Reason:** (1) The owner wants to trigger an explosion or open a gate by walking over a drawn area, with the choice of using plain Godot nodes instead. (2) A least-squares fit bends the camera to any outlier; with one reference too tall the pitch reached 73° and the horizon sat thousands of pixels above the picture, with no message that said which reference was wrong.
+
+**Consequences:** (1) The exported zone nodes have two more properties (`event_name`, `repeat`). (2) A fit that used to "succeed" on contradictory references now fails; the message tells how to fix it. The camera fit is still not a robust estimator: it does not drop a reference by itself.

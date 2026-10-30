@@ -88,7 +88,7 @@ func test_the_steep_village_scene_shows_its_miss_and_a_warning() -> void:
 	assert_bool(report.warn).is_true()
 	assert_str(dock._status_label.text).contains("Largest miss").contains("above 5%")
 	assert_str(dock._fit_report_label.text).contains("Template 1").contains("%")
-	assert_str(dock._fit_report_label.text).contains("misses a reference by more than 5%")
+	assert_str(dock._fit_report_label.text).contains("by the most, more than 5%")
 	dock.queue_free()
 
 

@@ -64,15 +64,22 @@ func fit_to_scale_anchors(anchors: Array, image_size: Vector2i) -> String:
 	var rows := PackedFloat64Array()
 	var columns := PackedFloat64Array()
 	var heights := PackedFloat64Array()
+	var names: Array[String] = []
+	var pixel_heights := PackedFloat64Array()
 	for anchor in anchors:
 		if anchor == null or anchor.apparent_height_px <= 0.0:
 			continue
+		names.append(anchor.name)
+		pixel_heights.append(anchor.apparent_height_px)
 		var screen_point: Vector2 = PROJECTOR.image_to_viewport(anchor.position, image_size, viewport_size)
 		rows.append(screen_point.y)
 		columns.append(screen_point.x)
 		heights.append(anchor.apparent_height_px * fit_scale)
 	if rows.size() < 2:
 		return "Place at least two height references at different depths."
+	var inconsistent := _inconsistent_references(rows, pixel_heights, names, float(viewport_size.y) * MIN_ROW_GAP)
+	if not inconsistent.is_empty():
+		return inconsistent
 	# Least-squares line: height = slope * row + intercept.
 	var count := float(rows.size())
 	var mean_row := 0.0
@@ -118,6 +125,28 @@ func fit_to_scale_anchors(anchors: Array, image_size: Vector2i) -> String:
 
 ## A fit that misses a height reference by more than this fraction is reported to the person.
 const RESIDUAL_WARNING := 0.05
+## Two height references closer than this fraction of the frame height, one above the other, are not
+## compared for order: a few pixels of imprecision should not refuse a fit.
+const MIN_ROW_GAP := 0.03
+
+
+## On a flat floor the same character looks smaller the higher its feet are in the picture. Sorted by
+## their row, the heights must therefore strictly decrease going up. When a reference breaks that, the
+## fit would bend the camera to please a mistake (a pitch near straight down, a horizon far above the
+## picture) without saying so. Returns a sentence naming the two references, or an empty string.
+static func _inconsistent_references(rows: PackedFloat64Array, pixel_heights: PackedFloat64Array, names: Array[String], minimum_gap: float) -> String:
+	var order: Array[int] = []
+	for index in rows.size():
+		order.append(index)
+	order.sort_custom(func(a: int, b: int) -> bool: return rows[a] < rows[b])
+	for position in range(1, order.size()):
+		var far_index := order[position - 1]
+		var near_index := order[position]
+		if rows[near_index] - rows[far_index] < minimum_gap:
+			continue
+		if pixel_heights[far_index] >= pixel_heights[near_index]:
+			return "\"%s\" is higher in the picture than \"%s\", so it is farther away, but it is not smaller (%d px against %d px). Make it smaller, or check the other one. The camera was not changed." % [names[far_index], names[near_index], roundi(pixel_heights[far_index]), roundi(pixel_heights[near_index])]
+	return ""
 
 
 ## How far the camera is from each height reference, as a signed fraction of the reference's
