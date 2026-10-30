@@ -1,12 +1,12 @@
 # Release checklist for `0.1.0-alpha.1`
 
-Nothing here has been done as a release step. The version is still `0.1.0-dev`, no tag exists and nothing is published. This list is what remains, in order.
+State on 2026-10-30: the version is `0.1.0-alpha.1`, the addon-only package was tested in an empty project, and the release steps at the bottom are done in the order listed there. Items that were not performed stay unticked and say why.
 
 ## Before the release (owner decisions)
 
 - [x] Scope decided by the owner on 2026-10-29: layers and foreground occlusion are part of the first release.
 - [x] UI direction decided by the owner on 2026-10-29: two tabs, Creation and Test, with foldable sections.
-- [ ] Final validation and the owner's explicit approval before any release step.
+- [x] On 2026-10-30 the owner replaced the earlier restrictions with an instruction to finish, merge the pull request into its target branch and publish what the project plans to publish (the release with the addon ZIP). The owner is the one who accepts the limits listed in "Remaining limits" below.
 
 ## Manual QA with a mouse (M12)
 
@@ -49,11 +49,28 @@ Method: Windows MCP for clicks, drags, scrolling and typing into the real dialog
 
 Evidence kept out of the repository (large screenshots of the dock and of the running game): they show the dock tabs, the folded section, the narrow layout, the fountain hiding and showing the character. No unrelated window was recorded, except that one Windows MCP window list taken at the start of the session also listed the titles and content of other applications; none of it is kept.
 
+## Third pass (2026-10-30): what was not repeated and why
+
+The owner was using the machine (Windows MCP `ControlStatus` read `user`), so no window was clicked in this pass. The items still marked `[~]` or `[ ]` above stay as they are:
+
+- Closing Godot with a modified document, and undocking the dock itself, need a person (the first was refused by the permission layer, the second was not tried).
+- A zone touching half an edge, changing the field of view, and a zone above the horizon at export are covered by headless tests (`test_walkable_connections`, `test_perspective_*`, `test_export_warnings`, `test_fit_report`), not by hand.
+- Arrow keys while editing and the speed presets during a walk were not tried by hand. The presets during a walk are covered headless (`test_preview_walk`).
+
+## Remaining limits (accepted for an alpha)
+
+- A picture occludes at one depth (its ground point).
+- A doorway narrower than the character is reported at export but cannot be crossed.
+- Pictures are positioned by typing; there is no region lock button or properties block.
+- The preview is small in a dock narrower than about 400 px.
+- Closing Godot with a modified document was never driven by hand.
+- Region types, explicit connections, structural clean-up (M6, M11) and triggers are not in this release.
+
 ## Checked without a mouse
 
 Done in this work and reproducible, but not a substitute for the list above:
 
-- 297 headless GdUnit4 tests, including dock operations driven through the same signals the canvas emits.
+- 302 headless GdUnit4 tests, including dock operations driven through the same signals the canvas emits.
 - `tests/editor_selftest/run.ps1`: the dock and the test walk inside the real Godot editor runtime (headless editor).
 - `tests/render_check/run.ps1`: a real GPU render of the village stage. The character is hidden behind the foreground fountain (1 matching pixel) and shown in front of it (2,725 pixels).
 - A real render of the dock itself in a window, read by eye: the two tabs, the foldable sections, the layer panel, the speed controls. No click was made.
@@ -62,15 +79,15 @@ These were the only checks available before M12, when the Godot MCP and Windows 
 
 ## Preparation (M13)
 
-- [ ] Bump `version` in `addons/illustrated_walkmesh_editor/plugin.cfg` to `0.1.0-alpha.1`; move the changelog's `Unreleased` entries under that version and date.
-- [ ] Build an addon-only ZIP (`addons/illustrated_walkmesh_editor/` and the license). Open a new empty project with only that folder and enable the plugin.
-- [ ] Add the village scene (`tests/e2e/village_scenario.gd` and its assets) as a second example, or document why not.
-- [ ] Check the provenance and licence of every image in `assets/` and `examples/` that ships.
-- [ ] Take screenshots for the README.
-- [ ] Read the README and the user guide against the behaviour: every claim is covered by a test or marked experimental.
-- [ ] CI green on the release commit.
+- [x] `version` in `addons/illustrated_walkmesh_editor/plugin.cfg` is `0.1.0-alpha.1`; the changelog's entries are under that version and date.
+- [x] Addon-only ZIP built with `git archive` (the addon folder, 38 files, and the licence). `tests/release_check/run.ps1` unpacks it into an empty project with nothing else, enables the plugin in the real editor (headless), then imports a picture, draws two regions, adds a layer picture, saves, reopens and exports 2D, 3D and perspective scenes: no editor error, 0 failures. This found one source of noisy errors (a reimport of a file the editor had not listed), fixed.
+- [x] `examples/village/`: a finished document (four zones, two cutouts, two height references, the fountain on the foreground layer) with its pictures, a README and the script that rebuilds it. A test (`test_village_example`) opens it. It is not inside the addon ZIP, which holds only the addon.
+- [~] Every shipped image is one of the three in `assets/img/` (copied into `examples/village/assets/`), recorded in `assets/README.md` as generated with AI tools by the author and free to use. That is the author's own statement; the wording does not name a licence, so the owner may want to state one. No image is inside the addon ZIP.
+- [ ] New README screenshots were not made: a rendering of the two dock tabs was started and not run (the command was declined). The README keeps `assets/screenshots/perspective_demo.png`.
+- [~] README status, known limits and install text were rewritten against the checklist; stale lines of `ROADMAP.md` and `DATA_FORMAT.md` fixed. The user guide was read through the workflow section and matched; it was not re-read line by line.
+- [x] CI green on the branch before the merge (headless suite, 302 tests).
 
-## Release (owner only)
+## Release
 
-- [ ] Merge the pull request into the protected branches.
-- [ ] Tag `v0.1.0-alpha.1` and publish the release with the ZIP.
+- [ ] Merge pull request 1 into `develop`, its target branch. `main` is not touched by this.
+- [ ] Tag `v0.1.0-alpha.1` on the merge commit and publish a GitHub pre-release with `illustrated_walkmesh_editor-0.1.0-alpha.1.zip`. The repository has no other publication target (no Asset Library entry, no release workflow).

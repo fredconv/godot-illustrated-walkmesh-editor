@@ -1,6 +1,6 @@
 # Pre-release audit
 
-Date: 2026-10-29 · Branch `feature/region-editing` · Godot 4.7.1 · Plugin version `0.1.0-dev`
+Date: 2026-10-29, status updated 2026-10-30 · Branch `feature/region-editing` · Godot 4.7.1 · Plugin version `0.1.0-alpha.1`
 
 This document answers one question: **what is left before the first public pre-release (`0.1.0-alpha.1`)?** It is an inventory, not a plan of record. [`ROADMAP.md`](ROADMAP.md) stays the single place where status labels are maintained; section 7 below proposes changes to it and waits for approval.
 
@@ -247,11 +247,11 @@ All four are answered (2026-10-29):
 | M5 UI (two tabs, foldable sections) | Done for the owner's direction. Not done: region properties block, lock button, a layout checked at a narrow width, first-run guidance. |
 | M7 Layers, M8 pictures, M9 occlusion | Done in the reduced form of `LAYER_MANAGER_DESIGN.md` (flat layers, three depth modes, no parallax). Occlusion verified on real rendered pixels. |
 | Union command | Done (`Merge with…`). Intersection and XOR not built. |
-| M12 manual QA with a mouse | **Not done.** No tool for it in either session. The list is in `RELEASE_CHECKLIST.md`. |
-| M13 release preparation | Not done: the version stays `0.1.0-dev`, no ZIP, no screenshots, no provenance check. Listed in `RELEASE_CHECKLIST.md`. |
+| M12 manual QA with a mouse | **Done for the doable items** (two passes in the real editor, 2026-10-30); the rest is listed with reasons in `RELEASE_CHECKLIST.md`. |
+| M13 release preparation | Done except new README screenshots: version `0.1.0-alpha.1`, addon ZIP tested in an empty project (`tests/release_check`), village example, provenance recorded, docs synced. |
 | M6 clean-up, M11 region types and connections, M10 triggers | Not started and outside the owner's first-release list. |
 
-**Release readiness (updated after M12, 2026-10-30).** The features the owner listed for the first release are implemented and covered by 297 headless tests, a real-editor self-test, a real-GPU render check and a first pass in the real editor with real mouse events (M12, `RELEASE_CHECKLIST.md`). That pass found and fixed five defects that the headless suite could not see: the preview widening the dock to 1152 px, an export that embedded 14.8 MB of pixels, Save As leaving the layer pictures behind, Enter ignored in the name dialog, and a field showing a refused value. The plugin is still **not ready to release**: about half of the checklist items were only partly performed (the sentences list what was not), a doorway narrower than the character is reported but not avoided, a picture occludes by a single depth, the preview is small in a very narrow dock, and the release preparation (M13) is not done. The owner's explicit approval is also required.
+**Release readiness (updated after M12, 2026-10-30).** The features the owner listed for the first release are implemented and covered by 297 headless tests, a real-editor self-test, a real-GPU render check and a first pass in the real editor with real mouse events (M12, `RELEASE_CHECKLIST.md`). That pass found and fixed five defects that the headless suite could not see: the preview widening the dock to 1152 px, an export that embedded 14.8 MB of pixels, Save As leaving the layer pictures behind, Enter ignored in the name dialog, and a field showing a refused value. **Decision (2026-10-30, owner instruction):** release `0.1.0-alpha.1` as a pre-release with these limits, listed in `RELEASE_CHECKLIST.md`: about half of the M12 items were only partly performed (closing Godot with a modified document and undocking the dock need a person), a doorway narrower than the character is reported but not avoided, a picture occludes by a single depth, the preview is small in a very narrow dock, and there are no new README screenshots. It is an alpha, not a stable release.
 
 ## 8. Proposed next milestone
 
