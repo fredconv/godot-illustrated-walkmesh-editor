@@ -51,7 +51,9 @@ Implemented, covered by automated tests, and exercised in the real Godot 4.7.1 e
 - **Save and reopen.** Save an IWE document as a `.tres` file. The illustration is copied next to it, and reopening restores regions, cutouts, and templates.
 - **Floating window.** Open the illustration editor in a large separate window.
 - **Layers and pictures.** A Background and a Foreground layer; place transparent PNG or WebP pictures on them (position, scale, opacity, ground point), hide, lock or fade a layer, with undo. A picture can be drawn behind the character, in front of it, or by depth, so the character walks behind a fountain and in front of it. Pictures never block walking. The perspective and 2D exports include them. In V1 a picture is prepared beforehand at the resolution and framing you want (add transparent pixels around it so it lines up with the background); position, scale, opacity and ground point can be corrected by typing numbers. Moving and resizing it with the mouse is planned for V2.
-- **Dock in two tabs.** *Creation* (layers, regions, tools, references, camera) and *Test* (test character, export, validation), with foldable sections.
+- **Dock in two tabs.** *Creation* (layers, regions, tools, action zones, references, camera) and *Test* (test character, export, validation), with foldable sections. The `Window` button detaches the whole interface into its own window and back, keeping the document, the history, the selection, the tool, the zoom, the tab and the folded sections.
+- **Scene transitions.** Draw an action zone (a door, a staircase), choose the scene it loads and the entry point to arrive at, and place entry points in the other scene. The export writes zones, entry markers and a runtime node; your game needs no autoload and no particular character, only the group `iwe_traveller`. A zone can also warp a character to another place of the same scene. See [docs/STAGE_TRANSITIONS.md](docs/STAGE_TRANSITIONS.md).
+- **Your own character.** An exported stage works with any `CharacterBody3D`: the perspective and the occlusion behind foreground pictures come from the 3D scene itself. A working example with its own controller, two connected levels and a helper for paths that keep clear of walls is in `examples/integration/` ([docs/INTEGRATION.md](docs/INTEGRATION.md)). The stage needs the plugin's `runtime/` scripts at run time.
 
 ### Experimental
 
@@ -67,6 +69,9 @@ Implemented, tested headless and tried in the real editor, but newer and less pr
 - A picture occludes the character at one depth (its ground point). That suits a fountain or a house, not a long railing seen at an angle.
 - A doorway narrower than the character is reported when you export but the character cannot walk through it (it is wider than the gap).
 - A layer picture is prepared beforehand to line up with the background (V1); there is no mouse moving or resizing of pictures until V2. Numbers can be typed for small corrections. There is no lock button for a region yet.
+- The shape of an action zone cannot be edited vertex by vertex (move it as a whole, or delete it and draw it again). Interactions that need a button press and conditions are not built in; the action is an open string and your game can handle its own through the zone's signal.
+- The speed keys of the running game (`PageUp`, `PageDown`, `Home`) belong to the stage's test player; turn `debug_speed_keys` off before you ship. The dock's speed buttons act only on the editor preview.
+- Tested with Godot 4.7.1 on Windows. The documents are in format version 3: a plugin of `0.1.0-alpha.2` or earlier refuses them without touching them.
 - In a dock narrower than about 400 px the perspective preview is small.
 - Close Godot or disable the plugin with unsaved changes: IWE asks, or writes a recovery copy to `user://iwe_recovery/`.
 

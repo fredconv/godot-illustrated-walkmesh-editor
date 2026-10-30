@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://examples/integration/stage_village.tscn" id="1_q0ct6"]
+[ext_resource type="PackedScene" path="res://examples/integration/external_character.tscn" id="2_v7h6k"]
+
+[sub_resource type="Environment" id="Environment_ensxl"]
+ambient_light_source = 2
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.6
+
+[node name="LevelVillage" type="Node3D" unique_id=2136817422]
+
+[node name="Stage" parent="." unique_id=1626534815 instance=ExtResource("1_q0ct6")]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=203426419]
+environment = SubResource("Environment_ensxl")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=665517676]
+transform = Transform3D(0.8660254, -0.40957603, 0.28678823, 0, 0.57357645, 0.81915206, -0.5, -0.7094065, 0.49673176, 0, 0, 0)
+
+[node name="Hero" parent="." unique_id=149824827 instance=ExtResource("2_v7h6k")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.952852, 0, 9.188314)

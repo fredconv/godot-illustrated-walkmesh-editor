@@ -1,0 +1,45 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://examples/integration/external_character.gd" id="1_nh34j"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_3iako"]
+radius = 0.3
+height = 1.8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5126o"]
+albedo_color = Color(1, 0.47843137, 0.18039216, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_4ernf"]
+radius = 0.3
+height = 1.5
+
+[sub_resource type="SphereMesh" id="SphereMesh_jf0xd"]
+radius = 0.22
+height = 0.44
+
+[sub_resource type="BoxMesh" id="BoxMesh_1wqhr"]
+size = Vector3(0.1, 0.1, 0.2)
+
+[node name="ExternalCharacter" type="CharacterBody3D" unique_id=149824827]
+script = ExtResource("1_nh34j")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=2106803999]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_3iako")
+
+[node name="Model" type="Node3D" parent="." unique_id=1696493851]
+
+[node name="Torso" type="MeshInstance3D" parent="Model" unique_id=1145103445]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+material_override = SubResource("StandardMaterial3D_5126o")
+mesh = SubResource("CapsuleMesh_4ernf")
+
+[node name="Head" type="MeshInstance3D" parent="Model" unique_id=896101194]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.58, 0)
+material_override = SubResource("StandardMaterial3D_5126o")
+mesh = SubResource("SphereMesh_jf0xd")
+
+[node name="Nose" type="MeshInstance3D" parent="Model" unique_id=1452105180]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.58, -0.26)
+material_override = SubResource("StandardMaterial3D_5126o")
+mesh = SubResource("BoxMesh_1wqhr")

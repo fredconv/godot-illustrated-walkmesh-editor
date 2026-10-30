@@ -7,7 +7,7 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $work = Join-Path ([System.IO.Path]::GetTempPath()) ("iwe_render_check_" + [guid]::NewGuid().ToString("N").Substring(0, 8))
 New-Item -ItemType Directory -Path "$work\addons" | Out-Null
 Copy-Item "$root\addons\illustrated_walkmesh_editor" "$work\addons\illustrated_walkmesh_editor" -Recurse
-Copy-Item "$root\assets", "$root\tests", "$root\icon.svg", "$root\icon.svg.import" $work -Recurse
+Copy-Item "$root\assets", "$root\tests", "$root\examples", "$root\icon.svg", "$root\icon.svg.import" $work -Recurse
 Copy-Item "$PSScriptRoot\render.gd" $work
 @'
 config_version=5

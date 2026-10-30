@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://examples/integration/stage_cellar.tscn" id="1_05qyp"]
+[ext_resource type="PackedScene" path="res://examples/integration/external_character.tscn" id="2_fcfou"]
+
+[sub_resource type="Environment" id="Environment_pdlr1"]
+ambient_light_source = 2
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.6
+
+[node name="LevelCellar" type="Node3D" unique_id=751080900]
+
+[node name="Stage" parent="." unique_id=1722079875 instance=ExtResource("1_05qyp")]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2016866835]
+environment = SubResource("Environment_pdlr1")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=444327105]
+transform = Transform3D(0.8660254, -0.40957603, 0.28678823, 0, 0.57357645, 0.81915206, -0.5, -0.7094065, 0.49673176, 0, 0, 0)
+
+[node name="Hero" parent="." unique_id=149824827 instance=ExtResource("2_fcfou")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.165905, 0, 6.109493)

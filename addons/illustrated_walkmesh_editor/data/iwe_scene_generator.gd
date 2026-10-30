@@ -422,6 +422,8 @@ static func _make_player(document: Resource, calibration: IWEPerspectiveCalibrat
 	player.add_to_group(IWEStageTravel.TRAVELLER_GROUP, true)
 	player.position = Vector3(start.x, calibration.floor_height, start.z) * world_scale
 	player.set("move_speed", height * 1.5)
+	# A test player: PageUp / PageDown / Home change its speed while the game runs.
+	player.set("debug_speed_keys", true)
 	# Walls sit on the boundary, so the character's centre stops one radius inside them. The
 	# navigation snap tolerance must exceed that radius or the character gets pulled to the edge.
 	player.set("snap_tolerance", height * 0.16 * 3.0)

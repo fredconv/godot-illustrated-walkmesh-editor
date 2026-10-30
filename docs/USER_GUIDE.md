@@ -63,20 +63,25 @@ Import another picture into a document that already has one and only the picture
 
 ## Floating window
 
-The `Window` button moves the illustration area into a large separate window, which is useful for seeing the whole illustration at once. Close the window, or click `Window` again, to return the canvas to the dock.
+The `Window` button moves the **whole IWE interface** (toolbar, tabs, panels, tools, canvas and dialogs) into a large separate window, which is useful for seeing the whole illustration at once. The dock keeps a notice with a `Bring it back to the dock` button. Close the window, click `Dock`, or use that button, to return everything to the dock. The document, the undo history, the selection, the active tool, the zoom, the tab and the folded sections are the same before and after: the interface is moved, never rebuilt. (The editor setting *Single Window Mode* prevents undocking the dock tab itself, not this button.)
+
+## Moving between scenes: action zones and entry points
+
+A door, a staircase or the edge of a map is an **action zone**: draw it on the illustration, say what it does (change scene, or jump to an entry point of the same scene), choose the scene and the **entry point** to arrive at. In the scene that is reached, place an entry point with that name. The Creation tab has a section *Action zones and entry points* with the drawing tools, the lists and the properties. The full flow, what is exported, what your game needs and how the fallbacks work are in [STAGE_TRANSITIONS.md](STAGE_TRANSITIONS.md); using a character of your own and the runtime files you must ship are in [INTEGRATION.md](INTEGRATION.md).
 
 ## Connected zones
 
 Two walkable zones that share an edge are connected: the character walks from one to the other without a wall at the shared edge. Zones that only touch at a corner are not connected. You do not need to merge the polygons.
 
-**Limitation:** zones that overlap without sharing an exact edge are not connected yet. Their walls are removed where they overlap, but the character cannot path from one to the other with click-to-move. Snap the shared border so both zones use the same edge.
+Zones that overlap, or that share only part of an edge, are connected too: the zone drawn first keeps the shared ground, the later one stops at its outline. A doorway narrower than the character's diameter is reported by the export check; the character cannot cross it.
 
 ## Known limitations
 
-- Duplicating a region moves its outline but not its cutouts (audit P1-10).
-- A doorway needs a full shared edge. A zone that touches only part of another zone's edge is connected for navigation but keeps its wall, so the character stops at it.
-- The camera fit does not show how far it misses your height references. On a steeply viewed scene it can miss by about 10%.
-- The test character follows the shortest path, which hugs obstacle corners. It can stall at a very narrow doorway.
+- The camera fit shows how far it misses each height reference and warns above 5%. On a steeply viewed scene it can miss by about 10%.
+- The test character keeps a clearance from obstacle corners, but a doorway narrower than its diameter cannot be crossed; the export check names it.
+- A foreground picture occludes at one depth, the depth of its ground point. A long railing seen at an angle is not exact.
+- Layer pictures are prepared beforehand in V1 (same canvas as the background, transparent pixels around the object); moving and resizing them with the mouse is planned for V2.
+- The shape of an action zone cannot be edited vertex by vertex: move it as a whole, or delete it and draw it again.
 
 - The perspective projection depends on the shape (aspect ratio) of the reference frame, not on the dock. Changing the reference frame width or height changes where every image point lands on the floor; it is undoable and marks the document modified. A frame that differs in shape from the game window is reported in the status line.
 - Locking a region has no button yet. Locked regions are respected when they are locked by data.
@@ -87,4 +92,4 @@ Two walkable zones that share an edge are connected: the character walks from on
 
 ## Planned features
 
-Intersection and XOR operations, explicit connections, nested layers, picture rotation, and parallax are planned. Selecting, moving and resizing layer pictures with the mouse (handles, undo and redo, numeric fields, an optional lock) is planned for V2. See [`SPECIFICATION.md`](SPECIFICATION.md) and [`ROADMAP.md`](ROADMAP.md).
+Intersection and XOR operations, explicit connections, nested layers, picture rotation, vertex editing of action zones, interactions that need a button press, and parallax are planned. Selecting, moving and resizing layer pictures with the mouse (handles, undo and redo, numeric fields, an optional lock) is planned for V2. See [`SPECIFICATION.md`](SPECIFICATION.md) and [`ROADMAP.md`](ROADMAP.md).

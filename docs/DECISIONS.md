@@ -145,3 +145,27 @@
 **Reason:** The owner's pictures are authored to the background's canvas, so alignment is a preparation step, and the occlusion feature (depth modes, ground point) does not depend on dragging. Mouse manipulation is a separate interaction feature with its own design and testing cost.
 
 **Consequences:** V1 documents and docs say so plainly (the user guide explains how to prepare a picture). V2 will add its fields to the document only if the format needs them, with a schema version note (`docs/DATA_FORMAT.md`). Nothing in V1 is blocked on it.
+
+## 2026-10-30 — Scene travel is data plus a small runtime, with no autoload and no fixed controller
+
+**Decision:** A door between two scenes is an **action zone** with a **string** action (`scene_transition`, `warp`, or a game's own), a target scene, an entry point name and a free `params` dictionary, saved in the document (format version 3). The place a character appears is an **entry point** with a unique name, an optional facing and one default per scene. The runtime is `IWETransitionZone` (Area3D) and `IWETransitionZone2D`, `IWEEntryMarker` and `IWEEntryMarker2D`, `IWEStageRuntime`, and `IWEStageTravel` (static state: the pending entry point, the travel flag, the optional scene changer). A *traveller* is any node of the group `iwe_traveller`. Fallbacks: the named entry point, then the scene's default, then the first marker, then nothing; a missing scene leaves the character where it is and does not lock later transitions. A zone fires once and nothing fires while a travel is under way. `warp` moves travellers to an entry point of the same scene.
+
+**Reason:** The owner needs a door that loads another scene and puts the character at an identified place, usable in a game that has its own character and its own architecture. An autoload or a base character class would tie every game to one design. Static state on a script survives a scene change without one. The action as a string, with `params`, lets a later action (an interaction, a condition) be added without a new format; an unknown action is kept and exported.
+
+**Consequences:** The exported stage depends on the scripts in `runtime/` and `data/iwe_action_zone.gd` at run time (documented in `INTEGRATION.md`). Format version 3 refuses to open in alpha.1 and alpha.2, which refuse it without touching the file. The flow is covered by tests including a real scene change between two shipped example levels with an external character. Vertex editing of zones, button-press interactions and conditions are not in this version.
+
+## 2026-10-30 — The Window button detaches the whole interface
+
+**Decision:** `Window` moves the toolbar, the tabs, the panels, the tools, the canvas and the dialogs into a window of their own, by moving the existing nodes, and a notice with a button stays in the dock. Closing the window, `Dock`, or the notice button moves them back in their original order.
+
+**Reason:** The first version only moved the picture, which left the person with half an interface in the dock and half in a window. Moving nodes instead of rebuilding them keeps every kind of state (document, history, selection, tool, zoom, tab, folded sections) without having to list it.
+
+**Consequences:** Dialogs follow the interface, so a file dialog opens in the window the person is using. A dialog created while detached follows the interface back. The window is a Godot `Window` with its own theme taken from the dock; it does not need, and is not blocked by, the editor's *Single Window Mode*, which only prevents undocking the dock tab itself.
+
+## 2026-10-30 — Speed while testing: one multiplier in the editor preview, one set of keys in the game
+
+**Decision:** The dock's speed controls (x1, x2, x5, x10, pause, reset, base speed) act on the preview character and are an editor preference, never saved or exported. In a running game, `PageUp`, `PageDown` and `Home` change the multiplier of the stage's own test player (`debug_speed_keys`, off by default and turned on by the exporter for the player it adds). A character of the developer's own has its own speed; the example controller shows the same keys.
+
+**Reason:** The owner wants to cross large levels quickly in both places, but a testing multiplier must not leak into a document, an export or a shipped game.
+
+**Consequences:** `debug_speed_keys` must be turned off before shipping (documented). The multiplier is not stored in any scene (tested).

@@ -114,13 +114,26 @@ Status: **Implemented for the first release**: placement, depth modes, occlusion
 
 The physical character size is a runtime setting, separate from its visual height. Perspective changes apparent size on screen; it must not change physical size.
 
+### 3.9.1 Action zones, entry points and scene travel
+
+Decided and built after the first alpha (see [STAGE_TRANSITIONS.md](STAGE_TRANSITIONS.md) for the full contract).
+
+- **Action zones**: polygons on the illustration with an action (a string: `scene_transition`, `warp`, or an action of the game's own), a target scene, an entry point name, an enabled flag and a free `params` dictionary. They are triggers: they create no navigation and no collision.
+- **Entry points**: named places on the illustration (unique name, optional facing, one default per scene) where a character appears on arrival.
+- **Runtime**, with no autoload and no fixed controller: `IWETransitionZone` (Area3D) and `IWETransitionZone2D`, `IWEEntryMarker` and `IWEEntryMarker2D`, `IWEStageRuntime`, `IWEStageTravel`. A traveller is any node of the group `iwe_traveller`.
+- **Flow**: a traveller walks into a zone, the game loads the target scene, the new scene's `IWEStageRuntime` moves the travellers to the named entry point. Fallbacks: default entry point, then the first one, then nothing; a missing scene leaves the character where it is. No double triggers (one fire per zone, none while a travel is under way).
+- **Extension**: the action is a string and its settings travel in `params`, so a later action needs no format change; an unknown action is kept, exported and reported to the game by a signal.
+- **Persistence and export**: saved in the document (format version 3), generated in the 2D, flat 3D and perspective exports; a document without zones exports exactly what it did before.
+
+Status: **Implemented for the base scope**: authoring in the dock (draw, select, move, configure, undo and redo), save and reopen, migration of version 1 and 2 documents, export, runtime, tests including a real scene change between two example levels with an external character. Not implemented: editing the vertices of a zone, interactions that need a button press, conditions, one-way zones.
+
 ### 3.10 Export
 
 | Output | Content | Status |
 |---|---|---|
 | 2D scene | Illustration, camera (optional), walkable navigation regions | Completed |
 | 3D stage (flat) | Image plane, navigation regions, guides, top camera | Completed |
-| Perspective scene | Calibrated floor, warped image, walkable regions with walls, height templates, optional test character, cameras | Completed |
+| Perspective scene | Calibrated floor, warped image, walkable regions with walls, height templates, action zones and entry points, optional test character (with speed keys), cameras | Completed |
 | Environment only | Geometry and decor without navigation | To develop |
 | Navigation only | Navigation and collision data without decor | To develop |
 
@@ -131,14 +144,14 @@ Exported scenes are standard Godot scenes. Templates are placed in a `ScaleTempl
 - Save an IWE document (`.tres`) containing image reference, groups, regions, cutouts, templates, and calibration: **completed**, tested.
 - Reopen a document and continue editing: **completed**, tested.
 - Unsaved-change protection: **completed**. The document shows a modified mark that follows undo and redo; New and Open ask Save, Discard Changes, or Cancel; Godot's quit dialog lists an unsaved document; a failed save keeps the document modified. A document that was never saved gets a recovery copy in `user://iwe_recovery/` when Godot asks to save. The first import of an illustration is not undoable and keeps the document modified until saved; replacing it is undoable.
-- Schema version and migration: **completed**. The current version is 2 (layers and visual elements). A version 1 file is migrated in memory when opened (a Background and a Foreground layer are added; nothing else changes) and written as version 2 only when the author saves. A newer or invalid version is refused with a message and the file is left untouched.
+- Schema version and migration: **completed**. The current version is 3 (action zones and entry points; version 2 added layers and visual elements). A version 1 or 2 file is migrated in memory when opened (version 1 gets a Background and a Foreground layer; version 2 gets two empty lists; nothing else changes) and written as version 3 only when the author saves. A newer or invalid version is refused with a message and the file is left untouched.
 - Layers and visual elements in the document: **completed**. Connections, region types and export options in the document: to develop.
 - Exports never modify the source document.
 
 ### 3.12 Editor interface
 
-- **Two tabs** (decided 2026-10-29), each made of foldable sections. **Creation**: layers and pictures, regions, drawing tools, height references, camera and perspective. **Test**: the test character with its speed controls, export, validation. Opening Test turns the perspective preview on. Not done: a region properties block, a lock button, a layout checked at a narrow dock width.
-- Floating large window for the illustration (completed).
+- **Two tabs** (decided 2026-10-29), each made of foldable sections. **Creation**: layers and pictures, regions, drawing tools, action zones and entry points, height references, camera and perspective. **Test**: the test character with its speed controls, export, validation. Opening Test turns the perspective preview on. Not done: a region properties block, a lock button, a layout checked at a narrow dock width.
+- The `Window` button detaches **the whole interface** (toolbar, tabs, panels, tools, canvas and dialogs) into its own window and brings it back: nodes are moved, not rebuilt, so the document, the undo history, the selection, the tool, the zoom, the tab and the folded sections are kept (completed, tested). Godot's *Single Window Mode* editor setting does not prevent it (it only prevents undocking the dock tab itself).
 - Interface in English. Most labels are English; a few remain French (to be cleaned up).
 - Undo and redo, status bar messages, and explicit error messages.
 
