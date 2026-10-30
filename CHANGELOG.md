@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0-alpha.2] — 2026-10-30
+
+### Fixed
+- Undoing the deletion of a region puts it back where it was in the list instead of at the end. The order of the regions decides which zone keeps ground that two zones share, and the order of the exported nodes, so an Undo could change the exported navigation. Found by reading the code while preparing the release; covered by `test_region_order` and checked in the real editor.
+- A reimport of a picture the editor has not listed (seen in a headless editor) is no longer attempted, which removes "Can't find file during file reimport" errors before the fallback of embedding the picture.
+
+### Added
+- `examples/village/`: a finished example document (four zones, two cutouts, two height references, the foreground fountain) with its pictures, a README and the script that rebuilds it; `test_village_example` opens it.
+- `tests/release_check/`: unpacks the addon-only package into an empty project, enables the plugin in the real editor (headless) and runs a full pass (import, regions, a layer picture, save, reopen, 2D, 3D and perspective exports).
+- README screenshots rendered from the plugin itself (`tests/render_check/readme_shots.ps1`).
+
+### Documentation
+- Product decision recorded: in V1 a layer picture is prepared beforehand at the wanted resolution and framing (the background fills the camera frame); selecting, moving and resizing pictures with the mouse, with handles, undo and redo, numeric fields and an optional lock, is V2. README, user guide, specification, roadmap and checklist say so.
+- Provenance wording of the demonstration illustrations: created or modified by the project owner, with permission to use and redistribute them confirmed by the owner.
+- README screenshots rendered from the plugin itself (`tests/render_check/readme_shots.ps1`).
+
 ## [0.1.0-alpha.1] — 2026-10-30
 
 ### Fixed (found by the first pass in the real editor, M12)

@@ -138,3 +138,10 @@
 
 **Consequences:** Old documents keep the reference they stored, so their projection is unchanged; no migration, no schema change. A document whose stored reference was an accident of the old dock layout keeps that shape; the author can correct it with the `Reference frame` inputs. A fixture of an old document (`tests/fixtures/iwe_document_old_panel_reference.tres`) checks that it loads and projects identically and that its file is not modified.
 
+## 2026-10-30 — Layer pictures are prepared beforehand in V1; moving them in the editor is V2
+
+**Decision:** In V1 (`0.1.x`), a picture used as a foreground or background layer is prepared in advance at the resolution and framing wanted: the author adds transparent pixels around it when needed so it lines up with the main background image, which fills the camera frame. V1 does not need visual editing of a picture's position or scale. The numeric fields (position, scale, opacity, ground point) stay as they are, with undo, for small corrections. V2 adds visual editing: select a picture on the canvas, move it with the mouse, resize it with handles, and still set position and scale numerically, with a clear selection, undo and redo, an optional lock, and persistence in the document. It is meant above all for occlusion pieces such as a fountain or a bridge railing.
+
+**Reason:** The owner's pictures are authored to the background's canvas, so alignment is a preparation step, and the occlusion feature (depth modes, ground point) does not depend on dragging. Mouse manipulation is a separate interaction feature with its own design and testing cost.
+
+**Consequences:** V1 documents and docs say so plainly (the user guide explains how to prepare a picture). V2 will add its fields to the document only if the format needs them, with a schema version note (`docs/DATA_FORMAT.md`). Nothing in V1 is blocked on it.

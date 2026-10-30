@@ -1684,9 +1684,12 @@ func _delete_selected_region() -> void:
 	if region == null:
 		return
 	var removed := region.duplicate(true) as IWERegion
+	# The list order decides which zone keeps ground that two zones share, so Undo puts the region back
+	# where it was and not at the end.
+	var removed_index: int = _document.regions.find(region)
 	_history.create_action("Delete IWE region")
 	_history.add_do_method(_remove_region.bind(region.id))
-	_history.add_undo_method(_add_region.bind(removed))
+	_history.add_undo_method(_insert_region.bind(removed, removed_index))
 	_history.commit_action()
 
 
