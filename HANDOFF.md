@@ -27,6 +27,6 @@ Fichier de reprise pour une nouvelle session. Il ne remplace pas `docs/`; il dit
 - Éviter les heredocs Bash contenant des apostrophes : écrire les scripts avec l'outil Write.
 
 ## Reste à faire
-1. Fusionner la PR de cette branche dans `develop` (CI verte), puis taguer `v0.1.0-alpha.3` et publier la pré-release avec `illustrated_walkmesh_editor-0.1.0-alpha.3.zip` (le ZIP se fabrique avec `git archive` de `origin/develop`, voir `docs/RELEASE_CHECKLIST.md`). La PR #3 (`codex/release-checklist-alpha2`, documentation) peut entrer en conflit sur `docs/RELEASE_CHECKLIST.md`.
+1. Fait : la PR #4 est fusionnée (`7f3035d`) et la pré-release `v0.1.0-alpha.3` est publiée avec son ZIP. Pour une prochaine release : même chemin (branche, PR vers `develop`, CI, fusion, ZIP par `git archive` de `origin/develop`, `gh release create --prerelease`). La PR #3 (`codex/release-checklist-alpha2`) ne fait que cocher alpha.2, déjà coché ici : la fermer ou la rebaser.
 2. Pas encore fait du périmètre : édition des sommets d'une zone, interactions avec bouton, conditions, personnage riggé et animé, vérification à toutes les largeurs du dock. Les limites sont décrites dans `README.md` et la checklist.
 3. V2 : édition visuelle des images de calque (`docs/ROADMAP.md`, section V2).

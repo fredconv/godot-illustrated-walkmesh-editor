@@ -138,4 +138,14 @@ Why a new number: Undo of a region deletion put the region back at the end of th
 - [x] Follow-up branch `chore/post-alpha-finalization` and a pull request into `develop`; no direct push to a protected branch.
 - [x] Full headless suite and the packaged-addon smoke test (`tests/release_check/run.ps1`) pass on the branch (numbers in the pull request).
 - [x] CI green on the pull request before the merge.
-- [ ] Merge, tag `v0.1.0-alpha.2`, GitHub pre-release with `illustrated_walkmesh_editor-0.1.0-alpha.2.zip` (see the final report for what was done).
+- [x] Pull request 2 merged into `develop` (merge commit `a544fcb`), tag `v0.1.0-alpha.2` and GitHub pre-release published with `illustrated_walkmesh_editor-0.1.0-alpha.2.zip` (77,494 bytes), CI green on `develop`.
+
+## Release `0.1.0-alpha.3`
+
+Why a new number: the base scope the owner asked for (action zones, entry points and scene travel, a character of the developer's own, speed keys, the whole-interface window, a clearer dock) changes the addon and the document format (version 3). `v0.1.0-alpha.1` and `v0.1.0-alpha.2` are not replaced. It is still a pre-release: the owner asked that nothing be called stable until the base scope is done, and the limits are listed in "Remaining limits" above.
+
+- [x] `plugin.cfg` version `0.1.0-alpha.3`; changelog entry under that version.
+- [x] Branch `feature/stage-transitions` and pull request 4 into `develop`; no direct push to a protected branch.
+- [x] 392 headless tests, the packaged-addon test and the real-GPU render check pass; real-editor and real-game validation as listed in "Base scope for `0.1.0-alpha.3`".
+- [x] CI green on the pull request and on `develop` after the merge.
+- [x] Pull request 4 merged into `develop` (merge commit `7f3035d`), tag `v0.1.0-alpha.3` and GitHub pre-release published with `illustrated_walkmesh_editor-0.1.0-alpha.3.zip` (105,409 bytes, SHA-256 `44182c89464f7461a08cec43a927514143fb25f14b6f6ba506ff7f0d6b395b91`, the same as the file built from `develop`).
