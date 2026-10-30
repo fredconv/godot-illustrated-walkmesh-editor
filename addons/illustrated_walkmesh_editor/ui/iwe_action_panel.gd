@@ -19,6 +19,7 @@ const KIND_ENTRY := "entry"
 const ACTION_LABELS := {
 	IWEActionZone.ACTION_SCENE_TRANSITION: "Change scene",
 	IWEActionZone.ACTION_WARP: "Jump to an entry point of this scene",
+	IWEActionZone.ACTION_EVENT: "Trigger a custom event",
 }
 
 var _document: IWEDocument
@@ -41,6 +42,9 @@ var _zone_entry: LineEdit
 var _zone_entry_label: Label
 var _zone_entry_pick: OptionButton
 var _zone_enabled: CheckBox
+var _event_label: Label
+var _zone_event: LineEdit
+var _zone_repeat: CheckBox
 var _zone_hint: Label
 var _entry_name: LineEdit
 var _entry_default: CheckBox
@@ -137,6 +141,20 @@ func _build_zone_part() -> void:
 	_zone_entry_pick.tooltip_text = "Pick one of the entry points of this document."
 	_zone_entry_pick.item_selected.connect(func(index: int) -> void: _request_zone("entry_id", _zone_entry_pick.get_item_metadata(index)))
 	_zone_box.add_child(_zone_entry_pick)
+	_event_label = _label(_zone_box, "Event name")
+	_zone_event = LineEdit.new()
+	_zone_event.name = "ZoneEventInput"
+	_zone_event.placeholder_text = "explosion"
+	_zone_event.tooltip_text = "The name your game receives when a character walks into the zone (for example explosion or open_gate)."
+	_zone_event.text_submitted.connect(func(text: String) -> void: _request_zone("event_name", text.strip_edges()))
+	_zone_event.focus_exited.connect(func() -> void: _request_zone("event_name", _zone_event.text.strip_edges()))
+	_zone_box.add_child(_zone_event)
+	_zone_repeat = CheckBox.new()
+	_zone_repeat.name = "ZoneRepeatInput"
+	_zone_repeat.text = "Every time it is entered"
+	_zone_repeat.tooltip_text = "Off: the event fires once. On: it fires again each time the character walks back into the zone."
+	_zone_repeat.toggled.connect(func(pressed: bool) -> void: _request_zone("repeat", pressed))
+	_zone_box.add_child(_zone_repeat)
 	_zone_enabled = CheckBox.new()
 	_zone_enabled.name = "ZoneEnabledInput"
 	_zone_enabled.text = "Enabled"
@@ -294,8 +312,16 @@ func _fill_zone(zone: IWEActionZone) -> void:
 		_zone_action.select(_zone_action.item_count - 1)
 	var changes_scene := zone.needs_target_scene()
 	var warps := zone.action == IWEActionZone.ACTION_WARP
+	var is_event := zone.action == IWEActionZone.ACTION_EVENT
 	_scene_row.visible = changes_scene
 	_zone_box.get_node("SceneLabel").visible = changes_scene
+	_zone_entry_label.visible = not is_event
+	_zone_entry.visible = not is_event
+	_event_label.visible = is_event
+	_zone_event.visible = is_event
+	_zone_repeat.visible = is_event
+	_zone_event.text = zone.get_event_name()
+	_zone_repeat.set_pressed_no_signal(zone.repeats())
 	_zone_scene.text = zone.target_scene
 	_zone_entry.text = zone.entry_id
 	_zone_entry_label.text = "Arrive at entry point" if changes_scene else ("Jump to entry point" if warps else "Entry point")
@@ -324,6 +350,10 @@ func _hint_for(zone: IWEActionZone) -> String:
 		if zone.entry_id.is_empty() or _document.find_entry_by_name(zone.entry_id) == null:
 			return "Choose an entry point of this document to jump to."
 		return "The character jumps to this entry point in the same scene."
+	if zone.action == IWEActionZone.ACTION_EVENT:
+		if zone.get_event_name().is_empty():
+			return "Give the event a name."
+		return "Your game receives this name from the zone's event_fired signal (or from every zone through the group iwe_action_zone). Nothing else happens by itself."
 	return "This action is not built in: the exported zone emits a signal with its settings and your game decides what to do."
 
 

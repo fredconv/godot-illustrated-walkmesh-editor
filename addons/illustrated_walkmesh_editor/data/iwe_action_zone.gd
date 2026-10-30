@@ -15,7 +15,11 @@ extends Resource
 const ACTION_SCENE_TRANSITION := "scene_transition"
 ## Walk into the zone and the traveller jumps to the entry point named `entry_id` of the same scene.
 const ACTION_WARP := "warp"
-const KNOWN_ACTIONS := [ACTION_SCENE_TRANSITION, ACTION_WARP]
+## Walk into the zone and the game receives an event with a name of its own ("explosion",
+## "open_gate"). Nothing else happens: the game decides what the event does. The name is
+## `params["event"]`; `params["repeat"]` makes the event fire every time the traveller enters, not once.
+const ACTION_EVENT := "event"
+const KNOWN_ACTIONS := [ACTION_SCENE_TRANSITION, ACTION_WARP, ACTION_EVENT]
 
 @export var id := ""
 @export var name := "Action zone"
@@ -44,6 +48,14 @@ static func is_known_action(action_name: String) -> bool:
 	return KNOWN_ACTIONS.has(action_name)
 
 
+func get_event_name() -> String:
+	return String(params.get("event", ""))
+
+
+func repeats() -> bool:
+	return bool(params.get("repeat", false))
+
+
 ## Whether the action needs a scene to load.
 func needs_target_scene() -> bool:
 	return action == ACTION_SCENE_TRANSITION
@@ -66,4 +78,6 @@ func describe() -> String:
 			return "%s: %s%s" % [name, scene_name, (" at " + entry_id) if not entry_id.is_empty() else ""]
 		ACTION_WARP:
 			return "%s: warp to %s" % [name, entry_id if not entry_id.is_empty() else "no entry point chosen"]
+		ACTION_EVENT:
+			return "%s: event %s" % [name, get_event_name() if not get_event_name().is_empty() else "(no name yet)"]
 	return "%s: %s" % [name, action]

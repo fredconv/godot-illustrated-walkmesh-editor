@@ -73,6 +73,9 @@ static func handle_action(tree: SceneTree, action: String, target_scene: String,
 			return request(tree, target_scene, entry_id)
 		IWEActionZone.ACTION_WARP:
 			return warp(tree, entry_id)
+		IWEActionZone.ACTION_EVENT:
+			# The zone emits `event_fired` itself; there is nothing to load or move.
+			return true
 	return false
 
 

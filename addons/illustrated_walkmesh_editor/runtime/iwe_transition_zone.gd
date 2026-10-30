@@ -12,6 +12,9 @@ extends Area3D
 ## under way, so walking along two touching zones never loads two scenes.
 
 signal triggered(zone: IWETransitionZone, body: Node3D)
+## Emitted, after `triggered`, by a zone whose action is `event`: the name chosen in the editor, the zone and
+## the body that entered. This is how a game reacts to "explosion" or "open_gate".
+signal event_fired(event_name: String, zone: IWETransitionZone, body: Node3D)
 
 ## Identifier of the action zone in the IWE document, "" for a zone added by hand.
 @export var zone_id := ""
@@ -22,6 +25,10 @@ signal triggered(zone: IWETransitionZone, body: Node3D)
 @export var entry_id := ""
 @export var enabled := true
 @export var trigger_group := "iwe_traveller"
+## The name of the event of an `event` zone (copied from the document).
+@export var event_name := ""
+## An event zone fires once by default; with this on it fires again every time a traveller enters it.
+@export var repeat := false
 ## Run the action when triggered. Turn it off to handle `triggered` yourself.
 @export var auto_handle := true
 ## Free-form settings of the action (copied from the document).
@@ -31,8 +38,13 @@ var _fired := false
 
 
 func _ready() -> void:
+	# Every zone is findable by a game that wants to listen to all of them:
+	#   for zone in get_tree().get_nodes_in_group("iwe_action_zone"): zone.event_fired.connect(...)
+	add_to_group(&"iwe_action_zone")
 	if not body_entered.is_connected(_on_body_entered):
 		body_entered.connect(_on_body_entered)
+	if not body_exited.is_connected(_on_body_exited):
+		body_exited.connect(_on_body_exited)
 
 
 ## Arms the zone again after it fired (a zone that stays in the scene after a warp, for example).
@@ -53,7 +65,15 @@ func _on_body_entered(body: Node3D) -> void:
 		return
 	_fired = true
 	triggered.emit(self, body)
-	if auto_handle:
+	if action == IWEActionZone.ACTION_EVENT:
+		event_fired.emit(event_name, self, body)
+	elif auto_handle:
 		if not IWEStageTravel.handle_action(get_tree(), action, target_scene, entry_id) and IWEActionZone.is_known_action(action):
 			# The action could not start (no scene, missing file): the zone may be tried again.
 			_fired = false
+
+
+func _on_body_exited(body: Node3D) -> void:
+	# A repeating event is armed again once the traveller has left.
+	if repeat and action == IWEActionZone.ACTION_EVENT and (trigger_group.is_empty() or body.is_in_group(trigger_group)):
+		_fired = false

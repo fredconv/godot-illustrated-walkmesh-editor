@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0-alpha.4] — 2026-10-31
+
+### Added
+- **Custom events.** A zone can trigger a custom event: pick *Trigger a custom event* in the dock, type a name (`explosion`, `open_gate`) and choose whether it fires once or every time the character enters. The exported zone emits `event_fired(event_name, zone, body)`; every zone is in the group `iwe_action_zone`. The name and the repeat option are stored in the zone's `params`, so the document format does not change. See `docs/STAGE_TRANSITIONS.md`, which also explains how to use plain Godot `Area3D` nodes instead.
+
+### Changed
+- **The camera fit refuses height references that contradict each other.** A reference that is higher in the picture than another (so farther away) but not smaller used to be fitted anyway, with a result such as a camera pitched at 73° and no message. The fit now fails, names the two references, and leaves the camera as it was. When the order is right but one reference is off, the warning names the one the camera misses the most.
+
 ## [0.1.0-alpha.3] — 2026-10-30
 
 ### Added

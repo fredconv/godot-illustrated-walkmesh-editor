@@ -464,6 +464,7 @@ func get_fit_report() -> Dictionary:
 	var lines := PackedStringArray()
 	var residuals := calibration.reference_residuals(_document.scale_anchors, _document.image_size)
 	var worst := 0.0
+	var worst_name := ""
 	for index in residuals.size():
 		var anchor: IWEScaleAnchor = _document.scale_anchors[index]
 		if is_inf(residuals[index]):
@@ -471,12 +472,14 @@ func get_fit_report() -> Dictionary:
 			worst = INF
 		else:
 			lines.append("%s: %+.1f%%" % [anchor.name, residuals[index] * 100.0])
+			if absf(residuals[index]) > worst or worst_name.is_empty():
+				worst_name = anchor.name
 			worst = maxf(worst, absf(residuals[index]))
 	report.residuals = residuals
 	report.worst = worst
 	report.warn = worst > IWEPerspectiveCalibration.RESIDUAL_WARNING
 	if report.warn and not is_inf(worst):
-		lines.append("The camera misses a reference by more than %d%%. Check the heights, or adjust the camera by hand." % roundi(IWEPerspectiveCalibration.RESIDUAL_WARNING * 100.0))
+		lines.append("The camera misses \"%s\" by the most, more than %d%%. Check its height, or adjust the camera by hand." % [worst_name, roundi(IWEPerspectiveCalibration.RESIDUAL_WARNING * 100.0)])
 	var horizon_row := calibration.horizon_image_row(_document.image_size)
 	report.horizon_row = horizon_row
 	var above := PackedStringArray()
@@ -2832,11 +2835,18 @@ func _remove_action_item(kind: String, id: String) -> void:
 
 
 const ZONE_PROPERTIES := ["name", "action", "target_scene", "entry_id", "enabled"]
+## Settings that live in the zone's params dictionary, by the name the panel uses.
+const ZONE_PARAMS := {"event_name": "event", "repeat": "repeat"}
 
 
 func _set_zone_property(zone_id: String, property: String, value: Variant) -> void:
 	var zone: IWEActionZone = _document.find_action_zone(zone_id) if _document != null else null
-	if zone == null or not property in ZONE_PROPERTIES:
+	if zone == null:
+		return
+	if ZONE_PARAMS.has(property):
+		_set_zone_param(zone, ZONE_PARAMS[property], value)
+		return
+	if not property in ZONE_PROPERTIES:
 		return
 	if property == "name" and String(value).strip_edges().is_empty():
 		_status_label.text = "A zone needs a name."
@@ -2849,6 +2859,36 @@ func _set_zone_property(zone_id: String, property: String, value: Variant) -> vo
 	_history.add_do_method(_apply_zone_property.bind(zone_id, property, value))
 	_history.add_undo_method(_apply_zone_property.bind(zone_id, property, previous))
 	_history.commit_action()
+
+
+func _set_zone_param(zone: IWEActionZone, key: String, value: Variant) -> void:
+	var previous: Variant = zone.params.get(key, null)
+	# An empty text or an off switch is the same as no entry: the key is removed to keep the params clean.
+	var stored: Variant = value
+	if value == null or (value is String and (value as String).is_empty()) or (value is bool and not (value as bool)):
+		stored = null
+	if previous == null and stored == null:
+		return
+	if previous != null and stored != null and typeof(previous) == typeof(stored) and previous == stored:
+		return
+	_history.create_action("Edit IWE action zone %s" % key, UndoRedo.MERGE_ENDS if key == "event" else UndoRedo.MERGE_DISABLE)
+	_history.add_do_method(_apply_zone_param.bind(zone.id, key, stored))
+	_history.add_undo_method(_apply_zone_param.bind(zone.id, key, previous))
+	_history.commit_action()
+
+
+func _apply_zone_param(zone_id: String, key: String, value: Variant) -> void:
+	var zone: IWEActionZone = _document.find_action_zone(zone_id) if _document != null else null
+	if zone == null:
+		return
+	var updated := zone.params.duplicate(true)
+	if value == null:
+		updated.erase(key)
+	else:
+		updated[key] = value
+	zone.params = updated
+	_refresh_actions()
+	_refresh_status()
 
 
 func _apply_zone_property(zone_id: String, property: String, value: Variant) -> void:

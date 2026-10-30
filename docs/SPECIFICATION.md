@@ -122,10 +122,11 @@ Decided and built after the first alpha (see [STAGE_TRANSITIONS.md](STAGE_TRANSI
 - **Entry points**: named places on the illustration (unique name, optional facing, one default per scene) where a character appears on arrival.
 - **Runtime**, with no autoload and no fixed controller: `IWETransitionZone` (Area3D) and `IWETransitionZone2D`, `IWEEntryMarker` and `IWEEntryMarker2D`, `IWEStageRuntime`, `IWEStageTravel`. A traveller is any node of the group `iwe_traveller`.
 - **Flow**: a traveller walks into a zone, the game loads the target scene, the new scene's `IWEStageRuntime` moves the travellers to the named entry point. Fallbacks: default entry point, then the first one, then nothing; a missing scene leaves the character where it is. No double triggers (one fire per zone, none while a travel is under way).
+- **Custom events**: the action `event` carries a name (and a repeat option) in `params` and makes the zone emit `event_fired(event_name, zone, body)`; the game decides what the event does. Every exported zone is in the group `iwe_action_zone`.
 - **Extension**: the action is a string and its settings travel in `params`, so a later action needs no format change; an unknown action is kept, exported and reported to the game by a signal.
 - **Persistence and export**: saved in the document (format version 3), generated in the 2D, flat 3D and perspective exports; a document without zones exports exactly what it did before.
 
-Status: **Implemented for the base scope**: authoring in the dock (draw, select, move, configure, undo and redo), save and reopen, migration of version 1 and 2 documents, export, runtime, tests including a real scene change between two example levels with an external character. Not implemented: editing the vertices of a zone, interactions that need a button press, conditions, one-way zones.
+Status: **Implemented for the base scope** (scene transition, warp, custom event): authoring in the dock (draw, select, move, configure, undo and redo), save and reopen, migration of version 1 and 2 documents, export, runtime, tests including a real scene change between two example levels with an external character. Not implemented: editing the vertices of a zone, interactions that need a button press, conditions, one-way zones.
 
 ### 3.10 Export
 
@@ -181,7 +182,7 @@ The character's behaviour depends on Geometry & Navigation. Rendering decides wh
 - Touching zones are walkable as one network (headless test).
 - Test character with mouse and keyboard, walls, path following.
 - Action zones, entry points and scene travel (section 3.9.1), a character of the developer's own (`docs/INTEGRATION.md`), the whole-interface window.
-- Automated test suite: 392 headless GdUnit4 tests passing, plus a real-GPU render check, a packaged-addon test and an editor self-test.
+- Automated test suite: 415 headless GdUnit4 tests passing, plus a real-GPU render check, a packaged-addon test and an editor self-test.
 
 **Partially implemented**
 - Locked regions: the model and canvas respect the lock, but no button sets it.

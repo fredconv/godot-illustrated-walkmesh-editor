@@ -179,6 +179,8 @@ func validate_references() -> PackedStringArray:
 			problems.append("Action zone \"%s\" has an action this plugin does not know (%s); it is kept and exported as it is." % [zone.name, zone.action])
 		if zone.needs_target_scene() and zone.target_scene.is_empty():
 			problems.append("Action zone \"%s\" changes the scene but no scene is chosen." % zone.name)
+		if zone.action == IWEActionZone.ACTION_EVENT and zone.get_event_name().strip_edges().is_empty():
+			problems.append("Action zone \"%s\" triggers a custom event but has no event name." % zone.name)
 		if zone.action == IWEActionZone.ACTION_WARP and (zone.entry_id.is_empty() or find_entry_by_name(zone.entry_id) == null):
 			problems.append("Action zone \"%s\" warps to an entry point (%s) that this document does not have." % [zone.name, zone.entry_id])
 	var entry_ids := {}

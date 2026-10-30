@@ -108,7 +108,7 @@ Two findings of this pass, both fixed: the example controller shuttled around a 
 
 Done in this work and reproducible, but not a substitute for the list above:
 
-- 392 headless GdUnit4 tests, including dock operations driven through the same signals the canvas emits.
+- 415 headless GdUnit4 tests, including dock operations driven through the same signals the canvas emits.
 - `tests/editor_selftest/run.ps1`: the dock and the test walk inside the real Godot editor runtime (headless editor).
 - `tests/render_check/run.ps1`: a real GPU render of the village stage. The character is hidden behind the foreground fountain (1 matching pixel) and shown in front of it (2,725 pixels).
 - A real render of the dock itself in a window, read by eye: the two tabs, the foldable sections, the layer panel, the speed controls. No click was made.
@@ -149,3 +149,21 @@ Why a new number: the base scope the owner asked for (action zones, entry points
 - [x] 392 headless tests, the packaged-addon test and the real-GPU render check pass; real-editor and real-game validation as listed in "Base scope for `0.1.0-alpha.3`".
 - [x] CI green on the pull request and on `develop` after the merge.
 - [x] Pull request 4 merged into `develop` (merge commit `7f3035d`), tag `v0.1.0-alpha.3` and GitHub pre-release published with `illustrated_walkmesh_editor-0.1.0-alpha.3.zip` (105,409 bytes, SHA-256 `44182c89464f7461a08cec43a927514143fb25f14b6f6ba506ff7f0d6b395b91`, the same as the file built from `develop`).
+
+## Release `0.1.0-alpha.4` (prepared, 2026-10-31)
+
+Why a new number: custom events (a zone that tells the game a name) and a camera fit that refuses contradicting height references change the addon's behaviour. `v0.1.0-alpha.1`, `alpha.2` and `alpha.3` are not replaced.
+
+- [x] `plugin.cfg` version `0.1.0-alpha.4`; changelog entry under that version.
+- [x] 415 headless tests pass, among them 14 for custom events (data, validation, runtime once and repeating, disabled, the group, export 3D and 2D, a character really walking into the exported zone, the panel with undo) and 9 for the fit consistency (a far reference bigger than a near one, a middle one too big, list order, same heights, almost the same row, the dock naming the worst reference and the reason of a refusal).
+- [ ] **Real editor**: the event action in the panel and the fit refusal message were **not** checked by hand. The desktop control tool reported `unavailable` when this was attempted, and it was not worked around. They are covered headless only.
+- [ ] Pull request, CI, merge, tag and GitHub pre-release: see the final report for what was done.
+
+What the camera fit does with contradicting references (measured on 2026-10-31 with three references on one column; near 230 px, middle 170 px, far 105 px is consistent and fits with misses of -6%, -3%, +9%):
+
+| References | Before alpha.4 | From alpha.4 |
+|---|---|---|
+| Far one too big (210 px, should be under 170) | Fitted without a message: pitch -73 degrees, horizon 3,259 px above the picture, misses -18% and +17%, the nearest reference without a floor | Refused, naming "Far" and "Middle" with their heights; camera unchanged |
+| Middle one too big (260 px, near is 230) | Fitted: misses -30% and +35% | Refused, naming "Middle" and "Near" |
+| Inverted or all the same height | Refused with a generic message | Refused, naming the two references when they are far enough apart in the picture |
+| Right order, one reference a little off | Fitted, warning above 5% | Same, and the warning names the reference missed the most |

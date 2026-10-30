@@ -1043,6 +1043,8 @@ static func _configure_zone_node(node: Node, zone: IWEActionZone) -> void:
 	node.set("entry_id", zone.entry_id)
 	node.set("enabled", zone.enabled)
 	node.set("params", zone.params.duplicate(true))
+	node.set("event_name", zone.get_event_name())
+	node.set("repeat", zone.repeats())
 	node.set_meta("iwe_action_zone_id", zone.id)
 
 

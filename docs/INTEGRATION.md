@@ -45,6 +45,10 @@ A picture drawn *by depth* sits in the 3D scene at the camera distance of its gr
 - One picture occludes at one depth (its ground point). A long railing seen at an angle is not exact.
 - An exported stage has **no lights** (its illustration is flat and unshaded). A character with a lit material needs the lighting of your own game, as the example levels add (a sun and some ambient light). A flat-coloured character shows without lights.
 
+## Events that are not scene changes
+
+A zone can tell your game a name (`explosion`, `open_gate`) when a character walks into it: pick the action *Trigger a custom event* in the dock and connect `event_fired` on the zone, or on every zone through the group `iwe_action_zone` ([STAGE_TRANSITIONS.md](STAGE_TRANSITIONS.md)). You can also skip the plugin for this and add your own `Area3D` to the level scene: the plugin's zones are ordinary `Area3D` nodes.
+
 ## Speed while testing
 
 There are two separate speeds, and they do not influence each other:
