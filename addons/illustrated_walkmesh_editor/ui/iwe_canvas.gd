@@ -1,4 +1,5 @@
 @tool
+class_name IWECanvas
 extends Control
 
 signal zoom_requested(factor: float)
@@ -20,6 +21,23 @@ signal scale_anchor_changed(anchor_id: String, before_position: Vector2, after_p
 signal scale_anchor_selected(anchor_id: String)
 signal scale_anchor_height_requested(anchor_id: String, factor: float)
 signal scale_anchor_delete_requested(anchor_id: String)
+## Action zones and entry points (docs/STAGE_TRANSITIONS.md). The dock owns the document and the history.
+signal action_zone_created(points: PackedVector2Array)
+signal action_zone_selected(zone_id: String)
+signal action_zone_moved(zone_id: String, before: PackedVector2Array, after: PackedVector2Array)
+signal entry_point_created(image_position: Vector2)
+signal entry_point_selected(entry_id: String)
+signal entry_point_moved(entry_id: String, before: Vector2, after: Vector2)
+signal action_delete_requested(kind: String, id: String)
+## Another tool took over: the panel releases its tool buttons.
+signal action_tool_changed(tool_name: String)
+
+const ACTION_TOOL_NONE := ""
+const ACTION_TOOL_ZONE_DRAW := "zone_draw"
+const ACTION_TOOL_ZONE_SELECT := "zone_select"
+const ACTION_TOOL_ENTRY := "entry"
+const ZONE_COLOR := Color("ff9f43")
+const ENTRY_COLOR := Color("5ad1ff")
 
 var _texture: Texture2D
 ## Transparent pictures drawn over the illustration (read only here: the dock owns them).
@@ -56,6 +74,16 @@ var _scale_anchor_dragged := false
 var _default_template_height_px := 160.0
 var _hover_position := Vector2.ZERO
 var _hovered_segment := -1
+var _action_tool := ACTION_TOOL_NONE
+var _action_zones: Array[IWEActionZone] = []
+var _entry_points: Array[IWEEntryPoint] = []
+var _selected_zone_id := ""
+var _selected_entry_id := ""
+var _action_dragging := false
+var _action_dragged := false
+var _action_drag_origin := Vector2.ZERO
+var _action_points_before := PackedVector2Array()
+var _action_position_before := Vector2.ZERO
 const HANDLE_RADIUS := 9.0
 const CLOSE_RADIUS := 12.0
 const SEGMENT_HIT_RADIUS := 24.0
@@ -84,6 +112,8 @@ func set_regions(regions: Array[IWERegion], selected_id: String = "") -> void:
 
 
 func set_drawing(enabled: bool) -> void:
+	if enabled:
+		_clear_action_tool()
 	_drawing = enabled
 	_boolean_subtract_mode = false
 	_vertex_editing = false
@@ -95,6 +125,8 @@ func set_drawing(enabled: bool) -> void:
 
 
 func set_vertex_editing(enabled: bool) -> void:
+	if enabled:
+		_clear_action_tool()
 	_vertex_editing = enabled
 	if not enabled and _selected_vertex >= 0:
 		_selected_vertex = -1
@@ -109,6 +141,8 @@ func set_vertex_editing(enabled: bool) -> void:
 
 
 func set_add_vertex_mode(enabled: bool) -> void:
+	if enabled:
+		_clear_action_tool()
 	_add_vertex_mode = enabled
 	_drawing = false
 	_vertex_editing = false
@@ -120,6 +154,8 @@ func set_add_vertex_mode(enabled: bool) -> void:
 
 
 func set_boolean_subtract_mode(enabled: bool) -> void:
+	if enabled:
+		_clear_action_tool()
 	_boolean_subtract_mode = enabled
 	_drawing = enabled
 	_vertex_editing = false
@@ -157,6 +193,8 @@ func set_scale_anchors(anchors: Array[IWEScaleAnchor], default_height_px: float 
 
 
 func set_scale_anchor_mode(enabled: bool) -> void:
+	if enabled:
+		_clear_action_tool()
 	_scale_anchor_mode = enabled
 	_dragging_scale_anchor = false
 	if enabled:
@@ -182,6 +220,63 @@ func get_selected_scale_anchor() -> IWEScaleAnchor:
 		if anchor.id == _selected_scale_anchor_id:
 			return anchor
 	return null
+
+
+## Shows the action zones and entry points of the document, with the selected ones highlighted.
+func set_action_overlays(zones: Array[IWEActionZone], entries: Array[IWEEntryPoint], selected_zone_id: String = "", selected_entry_id: String = "") -> void:
+	_action_zones = zones
+	_entry_points = entries
+	_selected_zone_id = selected_zone_id
+	_selected_entry_id = selected_entry_id
+	queue_redraw()
+
+
+func get_action_tool() -> String:
+	return _action_tool
+
+
+## Chooses what a click does on the illustration for action zones and entry points: draw a zone, select
+## and move zones, place and move entry points, or nothing (ACTION_TOOL_NONE). Turning a tool on turns
+## the region tools off.
+func set_action_tool(tool_name: String) -> void:
+	if tool_name == _action_tool:
+		return
+	_action_tool = tool_name
+	_action_dragging = false
+	_action_dragged = false
+	_draft.clear()
+	if tool_name != ACTION_TOOL_NONE:
+		_drawing = false
+		_vertex_editing = false
+		_add_vertex_mode = false
+		_boolean_subtract_mode = false
+		_scale_anchor_mode = false
+		draw_mode_changed.emit(false)
+		vertex_mode_changed.emit(false)
+		add_vertex_mode_changed.emit(false)
+	action_tool_changed.emit(tool_name)
+	queue_redraw()
+
+
+func select_action_zone(zone_id: String) -> void:
+	_selected_zone_id = zone_id
+	if not zone_id.is_empty():
+		_selected_entry_id = ""
+	queue_redraw()
+
+
+func select_entry_point(entry_id: String) -> void:
+	_selected_entry_id = entry_id
+	if not entry_id.is_empty():
+		_selected_zone_id = ""
+	queue_redraw()
+
+
+func _clear_action_tool() -> void:
+	if _action_tool != ACTION_TOOL_NONE:
+		_action_tool = ACTION_TOOL_NONE
+		_action_dragging = false
+		action_tool_changed.emit(ACTION_TOOL_NONE)
 
 
 func set_zoom(value: float) -> void:
@@ -257,6 +352,7 @@ func _draw() -> void:
 				draw_colored_polygon(cutout_display, Color("ff5263", 0.38))
 				for index in cutout_display.size():
 					draw_line(cutout_display[index], cutout_display[(index + 1) % cutout_display.size()], Color("ff5263"), 2.0, true)
+	_draw_action_overlays()
 	for index in _scale_anchors.size():
 		var anchor: IWEScaleAnchor = _scale_anchors[index]
 		var foot := anchor.position * _zoom
@@ -293,6 +389,47 @@ func _draw() -> void:
 			draw_circle(point * _zoom, 4.0, Color("f6cb55"))
 
 
+## A dark backing keeps a label readable over bright sky and grass.
+func _draw_label(text: String, label_position: Vector2, color: Color) -> void:
+	var label_size := ThemeDB.fallback_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12)
+	draw_rect(Rect2(label_position + Vector2(-4.0, -label_size.y + 2.0), label_size + Vector2(8.0, 6.0)), Color(0.0, 0.0, 0.0, 0.6))
+	draw_string(ThemeDB.fallback_font, label_position, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, color)
+
+
+func _draw_action_overlays() -> void:
+	for zone in _action_zones:
+		if zone.points.size() < 3:
+			continue
+		var display := PackedVector2Array()
+		for point in zone.points:
+			display.append(point * _zoom)
+		var selected := zone.id == _selected_zone_id
+		var fill := ZONE_COLOR
+		fill.a = 0.34 if zone.enabled else 0.14
+		draw_colored_polygon(display, fill)
+		var outline := Color("ffe066") if selected else ZONE_COLOR
+		for index in display.size():
+			draw_line(display[index], display[(index + 1) % display.size()], outline, 4.0 if selected else 2.5, true)
+		if selected:
+			for point in display:
+				draw_circle(point, 5.0, Color.WHITE)
+		var label_text := zone.describe() if zone.enabled else "%s (disabled)" % zone.describe()
+		_draw_label(label_text, zone.get_centroid() * _zoom, Color("ffe066") if selected else Color.WHITE)
+	for entry in _entry_points:
+		var spot := entry.position * _zoom
+		var selected_entry := entry.id == _selected_entry_id
+		var pin_color := Color("ffe066") if selected_entry else ENTRY_COLOR
+		if entry.has_facing():
+			var direction := Vector2(-sin(deg_to_rad(entry.facing_degrees)), -cos(deg_to_rad(entry.facing_degrees)))
+			draw_line(spot, spot + direction * 34.0, pin_color, 3.0, true)
+			draw_line(spot + direction * 34.0, spot + direction * 26.0 + direction.orthogonal() * 6.0, pin_color, 3.0, true)
+			draw_line(spot + direction * 34.0, spot + direction * 26.0 - direction.orthogonal() * 6.0, pin_color, 3.0, true)
+		draw_circle(spot, 11.0, Color.BLACK)
+		draw_circle(spot, 9.0, pin_color)
+		draw_circle(spot, 3.5, Color.BLACK)
+		_draw_label("%s%s" % ["★ " if entry.is_default else "", entry.entry_id], spot + Vector2(14.0, -8.0), pin_color)
+
+
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		grab_focus()
@@ -313,14 +450,19 @@ func _gui_input(event: InputEvent) -> void:
 		zoom_requested.emit(1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
 		accept_event()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if _scale_anchor_mode:
+		if _action_tool != ACTION_TOOL_NONE:
+			_handle_action_click(event.position / _zoom)
+		elif _scale_anchor_mode:
 			_handle_scale_anchor_click(event.position / _zoom)
 		else:
 			_handle_left_click(event.position / _zoom)
 		accept_event()
 	elif event is InputEventMouseMotion:
 		_hover_position = event.position
-		if _scale_anchor_mode and _dragging_scale_anchor:
+		if _action_dragging:
+			_drag_action_to(event.position / _zoom)
+			accept_event()
+		elif _scale_anchor_mode and _dragging_scale_anchor:
 			var anchor := get_selected_scale_anchor()
 			if anchor:
 				anchor.position = event.position / _zoom
@@ -337,7 +479,9 @@ func _gui_input(event: InputEvent) -> void:
 			_move_selected_region(event.position / _zoom)
 			accept_event()
 	elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if _dragging_scale_anchor:
+		if _action_dragging:
+			_finish_action_drag()
+		elif _dragging_scale_anchor:
 			var anchor := get_selected_scale_anchor()
 			if anchor and _scale_anchor_dragged:
 				scale_anchor_changed.emit(anchor.id, _scale_anchor_before, anchor.position)
@@ -371,12 +515,100 @@ func _gui_input(event: InputEvent) -> void:
 		queue_redraw()
 		accept_event()
 	elif event is InputEventKey and event.pressed and event.keycode in [KEY_DELETE, KEY_BACKSPACE]:
-		if _scale_anchor_mode and not _selected_scale_anchor_id.is_empty():
+		if _action_tool == ACTION_TOOL_ZONE_SELECT and not _selected_zone_id.is_empty():
+			action_delete_requested.emit("zone", _selected_zone_id)
+			accept_event()
+		elif _action_tool == ACTION_TOOL_ENTRY and not _selected_entry_id.is_empty():
+			action_delete_requested.emit("entry", _selected_entry_id)
+			accept_event()
+		elif _scale_anchor_mode and not _selected_scale_anchor_id.is_empty():
 			scale_anchor_delete_requested.emit(_selected_scale_anchor_id)
 			accept_event()
 		elif _vertex_editing and _selected_vertex >= 0:
 			remove_selected_vertex()
 			accept_event()
+
+
+func _handle_action_click(image_position: Vector2) -> void:
+	match _action_tool:
+		ACTION_TOOL_ZONE_DRAW:
+			if _draft.size() >= 3 and image_position.distance_to(_draft[0]) * _zoom <= CLOSE_RADIUS:
+				_finish_draft()
+			else:
+				_draft.append(image_position)
+				queue_redraw()
+		ACTION_TOOL_ZONE_SELECT:
+			var hit_zone := _find_action_zone_at(image_position)
+			if hit_zone != null:
+				_selected_zone_id = hit_zone.id
+				_selected_entry_id = ""
+				_action_dragging = true
+				_action_dragged = false
+				_action_drag_origin = image_position
+				_action_points_before = hit_zone.points.duplicate()
+			else:
+				_selected_zone_id = ""
+			action_zone_selected.emit(_selected_zone_id)
+		ACTION_TOOL_ENTRY:
+			var hit_entry := _find_entry_point_at(image_position)
+			if hit_entry != null:
+				_selected_entry_id = hit_entry.id
+				_selected_zone_id = ""
+				_action_dragging = true
+				_action_dragged = false
+				_action_drag_origin = image_position
+				_action_position_before = hit_entry.position
+				entry_point_selected.emit(hit_entry.id)
+			elif _document != null and _document.image_size.x > 0 and _document.image_size.y > 0:
+				entry_point_created.emit(Vector2(clampf(image_position.x, 0.0, _document.image_size.x), clampf(image_position.y, 0.0, _document.image_size.y)))
+	queue_redraw()
+
+
+func _find_action_zone_at(point: Vector2) -> IWEActionZone:
+	for index in range(_action_zones.size() - 1, -1, -1):
+		var zone := _action_zones[index]
+		if zone.points.size() >= 3 and Geometry2D.is_point_in_polygon(point, zone.points):
+			return zone
+	return null
+
+
+func _find_entry_point_at(point: Vector2) -> IWEEntryPoint:
+	var radius := 14.0 / _zoom
+	for index in range(_entry_points.size() - 1, -1, -1):
+		if point.distance_to(_entry_points[index].position) <= radius:
+			return _entry_points[index]
+	return null
+
+
+func _drag_action_to(image_position: Vector2) -> void:
+	var delta := image_position - _action_drag_origin
+	if _action_tool == ACTION_TOOL_ZONE_SELECT:
+		for zone in _action_zones:
+			if zone.id == _selected_zone_id:
+				var moved := PackedVector2Array()
+				for point in _action_points_before:
+					moved.append(point + delta)
+				zone.points = moved
+	elif _action_tool == ACTION_TOOL_ENTRY:
+		for entry in _entry_points:
+			if entry.id == _selected_entry_id:
+				entry.position = _action_position_before + delta
+	_action_dragged = true
+	queue_redraw()
+
+
+func _finish_action_drag() -> void:
+	if _action_dragged:
+		if _action_tool == ACTION_TOOL_ZONE_SELECT:
+			for zone in _action_zones:
+				if zone.id == _selected_zone_id:
+					action_zone_moved.emit(zone.id, _action_points_before, zone.points.duplicate())
+		elif _action_tool == ACTION_TOOL_ENTRY:
+			for entry in _entry_points:
+				if entry.id == _selected_entry_id:
+					entry_point_moved.emit(entry.id, _action_position_before, entry.position)
+	_action_dragging = false
+	_action_dragged = false
 
 
 func _handle_scale_anchor_click(image_position: Vector2) -> void:
@@ -439,6 +671,11 @@ func _handle_left_click(image_position: Vector2) -> void:
 
 func _finish_draft() -> void:
 	if _draft.size() < 3:
+		return
+	if _action_tool == ACTION_TOOL_ZONE_DRAW:
+		action_zone_created.emit(_draft.duplicate())
+		_draft.clear()
+		queue_redraw()
 		return
 	if _boolean_subtract_mode:
 		subtraction_created.emit(_selected_id, _draft.duplicate())

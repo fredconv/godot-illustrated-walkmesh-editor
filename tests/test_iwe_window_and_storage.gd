@@ -29,22 +29,29 @@ func _remove_folder_recursive(path: String) -> void:
 	DirAccess.remove_absolute(path)
 
 
-func test_canvas_window_toggle_moves_canvas_area_and_restores_it() -> void:
+func test_the_window_button_moves_the_whole_interface_and_brings_it_back() -> void:
 	var dock := _make_dock()
 	await (Engine.get_main_loop() as SceneTree).process_frame
-	var canvas_area: Control = dock.get_node("Workspace/CanvasArea")
-	var original_parent := canvas_area.get_parent()
-	var original_index := canvas_area.get_index()
+	var toolbar: Control = dock.get_node("DocumentToolbar")
+	var workspace: Control = dock.get_node("Workspace")
+	var toolbar_index := toolbar.get_index()
+	var workspace_index := workspace.get_index()
 
-	dock._canvas_window_button.set_pressed(true)
-	assert_object(dock._canvas_window).is_not_null()
-	assert_object(canvas_area.get_parent()).is_same(dock._canvas_window)
+	dock._window_button.set_pressed(true)
+	assert_object(dock._interface_window).is_not_null()
+	assert_bool(dock.is_interface_detached()).is_true()
+	assert_object(toolbar.get_parent()).override_failure_message("the toolbar goes with the interface").is_same(dock._interface_content)
+	assert_object(workspace.get_parent()).override_failure_message("tabs, panels and canvas go with it").is_same(dock._interface_content)
+	assert_bool(dock.get_node("DetachedNotice") != null).override_failure_message("the dock keeps a notice").is_true()
 
-	dock._set_canvas_window(false)
-	assert_object(dock._canvas_window).is_null()
-	assert_object(canvas_area.get_parent()).is_same(original_parent)
-	assert_int(canvas_area.get_index()).is_equal(original_index)
-	assert_bool(dock._canvas_window_button.button_pressed).is_false()
+	dock._set_interface_window(false)
+	assert_object(dock._interface_window).is_null()
+	assert_object(toolbar.get_parent()).is_same(dock)
+	assert_object(workspace.get_parent()).is_same(dock)
+	assert_int(toolbar.get_index()).is_equal(toolbar_index)
+	assert_int(workspace.get_index()).is_equal(workspace_index)
+	assert_bool(dock._window_button.button_pressed).is_false()
+	assert_str(dock._window_button.text).is_equal("Window")
 	dock.queue_free()
 
 

@@ -67,8 +67,7 @@ const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/
 @onready var _image_scroll: ScrollContainer = $Workspace/CanvasArea/ImageScroll
 @onready var _status_label: Label = %StatusLabel
 @onready var _canvas: Control = $Workspace/CanvasArea/ImageScroll/Canvas
-@onready var _canvas_window_button: Button = %CanvasWindowButton
-@onready var _canvas_area: Control = $Workspace/CanvasArea
+@onready var _window_button: Button = %CanvasWindowButton
 @onready var _document_title_label: Label = %DocumentTitleLabel
 
 var _zoom := 1.0
@@ -96,6 +95,7 @@ var _speed_buttons: Array[Button] = []
 var _pause_button: Button
 var _fit_report_label: Label
 var _layer_panel: IWELayerPanel
+var _action_panel: IWEActionPanel
 var _merge_button: MenuButton
 var _merge_targets: Array[String] = []
 var _dock_tabs: TabContainer
@@ -117,9 +117,10 @@ var _selected_cutout_region_id := ""
 var _selected_cutout_index := -1
 var _selected_scale_anchor_id := ""
 var _perspective_mode := false
-var _canvas_window: Window
-var _canvas_area_parent: Node
-var _canvas_area_index := 0
+## The window that holds the whole interface while it is detached, and the notice left in the dock.
+var _interface_window: Window
+var _interface_content: VBoxContainer
+var _detached_notice: VBoxContainer
 
 
 func set_document(document: Resource) -> void:
@@ -216,10 +217,12 @@ func _ready() -> void:
 	_template_height_input.value_changed.connect(_set_selected_template_height)
 	_delete_template_button.pressed.connect(_delete_selected_template)
 	_perspective_button.toggled.connect(_set_perspective_mode)
-	_canvas_window_button.toggled.connect(_set_canvas_window)
+	_window_button.toggled.connect(_set_interface_window)
+	_window_button.tooltip_text = "Open the whole IWE interface in its own window"
 	_perspective_top_view_button.toggled.connect(_perspective_preview.set_top_view)
 	_build_test_walk_controls()
 	_build_layers_ui()
+	_build_action_ui()
 	_build_dock_tabs()
 	_fit_references_button.pressed.connect(_fit_camera_to_references)
 	_export_perspective_button.pressed.connect(_begin_export.bind(4))
@@ -311,7 +314,7 @@ Regions, height references and the calibration keep their values, but they are p
 	dialog.cancel_button_text = "Cancel"
 	dialog.confirmed.connect(_replace_illustration.bind(path, image))
 	_illustration_dialog = dialog
-	add_child(dialog)
+	_add_dialog(dialog)
 	dialog.popup_centered()
 
 
@@ -603,35 +606,87 @@ func _apply_calibration_snapshot(calibration: IWEPerspectiveCalibration) -> void
 	_refresh_perspective_preview()
 
 
-## Moves the canvas area into a large floating window so the whole illustration fits on screen.
-## Closing the window (or toggling the button off) puts the canvas back in the dock.
-func _set_canvas_window(enabled: bool) -> void:
-	if enabled == (_canvas_window != null):
+## Detaches the whole IWE interface (toolbar, tabs, panels, tools, canvas, dialogs) into its own window,
+## or brings it back. The nodes are moved, never rebuilt, so the document, the undo history, the
+## selection, the active tool, the zoom, the tab and the folded sections are the ones you left. The dock
+## keeps a notice and a button while the window is open. Closing the window brings the interface back.
+func _set_interface_window(enabled: bool) -> void:
+	if enabled == (_interface_window != null):
 		return
 	if enabled:
-		_canvas_window = Window.new()
-		_canvas_window.title = "IWE - Illustration Editor"
-		_canvas_window.size = Vector2i(1400, 900)
-		_canvas_window.gui_embed_subwindows = false
-		_canvas_window.theme = get_theme()
-		_canvas_window.close_requested.connect(_set_canvas_window.bind(false))
-		_canvas_area_parent = _canvas_area.get_parent()
-		_canvas_area_index = _canvas_area.get_index()
-		_canvas_area.reparent(_canvas_window, false)
-		_canvas_area.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		add_child(_canvas_window)
-		_canvas_window.popup_centered_ratio(0.9)
+		_interface_window = Window.new()
+		_interface_window.title = "IWE - Illustrated Walkmesh Editor"
+		_interface_window.size = Vector2i(1500, 900)
+		_interface_window.gui_embed_subwindows = false
+		_interface_window.theme = _inherited_theme()
+		_interface_window.close_requested.connect(_set_interface_window.bind(false))
+		_interface_content = VBoxContainer.new()
+		_interface_content.name = "DetachedInterface"
+		_interface_window.add_child(_interface_content)
+		_interface_content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		for child in get_children():
+			child.reparent(_interface_content, false)
+		_detached_notice = VBoxContainer.new()
+		_detached_notice.name = "DetachedNotice"
+		var notice := Label.new()
+		notice.text = "IWE is open in its own window."
+		notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_detached_notice.add_child(notice)
+		var bring_back := Button.new()
+		bring_back.name = "BringBackButton"
+		bring_back.text = "Bring it back to the dock"
+		bring_back.pressed.connect(_set_interface_window.bind(false))
+		_detached_notice.add_child(bring_back)
+		add_child(_detached_notice)
+		add_child(_interface_window)
+		_window_button.set_pressed_no_signal(true)
+		_window_button.text = "Dock"
+		_window_button.tooltip_text = "Put the interface back in the editor dock"
+		_interface_window.popup_centered_ratio(0.9)
 	else:
-		_canvas_area.reparent(_canvas_area_parent, false)
-		_canvas_area_parent.move_child(_canvas_area, _canvas_area_index)
-		_canvas_window.queue_free()
-		_canvas_window = null
-		_canvas_window_button.set_pressed_no_signal(false)
+		var window := _interface_window
+		var content := _interface_content
+		var notice_node := _detached_notice
+		_interface_window = null
+		_interface_content = null
+		_detached_notice = null
+		var index := 0
+		for child in content.get_children():
+			child.reparent(self, false)
+			move_child(child, index)
+			index += 1
+		notice_node.queue_free()
+		window.queue_free()
+		_window_button.set_pressed_no_signal(false)
+		_window_button.text = "Window"
+		_window_button.tooltip_text = "Open the whole IWE interface in its own window"
+
+
+func is_interface_detached() -> bool:
+	return _interface_window != null
+
+
+## The theme the editor gives this dock, which a window of its own does not inherit.
+func _inherited_theme() -> Theme:
+	var node: Node = self
+	while node != null:
+		if node is Control and (node as Control).theme != null:
+			return (node as Control).theme
+		node = node.get_parent()
+	return ThemeDB.get_default_theme()
+
+
+## Dialogs belong to the window the interface is in, so a file dialog opens next to the person using it.
+func _add_dialog(dialog: Node) -> void:
+	if _interface_content != null:
+		_interface_content.add_child(dialog)
+	else:
+		add_child(dialog)
 
 
 func _exit_tree() -> void:
-	if _canvas_window != null:
-		_set_canvas_window(false)
+	if _interface_window != null:
+		_set_interface_window(false)
 
 
 func _set_perspective_mode(enabled: bool) -> void:
@@ -706,6 +761,7 @@ func _replace_document(document: Resource) -> void:
 	_update_workflow_controls()
 	_refresh_status()
 	_refresh_layers()
+	_refresh_actions()
 	_refresh_perspective_preview()
 
 
@@ -808,7 +864,7 @@ func _run_after_unsaved_check(action: Callable) -> void:
 	dialog.canceled.connect(_unsaved_choice.bind("cancel"))
 	dialog.custom_action.connect(func(choice: StringName) -> void: _unsaved_choice(String(choice)))
 	_unsaved_dialog = dialog
-	add_child(dialog)
+	_add_dialog(dialog)
 	dialog.popup_centered()
 
 
@@ -1192,6 +1248,9 @@ func _build_dock_tabs() -> void:
 	for node_name in ["SelectButton", "DrawButton", "PointsButton", "SubtractButton", "AddPointButton", "RemovePointButton"]:
 		tools.adopt(_side_node(node_name))
 
+	var actions := _new_section(creation, "Action zones and entry points", false)
+	actions.adopt(_action_panel)
+
 	var references := _new_section(creation, "Height references")
 	for node_name in ["TemplateModeButton", "TemplateHeightLabel", "TemplateHeightInput", "DeleteTemplateButton"]:
 		references.adopt(_side_node(node_name))
@@ -1283,6 +1342,7 @@ func _check_export() -> void:
 	lines.append_array(SCENE_GENERATOR.take_warnings(root))
 	root.free()
 	lines.append_array(_document.validate_references())
+	lines.append_array(_action_check_lines())
 	var report := get_fit_report()
 	if report.warn and not is_inf(report.worst):
 		lines.append("The camera misses a height reference by %.1f%%." % (report.worst * 100.0))
@@ -1305,7 +1365,7 @@ func _build_layers_ui() -> void:
 	_element_dialog.title = "Add a transparent picture"
 	_element_dialog.filters = PackedStringArray(["*.png, *.webp ; Pictures with transparency"])
 	_element_dialog.file_selected.connect(_import_element_from_dialog)
-	add_child(_element_dialog)
+	_add_dialog(_element_dialog)
 	_layer_panel.add_image_requested.connect(_request_element_image)
 	_layer_panel.add_layer_requested.connect(_add_new_layer)
 	_layer_panel.remove_requested.connect(_remove_layer_item)
@@ -2025,7 +2085,7 @@ func _show_name_dialog(title: String, prompt: String, initial_name: String, on_c
 	dialog.register_text_enter(input)
 	_active_name_dialog = dialog
 	_active_name_input = input
-	add_child(dialog)
+	_add_dialog(dialog)
 	dialog.confirmed.connect(func() -> void:
 		var new_name := input.text.strip_edges()
 		if new_name.is_empty():
@@ -2249,6 +2309,12 @@ func _refresh_status() -> void:
 		mode = "Boolean −"
 	elif _add_point_button.button_pressed:
 		mode = "Add point"
+	elif _canvas.get_action_tool() == IWECanvas.ACTION_TOOL_ZONE_DRAW:
+		mode = "Action zone"
+	elif _canvas.get_action_tool() == IWECanvas.ACTION_TOOL_ZONE_SELECT:
+		mode = "Select zone"
+	elif _canvas.get_action_tool() == IWECanvas.ACTION_TOOL_ENTRY:
+		mode = "Entry point"
 	var region: IWERegion = _canvas.get_selected_region()
 	if region:
 		var point_status := ""
@@ -2424,6 +2490,9 @@ func _stop_tools() -> void:
 	_canvas.set_vertex_editing(false)
 	_canvas.set_boolean_subtract_mode(false)
 	_canvas.set_scale_anchor_mode(false)
+	if _action_panel != null:
+		_canvas.set_action_tool("")
+		_action_panel.set_tool_pressed("")
 
 
 func _sync_point_selection(index: int) -> void:
@@ -2459,3 +2528,311 @@ func _is_asset_beside_document(asset_path: String, target_document_path: String 
 	if image_absolute.begins_with("res://") or image_absolute.begins_with("user://"):
 		image_absolute = ProjectSettings.globalize_path(image_absolute)
 	return image_absolute.replace("/", "\\").to_lower() == expected_path.replace("/", "\\").to_lower()
+
+
+# ---- action zones and entry points ---------------------------------------------------------------------
+
+
+func _build_action_ui() -> void:
+	_action_panel = IWEActionPanel.new()
+	_action_panel.draw_zone_toggled.connect(func(enabled: bool) -> void: _set_action_tool(IWECanvas.ACTION_TOOL_ZONE_DRAW if enabled else ""))
+	_action_panel.select_zone_toggled.connect(func(enabled: bool) -> void: _set_action_tool(IWECanvas.ACTION_TOOL_ZONE_SELECT if enabled else ""))
+	_action_panel.place_entry_toggled.connect(func(enabled: bool) -> void: _set_action_tool(IWECanvas.ACTION_TOOL_ENTRY if enabled else ""))
+	_action_panel.remove_requested.connect(_remove_action_item)
+	_action_panel.zone_property_requested.connect(_set_zone_property)
+	_action_panel.entry_property_requested.connect(_set_entry_property)
+	_action_panel.selection_changed.connect(_on_action_panel_selection)
+	_canvas.action_zone_created.connect(_create_action_zone)
+	_canvas.action_zone_selected.connect(_on_canvas_zone_selected)
+	_canvas.action_zone_moved.connect(_move_action_zone)
+	_canvas.entry_point_created.connect(_create_entry_point)
+	_canvas.entry_point_selected.connect(_on_canvas_entry_selected)
+	_canvas.entry_point_moved.connect(_move_entry_point)
+	_canvas.action_delete_requested.connect(_remove_action_item)
+	_canvas.action_tool_changed.connect(_action_panel.set_tool_pressed)
+	_refresh_actions()
+
+
+## Turns one of the action tools on (or all of them off with ""). The region tools are released.
+func _set_action_tool(tool_name: String) -> void:
+	_stop_tools()
+	if not tool_name.is_empty():
+		if _perspective_mode:
+			_set_perspective_mode(false)
+		_canvas.set_action_tool(tool_name)
+	_action_panel.set_tool_pressed(tool_name)
+	_refresh_status()
+
+
+func _refresh_actions() -> void:
+	if _action_panel == null or _document == null:
+		return
+	_action_panel.refresh(_document)
+	var selected: Dictionary = _action_panel.get_selected()
+	_canvas.set_action_overlays(_document.action_zones, _document.entry_points, selected.id if selected.kind == IWEActionPanel.KIND_ZONE else "", selected.id if selected.kind == IWEActionPanel.KIND_ENTRY else "")
+
+
+func _select_action_item(kind: String, id: String) -> void:
+	_action_panel.select(kind, id)
+	_canvas.set_action_overlays(_document.action_zones, _document.entry_points, id if kind == IWEActionPanel.KIND_ZONE else "", id if kind == IWEActionPanel.KIND_ENTRY else "")
+
+
+func _on_action_panel_selection(kind: String, id: String) -> void:
+	_select_action_item(kind, id)
+
+
+func _on_canvas_zone_selected(zone_id: String) -> void:
+	_select_action_item(IWEActionPanel.KIND_ZONE if not zone_id.is_empty() else "", zone_id)
+
+
+func _on_canvas_entry_selected(entry_id: String) -> void:
+	_select_action_item(IWEActionPanel.KIND_ENTRY if not entry_id.is_empty() else "", entry_id)
+
+
+func _action_names(items: Array, property: String) -> Array:
+	return items.map(func(item: Resource) -> String: return item.get(property))
+
+
+func _create_action_zone(points: PackedVector2Array) -> void:
+	if not _has_illustration or _document == null or points.size() < 3:
+		return
+	var zone := IWEActionZone.create_zone(_free_name("Zone", _action_names(_document.action_zones, "name")), points)
+	_history.create_action("Draw IWE action zone")
+	_history.add_do_method(_insert_action_zone.bind(zone, _document.action_zones.size()))
+	_history.add_undo_method(_remove_action_zone.bind(zone.id))
+	_history.commit_action()
+
+
+func _insert_action_zone(zone: IWEActionZone, index: int) -> void:
+	if _document == null or _document.find_action_zone(zone.id) != null:
+		return
+	_document.action_zones.insert(clampi(index, 0, _document.action_zones.size()), zone)
+	_select_action_item(IWEActionPanel.KIND_ZONE, zone.id)
+	_refresh_actions()
+	_select_action_item(IWEActionPanel.KIND_ZONE, zone.id)
+	_refresh_status()
+
+
+func _remove_action_zone(zone_id: String) -> void:
+	if _document == null:
+		return
+	var remaining: Array[IWEActionZone] = []
+	for zone in _document.action_zones:
+		if zone.id != zone_id:
+			remaining.append(zone)
+	_document.action_zones = remaining
+	if _action_panel.get_selected().id == zone_id:
+		_action_panel.select("", "")
+	_refresh_actions()
+	_refresh_status()
+
+
+func _move_action_zone(zone_id: String, before: PackedVector2Array, after: PackedVector2Array) -> void:
+	if _document == null or _document.find_action_zone(zone_id) == null:
+		return
+	_history.create_action("Move IWE action zone")
+	_history.add_do_method(_set_action_zone_points.bind(zone_id, after))
+	_history.add_undo_method(_set_action_zone_points.bind(zone_id, before))
+	_history.commit_action()
+
+
+func _set_action_zone_points(zone_id: String, points: PackedVector2Array) -> void:
+	var zone: IWEActionZone = _document.find_action_zone(zone_id) if _document != null else null
+	if zone == null:
+		return
+	zone.points = points.duplicate()
+	_refresh_actions()
+
+
+func _create_entry_point(image_position: Vector2) -> void:
+	if not _has_illustration or _document == null:
+		return
+	var entry_name := "entry_1"
+	var number := 1
+	var used: Array = _action_names(_document.entry_points, "entry_id")
+	while used.has(entry_name):
+		number += 1
+		entry_name = "entry_%d" % number
+	var entry := IWEEntryPoint.create_entry(entry_name, image_position)
+	# The first entry point of a scene is its default one: a transition that names none still arrives.
+	entry.is_default = _document.entry_points.is_empty()
+	_history.create_action("Place IWE entry point")
+	_history.add_do_method(_insert_entry_point.bind(entry, _document.entry_points.size()))
+	_history.add_undo_method(_remove_entry_point.bind(entry.id))
+	_history.commit_action()
+
+
+func _insert_entry_point(entry: IWEEntryPoint, index: int) -> void:
+	if _document == null or _document.find_entry_point(entry.id) != null:
+		return
+	_document.entry_points.insert(clampi(index, 0, _document.entry_points.size()), entry)
+	_refresh_actions()
+	_select_action_item(IWEActionPanel.KIND_ENTRY, entry.id)
+	_refresh_status()
+
+
+func _remove_entry_point(entry_id: String) -> void:
+	if _document == null:
+		return
+	var remaining: Array[IWEEntryPoint] = []
+	for entry in _document.entry_points:
+		if entry.id != entry_id:
+			remaining.append(entry)
+	_document.entry_points = remaining
+	if _action_panel.get_selected().id == entry_id:
+		_action_panel.select("", "")
+	_refresh_actions()
+	_refresh_status()
+
+
+func _move_entry_point(entry_id: String, before: Vector2, after: Vector2) -> void:
+	if _document == null or _document.find_entry_point(entry_id) == null:
+		return
+	_history.create_action("Move IWE entry point")
+	_history.add_do_method(_set_entry_point_position.bind(entry_id, after))
+	_history.add_undo_method(_set_entry_point_position.bind(entry_id, before))
+	_history.commit_action()
+
+
+func _set_entry_point_position(entry_id: String, position: Vector2) -> void:
+	var entry: IWEEntryPoint = _document.find_entry_point(entry_id) if _document != null else null
+	if entry == null:
+		return
+	entry.position = position
+	_refresh_actions()
+
+
+func _remove_action_item(kind: String, id: String) -> void:
+	if _document == null or id.is_empty():
+		return
+	if kind == IWEActionPanel.KIND_ZONE:
+		var zone: IWEActionZone = _document.find_action_zone(id)
+		if zone == null:
+			return
+		var copy := zone.duplicate(true) as IWEActionZone
+		var index: int = _document.action_zones.find(zone)
+		_history.create_action("Remove IWE action zone")
+		_history.add_do_method(_remove_action_zone.bind(id))
+		_history.add_undo_method(_insert_action_zone.bind(copy, index))
+		_history.commit_action()
+	elif kind == IWEActionPanel.KIND_ENTRY:
+		var entry: IWEEntryPoint = _document.find_entry_point(id)
+		if entry == null:
+			return
+		var entry_copy := entry.duplicate(true) as IWEEntryPoint
+		var entry_index: int = _document.entry_points.find(entry)
+		_history.create_action("Remove IWE entry point")
+		_history.add_do_method(_remove_entry_point.bind(id))
+		_history.add_undo_method(_insert_entry_point.bind(entry_copy, entry_index))
+		_history.commit_action()
+
+
+const ZONE_PROPERTIES := ["name", "action", "target_scene", "entry_id", "enabled"]
+
+
+func _set_zone_property(zone_id: String, property: String, value: Variant) -> void:
+	var zone: IWEActionZone = _document.find_action_zone(zone_id) if _document != null else null
+	if zone == null or not property in ZONE_PROPERTIES:
+		return
+	if property == "name" and String(value).strip_edges().is_empty():
+		_status_label.text = "A zone needs a name."
+		_refresh_actions()
+		return
+	var previous: Variant = zone.get(property)
+	if previous == value:
+		return
+	_history.create_action("Edit IWE action zone %s" % property, UndoRedo.MERGE_ENDS if property == "name" else UndoRedo.MERGE_DISABLE)
+	_history.add_do_method(_apply_zone_property.bind(zone_id, property, value))
+	_history.add_undo_method(_apply_zone_property.bind(zone_id, property, previous))
+	_history.commit_action()
+
+
+func _apply_zone_property(zone_id: String, property: String, value: Variant) -> void:
+	var zone: IWEActionZone = _document.find_action_zone(zone_id) if _document != null else null
+	if zone == null:
+		return
+	zone.set(property, value)
+	_refresh_actions()
+	_refresh_status()
+
+
+func _set_entry_property(entry_id: String, property: String, value: Variant) -> void:
+	var entry: IWEEntryPoint = _document.find_entry_point(entry_id) if _document != null else null
+	if entry == null:
+		return
+	if property == "entry_id":
+		var wanted := String(value).strip_edges()
+		if wanted == entry.entry_id:
+			return
+		if wanted.is_empty() or wanted.contains(" ") or wanted.contains("/"):
+			_status_label.text = "An entry point name needs at least one character and no space or slash."
+			_refresh_actions()
+			return
+		var other: IWEEntryPoint = _document.find_entry_by_name(wanted)
+		if other != null and other != entry:
+			# The previous name stays: two entry points with one name would make a transition ambiguous.
+			_status_label.text = "Another entry point is already called \"%s\"." % wanted
+			_refresh_actions()
+			return
+		value = wanted
+	if property == "is_default":
+		_set_default_entry(entry, bool(value))
+		return
+	if property == "facing_degrees":
+		var facing := float(value)
+		if is_nan(facing) == is_nan(entry.facing_degrees) and (is_nan(facing) or is_equal_approx(facing, entry.facing_degrees)):
+			return
+	elif not property in ["entry_id", "facing_degrees"]:
+		return
+	elif entry.get(property) == value:
+		return
+	var previous: Variant = entry.get(property)
+	_history.create_action("Edit IWE entry point %s" % property, UndoRedo.MERGE_ENDS if property == "facing_degrees" else UndoRedo.MERGE_DISABLE)
+	_history.add_do_method(_apply_entry_property.bind(entry_id, property, value))
+	_history.add_undo_method(_apply_entry_property.bind(entry_id, property, previous))
+	_history.commit_action()
+
+
+## Only one entry point is the default one: choosing another releases the previous one, in one undo step.
+func _set_default_entry(entry: IWEEntryPoint, make_default: bool) -> void:
+	var before := {}
+	for other in _document.entry_points:
+		before[other.id] = other.is_default
+	var after := {}
+	for other in _document.entry_points:
+		after[other.id] = (other == entry) if make_default else (other.is_default and other != entry)
+	if before == after:
+		return
+	_history.create_action("Choose the default IWE entry point")
+	_history.add_do_method(_apply_default_entries.bind(after))
+	_history.add_undo_method(_apply_default_entries.bind(before))
+	_history.commit_action()
+
+
+func _apply_default_entries(flags: Dictionary) -> void:
+	if _document == null:
+		return
+	for entry in _document.entry_points:
+		if flags.has(entry.id):
+			entry.is_default = bool(flags[entry.id])
+	_refresh_actions()
+
+
+func _apply_entry_property(entry_id: String, property: String, value: Variant) -> void:
+	var entry: IWEEntryPoint = _document.find_entry_point(entry_id) if _document != null else null
+	if entry == null:
+		return
+	entry.set(property, value)
+	_refresh_actions()
+
+
+## What the export check says about the zones and entry points: scene files that are missing, and the
+## contract a destination scene must keep.
+func _action_check_lines() -> PackedStringArray:
+	var lines := PackedStringArray()
+	for zone in _document.action_zones:
+		if zone.needs_target_scene() and not zone.target_scene.is_empty() and not ResourceLoader.exists(zone.target_scene) and not FileAccess.file_exists(zone.target_scene):
+			lines.append("Action zone \"%s\": the scene %s was not found in the project; the character would stay where it is." % [zone.name, zone.target_scene])
+	if not _document.action_zones.is_empty() and _document.entry_points.is_empty():
+		lines.append("This document has action zones but no entry point: scenes that jump back here will use the first entry point they find, or none.")
+	return lines
