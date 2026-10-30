@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/img/background_template.png" id="1_background"]
+[ext_resource type="Texture2D" path="res://assets/img/foreground_template.png" id="2_foreground"]
+
+[node name="E2EVillageFountain" type="Node2D"]
+metadata/purpose = "End-to-end validation scene for IWE. Open it to see the two layers stacked; the plugin test suite in tests/e2e/ authors the walkable regions on the background."
+
+[node name="Background" type="Sprite2D" parent="."]
+z_index = 0
+texture = ExtResource("1_background")
+centered = false
+
+[node name="Foreground" type="Sprite2D" parent="."]
+z_index = 10
+texture = ExtResource("2_foreground")
+centered = false

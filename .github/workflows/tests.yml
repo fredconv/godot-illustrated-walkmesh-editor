@@ -1,0 +1,89 @@
+# Headless regression tests for IWE.
+#
+# Versions are pinned on purpose. Change them only after the suite passes locally with
+# the new versions (see docs/DEVELOPMENT.md).
+#
+# GdUnit4 is NOT stored in this repository (it is excluded by .gitignore). The job
+# downloads the pinned release source and copies only its addon folder into the project.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.7.1"
+  GDUNIT_VERSION: "6.2.2"
+
+jobs:
+  headless-tests:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Download Godot ${{ env.GODOT_VERSION }}
+        shell: pwsh
+        run: |
+          $url = "https://github.com/godotengine/godot-builds/releases/download/$env:GODOT_VERSION-stable/Godot_v$env:GODOT_VERSION-stable_win64.exe.zip"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\godot.zip"
+          Expand-Archive "$env:RUNNER_TEMP\godot.zip" -DestinationPath "$env:RUNNER_TEMP\godot"
+          # The console build writes output and exit codes to the pipeline; the GUI build does not.
+          $exe = "$env:RUNNER_TEMP\godot\Godot_v$env:GODOT_VERSION-stable_win64_console.exe"
+          if (-not (Test-Path $exe)) { Write-Error "Godot executable not found at $exe"; exit 1 }
+          "GODOT_BIN=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install GdUnit4 ${{ env.GDUNIT_VERSION }}
+        shell: pwsh
+        run: |
+          $url = "https://github.com/godot-gdunit-labs/gdUnit4/archive/refs/tags/v$env:GDUNIT_VERSION.zip"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\gdunit.zip"
+          Expand-Archive "$env:RUNNER_TEMP\gdunit.zip" -DestinationPath "$env:RUNNER_TEMP\gdunit"
+          $source = "$env:RUNNER_TEMP\gdunit\gdUnit4-$env:GDUNIT_VERSION\addons\gdUnit4"
+          if (-not (Test-Path "$source\plugin.cfg")) { Write-Error "GdUnit4 addon not found in $source"; exit 1 }
+          New-Item -ItemType Directory -Force -Path addons | Out-Null
+          Copy-Item -Recurse -Force $source addons\gdUnit4
+
+      - name: Enable GdUnit4 for the test run
+        shell: pwsh
+        run: |
+          # The committed project.godot enables no plugins; the test run needs GdUnit4 enabled.
+          if (Select-String -Path project.godot -Pattern '^\[editor_plugins\]' -Quiet) {
+            Write-Error "project.godot already has [editor_plugins]; adjust this step."
+            exit 1
+          }
+          Add-Content -Path project.godot -Value "`n[editor_plugins]`n`nenabled=PackedStringArray(`"res://addons/gdUnit4/plugin.cfg`")`n"
+
+      - name: Import resources and build the class cache
+        shell: pwsh
+        run: |
+          # Keep the full output: the import exit code alone did not explain the failure.
+          & $env:GODOT_BIN --headless --import --path . *> godot-import.log
+          $importCode = $LASTEXITCODE
+          Get-Content godot-import.log | Select-Object -Last 80
+          Write-Output "Godot --import exit code: $importCode"
+          # GdUnit4 classes must be registered before the test run; fail early with a clear message otherwise.
+          if (-not (Select-String -Path .godot/global_script_class_cache.cfg -Pattern 'GdUnitTestCIRunner' -Quiet)) {
+            Write-Error "GdUnit4 classes are not in the class cache: the addon was not enabled or imported."
+            exit 1
+          }
+
+      - name: Run the headless test suite
+        shell: pwsh
+        run: |
+          & $env:GODOT_BIN --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd --add "res://tests" --ignoreHeadlessMode
+          if ($LASTEXITCODE -ne 0) { Write-Error "Test suite failed with exit code $LASTEXITCODE"; exit $LASTEXITCODE }
+
+      - name: Upload GdUnit4 reports and import log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gdunit-reports
+          path: |
+            reports/
+            godot-import.log
+          if-no-files-found: ignore

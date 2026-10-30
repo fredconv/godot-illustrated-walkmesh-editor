@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="IWEDocument" format=3]
+
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/data/iwe_region_group.gd" id="1_f4bqa"]
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/data/iwe_perspective_calibration.gd" id="2_joiou"]
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/data/iwe_region.gd" id="3_6yrh0"]
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/data/iwe_scale_anchor.gd" id="4_ev0ob"]
+[ext_resource type="Script" path="res://addons/illustrated_walkmesh_editor/data/iwe_document.gd" id="5_t3pn3"]
+
+[sub_resource type="Resource" id="Resource_wlw4n"]
+script = ExtResource("1_f4bqa")
+id = "group_fixture_old_panel"
+name = "Chemin"
+
+[sub_resource type="Resource" id="Resource_nd5nf"]
+script = ExtResource("2_joiou")
+camera_position = Vector3(836, 1200, 1458.55)
+character_height_units = 150.0
+reference_viewport_size = Vector2i(432, 905)
+
+[sub_resource type="Resource" id="Resource_nf5ts"]
+script = ExtResource("3_6yrh0")
+id = "region_fixture_old_panel"
+group_id = "group_fixture_old_panel"
+name = "Chemin"
+points = PackedVector2Array(400, 520, 1200, 520, 1300, 900, 300, 900)
+subtraction_names = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_wlfb0"]
+script = ExtResource("4_ev0ob")
+id = "scale_fixture_near"
+name = "Proche"
+position = Vector2(400, 880)
+apparent_height_px = 220.0
+
+[sub_resource type="Resource" id="Resource_lomui"]
+script = ExtResource("4_ev0ob")
+id = "scale_fixture_far"
+name = "Lointain"
+position = Vector2(1200, 540)
+apparent_height_px = 110.0
+
+[resource]
+script = ExtResource("5_t3pn3")
+illustration_path = "res://assets/img/background.png"
+image_size = Vector2i(1672, 941)
+groups = Array[ExtResource("1_f4bqa")]([SubResource("Resource_wlw4n")])
+regions = Array[ExtResource("3_6yrh0")]([SubResource("Resource_nf5ts")])
+scale_anchors = Array[ExtResource("4_ev0ob")]([SubResource("Resource_wlfb0"), SubResource("Resource_lomui")])
+perspective_calibration = SubResource("Resource_nd5nf")

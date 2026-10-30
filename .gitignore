@@ -16,6 +16,7 @@
 crash.*
 /reports/
 /logs/
+/tests/e2e/_output/
 
 # OS metadata
 .DS_Store
@@ -30,10 +31,23 @@ Desktop.ini
 *.key
 secrets.*
 
-# Third-party starter addons kept local and excluded from this project distribution
+# Third-party addons kept local and excluded from this repository.
+# GdUnit4 is installed by CI and by developers at a pinned version (docs/DEVELOPMENT.md).
+# UniBuilder is under a commercial end-user licence and must not be redistributed.
 /addons/gdUnit4/
 /addons/godot_mcp/
 /addons/phantom-camera-main/
+/addons/unibuilder/
+
+# Local machine configuration (contains paths specific to one computer)
+/.mcp.json
+/.claude/
 
 # Godot-generated import sidecars
 *.import
+
+# Local notes for the AI assistant (machine-specific paths); kept out of the repository
+/MCP-CONNECTIONS-FOR-CLAUDE.md
+
+# Output of the Playwright MCP server (page snapshots)
+/.playwright-mcp/
