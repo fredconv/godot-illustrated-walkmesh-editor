@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0-alpha.1] — 2026-10-30
+
 ### Fixed (found by the first pass in the real editor, M12)
 - Default names (regions, height references, layers, groups) no longer repeat after a deletion.
 - An export to a folder that does not exist yet creates it, and an export or illustration load that fails says so in the dock instead of only in the Output panel.

@@ -101,7 +101,7 @@ Third-party addons used during development are not part of this repository. UniB
 
 ## Status
 
-Pre-release (`0.1.0-dev`). Expect breaking changes to the saved document format until a stable version is announced. Do not use it for production data without keeping a backup.
+Pre-release (`0.1.0-alpha.1`). Expect breaking changes to the saved document format until a stable version is announced. Do not use it for production data without keeping a backup.
 
 ## About the Project & AI-Assisted Development
 
