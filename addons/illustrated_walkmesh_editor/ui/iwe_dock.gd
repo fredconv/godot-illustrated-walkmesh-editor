@@ -2152,8 +2152,13 @@ func _ensure_pictures_imported() -> void:
 	for path in missing:
 		if not ResourceLoader.exists(path):
 			still_missing.append(path)
-	if not still_missing.is_empty():
-		filesystem.reimport_files(still_missing)
+	# A file the editor has not listed (a headless editor does not rescan) cannot be reimported.
+	var importable := PackedStringArray()
+	for path in still_missing:
+		if not filesystem.get_file_type(path).is_empty():
+			importable.append(path)
+	if not importable.is_empty():
+		filesystem.reimport_files(importable)
 
 
 ## The picture for an exported scene. A picture inside the project is referenced by its path, so
@@ -2163,7 +2168,7 @@ func _ensure_pictures_imported() -> void:
 func _texture_for_export(source_path: String) -> Texture2D:
 	# A picture picked by absolute path may still lie inside the project.
 	var path := ProjectSettings.localize_path(source_path) if source_path.is_absolute_path() else source_path
-	if path.begins_with("res://") and not ResourceLoader.exists(path) and Engine.is_editor_hint() and FileAccess.file_exists(path):
+	if path.begins_with("res://") and not ResourceLoader.exists(path) and Engine.is_editor_hint() and FileAccess.file_exists(path) and not EditorInterface.get_resource_filesystem().get_file_type(path).is_empty():
 		# A picture that a save just copied is not imported yet; import it now.
 		EditorInterface.get_resource_filesystem().reimport_files(PackedStringArray([path]))
 	if path.begins_with("res://") and ResourceLoader.exists(path):
