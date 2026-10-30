@@ -266,8 +266,9 @@ func _ready() -> void:
 
 func _load_illustration(path: String) -> void:
 	var image := Image.load_from_file(path)
-	if image.is_empty():
+	if image == null or image.is_empty():
 		push_error("IWE: Could not load illustration at %s" % path)
+		_status_label.text = "Could not load the illustration %s" % path
 		return
 	var had_illustration: bool = _document.image_size.x > 0 and _document.image_size.y > 0
 	if had_illustration:
@@ -929,17 +930,17 @@ func _begin_export(dimension: int) -> void:
 
 func _export_scene(path: String) -> void:
 	if _document == null or _pending_image_source.is_empty():
-		push_error("IWE: Import an illustration before exporting a scene.")
+		_export_failed("Import an illustration before exporting a scene.")
 		return
 	var absolute_path := ProjectSettings.globalize_path(path) if path.begins_with("res://") else path
 	var absolute_project := ProjectSettings.globalize_path("res://").replace("\\", "/").trim_suffix("/") + "/"
 	if not absolute_path.replace("\\", "/").to_lower().begins_with(absolute_project.to_lower()):
-		push_error("IWE: Export the scene inside this Godot project so its resources remain portable.")
+		_export_failed("Export the scene inside this Godot project so its resources remain portable.")
 		return
 	await _ensure_pictures_imported()
 	var texture := _texture_for_export(_pending_image_source)
 	if texture == null:
-		push_error("IWE: The source illustration could not be loaded for scene export.")
+		_export_failed("The source illustration could not be loaded for scene export.")
 		return
 	var scale := _scale_2d.value if _pending_export_dimension == 2 else _scale_3d.value
 	var root: Node
@@ -950,19 +951,21 @@ func _export_scene(path: String) -> void:
 	else:
 		root = SCENE_GENERATOR.build_perspective_scene(_document, texture, _document.perspective_calibration, scale, _add_player_input.button_pressed, _export_element_textures())
 	if root == null:
-		push_error("IWE: Could not build the generated scene.")
+		_export_failed("Could not build the generated scene.")
 		return
 	var warnings := SCENE_GENERATOR.take_warnings(root)
 	var packed := PackedScene.new()
 	var pack_error := packed.pack(root)
 	root.free()
 	if pack_error != OK:
-		push_error("IWE: Could not pack generated scene (%s)." % error_string(pack_error))
+		_export_failed("Could not pack the generated scene (%s)." % error_string(pack_error))
 		return
 	var save_path := absolute_path if absolute_path.ends_with(".tscn") else absolute_path + ".tscn"
+	# A path typed into the dialog can name a folder that does not exist yet.
+	DirAccess.make_dir_recursive_absolute(save_path.get_base_dir())
 	var save_error := ResourceSaver.save(packed, save_path)
 	if save_error != OK:
-		push_error("IWE: Could not save generated scene (%s)." % error_string(save_error))
+		_export_failed("Could not save the generated scene to %s (%s)." % [save_path, error_string(save_error)])
 		return
 	_status_label.text = "Exported perspective scene: %s" % ProjectSettings.localize_path(save_path) if _pending_export_dimension == 4 else "Exported %dD scene: %s" % [_pending_export_dimension, ProjectSettings.localize_path(save_path)]
 	if not warnings.is_empty():
@@ -971,12 +974,27 @@ func _export_scene(path: String) -> void:
 		_status_label.text += " (%d warning%s, see the Output panel)" % [warnings.size(), "" if warnings.size() == 1 else "s"]
 
 
+## An export that cannot be written is reported in the dock, not only in the Output panel.
+func _export_failed(message: String) -> void:
+	push_error("IWE: %s" % message)
+	_status_label.text = "Export failed: %s" % message
+
+
+## A default name that no existing item has: "Region 4" when "Region 2" and "Region 3" exist and "Region 1" was deleted.
+## Counting the items would hand out a name that is already taken (found in the real editor, M12).
+func _free_name(prefix: String, existing: Array) -> String:
+	var number := existing.size() + 1
+	while existing.has("%s %d" % [prefix, number]):
+		number += 1
+	return "%s %d" % [prefix, number]
+
+
 func _create_region(points: PackedVector2Array) -> void:
 	if not _can_create_region():
 		return
 	var region: IWERegion = REGION_SCRIPT.new()
 	region.id = REGION_SCRIPT._new_id()
-	region.name = "Region %d" % (_document.regions.size() + 1)
+	region.name = _free_name("Region", _document.regions.map(func(item: Resource) -> String: return item.name))
 	region.group_id = _selected_group_id
 	region.points = points
 	_history.create_action("Create IWE region")
@@ -989,7 +1007,7 @@ func _create_scale_anchor(image_position: Vector2, height_px: float) -> void:
 	if not _has_illustration or _document == null:
 		return
 	var anchor: IWEScaleAnchor = SCALE_ANCHOR_SCRIPT.create_anchor(image_position, height_px)
-	anchor.name = "Template %d" % (_document.scale_anchors.size() + 1)
+	anchor.name = _free_name("Template", _document.scale_anchors.map(func(item: Resource) -> String: return item.name))
 	_history.create_action("Place IWE scale template")
 	_history.add_do_method(_add_scale_anchor.bind(anchor))
 	_history.add_undo_method(_remove_scale_anchor.bind(anchor.id))
@@ -1356,7 +1374,7 @@ func _remove_element(element_id: String) -> void:
 func _add_new_layer() -> void:
 	if _document == null:
 		return
-	var layer: IWELayer = LAYER_SCRIPT.create_layer("Layer %d" % (_document.layers.size() + 1), IWELayer.Kind.FOREGROUND)
+	var layer: IWELayer = LAYER_SCRIPT.create_layer(_free_name("Layer", _document.layers.map(func(item: Resource) -> String: return item.name)), IWELayer.Kind.FOREGROUND)
 	_history.create_action("Add IWE layer")
 	_history.add_do_method(_insert_layer.bind(layer, -1, {}))
 	_history.add_undo_method(_delete_layer.bind(layer.id, ""))
@@ -2257,7 +2275,7 @@ func _can_create_region() -> bool:
 func _create_group() -> void:
 	if not _has_illustration:
 		return
-	var suggested_name := "Group %d" % (_document.groups.size() + 1)
+	var suggested_name := _free_name("Group", _document.groups.map(func(item: Resource) -> String: return item.name))
 	_show_name_dialog("Create group", "Enter a name for this group", suggested_name, _create_group_named)
 
 

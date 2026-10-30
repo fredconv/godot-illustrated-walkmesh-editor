@@ -123,3 +123,33 @@ func test_save_as_into_another_folder_brings_the_pictures_of_the_layers_too() ->
 	reopened._open_document(WORK_FOLDER.path_join("second").path_join("village.tres"))
 	assert_int(reopened._element_textures.size()).override_failure_message("the picture loads from the second folder").is_equal(1)
 	reopened.queue_free()
+
+
+func test_an_export_into_a_folder_that_does_not_exist_yet_creates_it() -> void:
+	# Found in the real editor (M12): a path typed into the dialog named a new folder; nothing was
+	# written and the dock said nothing.
+	var dock := await _dock_with_picture()
+	var folder := "res://tests/_export_new_folder"
+	var path := folder + "/new_folder_export.tscn"
+	dock._pending_export_dimension = 2
+	dock._export_scene(path)
+	assert_bool(FileAccess.file_exists(path)).is_true()
+	assert_str(dock._status_label.text).contains("Exported")
+	VILLAGE.remove_folder(ProjectSettings.globalize_path(folder))
+	dock.queue_free()
+
+
+func test_an_export_that_fails_is_reported_in_the_dock() -> void:
+	var dock := await _dock_with_picture()
+	dock._pending_export_dimension = 2
+	dock._export_scene("C:/")
+	assert_str(dock._status_label.text).contains("Export failed")
+	dock.queue_free()
+
+
+func test_a_missing_illustration_file_is_reported_not_a_crash() -> void:
+	var dock: Control = await VILLAGE.new_dock(get_tree())
+	dock._load_illustration("C:/this/file/does/not/exist.png")
+	assert_str(dock._status_label.text).contains("Could not load")
+	assert_bool(dock._has_illustration).is_false()
+	dock.queue_free()

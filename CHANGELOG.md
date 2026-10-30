@@ -7,6 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Fixed (found by the first pass in the real editor, M12)
+- Default names (regions, height references, layers, groups) no longer repeat after a deletion.
+- An export to a folder that does not exist yet creates it, and an export or illustration load that fails says so in the dock instead of only in the Output panel.
 - Turning Perspective on no longer makes the dock as wide as the frame being shown (about 1152 px), which pushed the toolbar and the sidebar out of view in a narrow dock.
 - A scene exported right after a save no longer embeds the pictures (14.8 MB): the export asks the editor to scan and import the files it has just copied, and references them (115 KB).
 - Save As into another folder now copies the pictures of the layers too. Before, the new folder kept a path to a file that was not there.

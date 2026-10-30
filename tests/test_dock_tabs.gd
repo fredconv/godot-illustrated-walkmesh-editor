@@ -215,3 +215,27 @@ func test_a_refused_edit_on_a_locked_layer_puts_the_fields_back() -> void:
 	assert_vector(element.position).is_equal(Vector2.ZERO)
 	assert_float(dock._layer_panel._element_x.value).override_failure_message("the field shows the real position again").is_equal(0.0)
 	dock.queue_free()
+
+
+func test_default_names_stay_unique_after_a_deletion() -> void:
+	# Found in the real editor (M12): after deleting Region 1, the next new region was named Region 4
+	# a second time.
+	var dock := await _dock()
+	VILLAGE.import_background(dock)
+	dock._create_group_named("Paths")
+	for index in 3:
+		dock._canvas.region_created.emit(VILLAGE.points(VILLAGE.YARD))
+	dock._select_region(dock._document.regions[0].id)
+	dock._delete_selected_region()
+	dock._canvas.region_created.emit(VILLAGE.points(VILLAGE.YARD))
+	dock._canvas.region_created.emit(VILLAGE.points(VILLAGE.YARD))
+	var names := {}
+	for region in dock._document.regions:
+		assert_bool(names.has(region.name)).override_failure_message("%s is used twice" % region.name).is_false()
+		names[region.name] = true
+	dock._canvas.scale_anchor_created.emit(Vector2(300, 700), 150.0)
+	dock._canvas.scale_anchor_created.emit(Vector2(1000, 600), 133.0)
+	dock._delete_scale_anchor_by_id(dock._document.scale_anchors[0].id)
+	dock._canvas.scale_anchor_created.emit(Vector2(500, 650), 140.0)
+	assert_str(dock._document.scale_anchors[0].name).is_not_equal(dock._document.scale_anchors[1].name)
+	dock.queue_free()
