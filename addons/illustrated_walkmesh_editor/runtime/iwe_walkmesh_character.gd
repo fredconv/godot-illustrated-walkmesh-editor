@@ -69,6 +69,16 @@ var _path_retry_frames := 0
 func _ready() -> void:
 	motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
 	_start_position = global_position
+	# Transition zones react to this group, and a stage arrival places its members.
+	add_to_group(IWEStageTravel.TRAVELLER_GROUP)
+
+
+## Called by IWEStageTravel after it moved the character (a scene arrival or a warp): the path planned
+## before is meaningless from the new place, so it is dropped, and the new place becomes the start.
+func on_teleported() -> void:
+	stop()
+	velocity = Vector3.ZERO
+	_start_position = global_position
 
 
 func _unhandled_input(event: InputEvent) -> void:
