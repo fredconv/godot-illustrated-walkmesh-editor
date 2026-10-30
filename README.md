@@ -105,7 +105,7 @@ Open `examples/perspective_calibration_demo.tscn` to see a ready-made perspectiv
 
 ## Installation
 
-IWE is pre-release. The Asset Library is not available yet. Download `illustrated_walkmesh_editor-0.1.0-alpha.2.zip` from the GitHub release (it holds only the addon and the licence), or take the folder from the repository.
+IWE is pre-release. The Asset Library is not available yet. Download `illustrated_walkmesh_editor-0.1.0-alpha.3.zip` from the GitHub release (it holds only the addon and the licence), or take the folder from the repository.
 
 1. Unzip into your project, or copy the `addons/illustrated_walkmesh_editor/` folder into the `addons/` folder of your Godot 4.7 project. Create `addons/` if it does not exist.
 2. Open the project in Godot 4.7.
@@ -137,7 +137,7 @@ Third-party addons used during development are not part of this repository. UniB
 
 ## Status
 
-Pre-release (`0.1.0-alpha.2`). Expect breaking changes to the saved document format until a stable version is announced. Do not use it for production data without keeping a backup.
+Pre-release (`0.1.0-alpha.3`). Expect breaking changes to the saved document format until a stable version is announced. Do not use it for production data without keeping a backup.
 
 ## About the Project & AI-Assisted Development
 

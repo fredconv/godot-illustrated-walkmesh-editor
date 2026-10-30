@@ -134,7 +134,7 @@ Checked headless only (`tests/test_illustration_reimport.gd`, `tests/e2e/`); the
 
 ## Versioning
 
-- The plugin version is `version` in `addons/illustrated_walkmesh_editor/plugin.cfg`. It is currently `0.1.0-alpha.2`.
+- The plugin version is `version` in `addons/illustrated_walkmesh_editor/plugin.cfg`. It is currently `0.1.0-alpha.3`.
 - The saved document format is versioned separately (`schema_version`, see `DATA_FORMAT.md`).
 - Changes are recorded in `CHANGELOG.md` under `[Unreleased]`.
 

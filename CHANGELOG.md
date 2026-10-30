@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0-alpha.3] — 2026-10-30
+
 ### Added
 - **Action zones, entry points and scene travel (document format version 3).** A zone drawn on the illustration changes the scene or warps within it when a character walks into it; an entry point is where a character appears on arrival. The Creation tab has a new section *Action zones and entry points* (draw, select, move, configure, remove, all undoable). The 2D, flat 3D and perspective exports write `IWETransitionZone` / `IWETransitionZone2D` areas, `IWEEntryMarker` / `IWEEntryMarker2D` markers and a `StageRuntime` node, and only when the document has zones or entry points. Runtime classes with no autoload and no fixed character: `IWEStageTravel`, `IWEStageRuntime`, `IWETransitionZone`, `IWEEntryMarker`. A traveller is any node of the group `iwe_traveller`. The action is a string with a free `params` dictionary, so later actions need no format change. See `docs/STAGE_TRANSITIONS.md`.
 - `IWENavigationPath`: plain static helpers (`with_corner_clearance`, `plan`) so a character of your own can follow a path on the exported navigation without stalling on obstacle corners. The plugin's character uses it too.

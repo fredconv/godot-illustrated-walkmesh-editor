@@ -55,6 +55,9 @@ func _run() -> void:
 	dock._create_region(_rect(40, 180, 300, 150))
 	dock._create_region(_rect(340, 180, 240, 150))
 	_check("two regions authored", dock._document.regions.size() == 2)
+	dock._canvas.action_zone_created.emit(_rect(40, 100, 100, 60))
+	dock._canvas.entry_point_created.emit(Vector2(200, 250))
+	_check("an action zone and an entry point were authored", dock._document.action_zones.size() == 1 and dock._document.entry_points.size() == 1)
 	var element: Object = dock.import_element(FOLDER + "/prop.png")
 	_check("a layer picture was added", element != null)
 
@@ -71,6 +74,7 @@ func _run() -> void:
 	_check("document reopened with its regions", reopened._document.regions.size() == 2)
 	_check("document reopened with its picture", reopened._document.visual_elements.size() == 1)
 	_check("schema version is current", reopened._document.schema_version == DOCUMENT_SCRIPT.CURRENT_SCHEMA_VERSION)
+	_check("the zone and the entry point came back", reopened._document.action_zones.size() == 1 and reopened._document.entry_points.size() == 1)
 
 	for dimension in [2, 3, 4]:
 		var output := "%s/stage_%d.tscn" % [FOLDER, dimension]
@@ -83,6 +87,7 @@ func _run() -> void:
 			var instance := packed.instantiate() if packed != null else null
 			_check("export %dD instantiates" % dimension, instance != null)
 			if instance != null:
+				_check("export %dD holds the zone, the entry marker and the stage runtime" % dimension, instance.get_node_or_null("StageRuntime") != null and instance.find_children("*", "Area3D" if dimension != 2 else "Area2D", true, false).size() >= 1 and instance.find_child("entry_1", true, false) != null)
 				instance.free()
 	print("SMOKE done failures=%d" % _failures)
 	get_tree().quit(_failures)

@@ -34,7 +34,7 @@ IWE is MIT-licensed. Check the licence of the assets you use with it; the demo i
 
 ## Is IWE production-ready?
 
-No. It is a pre-release (`0.1.0-alpha.2`). The saved format may change before a stable version. Keep backups of your documents.
+No. It is a pre-release (`0.1.0-alpha.3`). The saved format may change before a stable version. Keep backups of your documents.
 
 ## Where do I report a bug or ask a question?
 
