@@ -97,6 +97,7 @@ func _build_zone_part() -> void:
 	for action in ACTION_LABELS:
 		_zone_action.add_item(ACTION_LABELS[action])
 		_zone_action.set_item_metadata(_zone_action.item_count - 1, action)
+	_zone_action.tooltip_text = "What happens when a character walks into the zone."
 	_zone_action.item_selected.connect(func(index: int) -> void: _request_zone("action", _zone_action.get_item_metadata(index)))
 	var scene_label := _label(_zone_box, "Scene to load")
 	scene_label.name = "SceneLabel"
@@ -191,6 +192,7 @@ func _build_entry_part() -> void:
 	_entry_facing_set = CheckBox.new()
 	_entry_facing_set.name = "EntryFacingSetInput"
 	_entry_facing_set.text = "Face a direction on arrival"
+	_entry_facing_set.tooltip_text = "Turn the character to a direction when it arrives here. Otherwise it keeps its own direction."
 	_entry_facing_set.toggled.connect(func(pressed: bool) -> void: _request_entry("facing_degrees", _entry_facing.value if pressed else NAN))
 	_entry_box.add_child(_entry_facing_set)
 	_entry_facing = SpinBox.new()
@@ -199,6 +201,7 @@ func _build_entry_part() -> void:
 	_entry_facing.max_value = 360.0
 	_entry_facing.step = 1.0
 	_entry_facing.suffix = "°"
+	_entry_facing.tooltip_text = "Direction in degrees around the vertical axis: 0 faces away from the camera, 90 faces left, 180 faces the camera, 270 faces right."
 	_entry_facing.value_changed.connect(func(value: float) -> void: _request_entry("facing_degrees", value))
 	_entry_box.add_child(_entry_facing)
 

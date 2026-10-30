@@ -3,6 +3,7 @@ extends GdUnitTestSuite
 ## returns exactly what was left: document, history, selection, tool, zoom, tab, folded sections.
 
 const VILLAGE := preload("res://tests/e2e/village_scenario.gd")
+const CANVAS_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/ui/iwe_canvas.gd")
 
 
 func _authored_dock() -> Control:
@@ -51,7 +52,7 @@ func test_detaching_and_returning_keeps_every_part_of_the_state() -> void:
 	(dock.get_section("Layers and pictures") as IWECollapsibleSection).set_expanded(false)
 	(dock.get_section("Action zones and entry points") as IWECollapsibleSection).set_expanded(true)
 	dock._canvas.select_region(dock._document.regions[1].id)
-	dock._set_action_tool(IWECanvas.ACTION_TOOL_ZONE_SELECT)
+	dock._set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ZONE_SELECT)
 	var before := _state(dock)
 	dock._set_interface_window(true)
 	await _settle()

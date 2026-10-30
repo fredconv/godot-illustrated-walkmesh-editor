@@ -3,6 +3,7 @@ extends GdUnitTestSuite
 ## saving and reopening. Everything goes through the signals the canvas and the panel emit.
 
 const VILLAGE := preload("res://tests/e2e/village_scenario.gd")
+const CANVAS_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/ui/iwe_canvas.gd")
 const WORK_FOLDER := "user://iwe_action_panel"
 
 
@@ -233,8 +234,8 @@ func test_moving_and_removing_an_entry_point_with_undo() -> void:
 
 func test_clicking_the_corners_and_the_first_corner_again_draws_a_zone() -> void:
 	var dock := await _dock()
-	dock._set_action_tool(IWECanvas.ACTION_TOOL_ZONE_DRAW)
-	assert_str(dock._canvas.get_action_tool()).is_equal(IWECanvas.ACTION_TOOL_ZONE_DRAW)
+	dock._set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ZONE_DRAW)
+	assert_str(dock._canvas.get_action_tool()).is_equal(CANVAS_SCRIPT.ACTION_TOOL_ZONE_DRAW)
 	for corner in _square(200, 600):
 		_click(dock, corner)
 		_click(dock, corner, false)
@@ -248,7 +249,7 @@ func test_clicking_the_corners_and_the_first_corner_again_draws_a_zone() -> void
 
 func test_a_click_with_the_entry_tool_places_a_marker_and_a_click_on_it_selects_it() -> void:
 	var dock := await _dock()
-	dock._set_action_tool(IWECanvas.ACTION_TOOL_ENTRY)
+	dock._set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ENTRY)
 	_click(dock, Vector2(400, 500))
 	_click(dock, Vector2(400, 500), false)
 	assert_int(dock._document.entry_points.size()).is_equal(1)
@@ -268,7 +269,7 @@ func test_dragging_a_zone_with_the_select_tool_moves_it_as_one_undo_step() -> vo
 	dock._canvas.action_zone_created.emit(_square(300, 600))
 	var zone: IWEActionZone = dock._document.action_zones[0]
 	var before := zone.points.duplicate()
-	dock._set_action_tool(IWECanvas.ACTION_TOOL_ZONE_SELECT)
+	dock._set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ZONE_SELECT)
 	_click(dock, Vector2(350, 650))
 	_motion(dock, Vector2(380, 640))
 	_motion(dock, Vector2(450, 620))
@@ -282,7 +283,7 @@ func test_dragging_a_zone_with_the_select_tool_moves_it_as_one_undo_step() -> vo
 func test_clicking_empty_ground_with_the_select_tool_clears_the_selection() -> void:
 	var dock := await _dock()
 	dock._canvas.action_zone_created.emit(_square(300, 600))
-	dock._set_action_tool(IWECanvas.ACTION_TOOL_ZONE_SELECT)
+	dock._set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ZONE_SELECT)
 	_click(dock, Vector2(1500, 100))
 	_click(dock, Vector2(1500, 100), false)
 	assert_str(dock._action_panel.get_selected().kind).is_empty()
@@ -297,7 +298,7 @@ func test_an_action_tool_releases_the_region_tools_and_the_other_way_round() -> 
 	dock._create_group_named("Ground")
 	dock._draw_button.button_pressed = true
 	assert_bool(dock._draw_button.button_pressed).is_true()
-	dock._set_action_tool(IWECanvas.ACTION_TOOL_ZONE_DRAW)
+	dock._set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ZONE_DRAW)
 	assert_bool(dock._draw_button.button_pressed).override_failure_message("drawing a region and a zone at once would be ambiguous").is_false()
 	assert_bool(dock._action_panel._draw_zone_button.button_pressed).is_true()
 	dock._draw_button.button_pressed = true
@@ -309,7 +310,7 @@ func test_an_action_tool_releases_the_region_tools_and_the_other_way_round() -> 
 func test_turning_a_tool_on_leaves_perspective_mode() -> void:
 	var dock := await _dock()
 	dock._set_perspective_mode(true)
-	dock._set_action_tool(IWECanvas.ACTION_TOOL_ENTRY)
+	dock._set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ENTRY)
 	assert_bool(dock._perspective_mode).override_failure_message("the canvas is not shown in perspective mode").is_false()
 	dock.queue_free()
 

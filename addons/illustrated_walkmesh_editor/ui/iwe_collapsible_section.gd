@@ -10,6 +10,7 @@ var content: VBoxContainer
 var _header: Button
 var _title := ""
 var _expanded := true
+var _badge := ""
 
 
 func _init(section_title: String = "", start_expanded: bool = true) -> void:
@@ -41,6 +42,18 @@ func is_expanded() -> bool:
 	return _expanded
 
 
+## A short note after the title that stays visible when the section is folded, such as a count.
+func set_badge(text: String) -> void:
+	if text == _badge:
+		return
+	_badge = text
+	_apply()
+
+
+func get_badge() -> String:
+	return _badge
+
+
 func set_expanded(expanded: bool) -> void:
 	if expanded == _expanded:
 		return
@@ -65,5 +78,5 @@ func _on_header_toggled(pressed: bool) -> void:
 
 func _apply() -> void:
 	_header.set_pressed_no_signal(_expanded)
-	_header.text = "%s  %s" % ["▾" if _expanded else "▸", _title]
+	_header.text = "%s  %s%s" % ["▾" if _expanded else "▸", _title, ("  ·  " + _badge) if not _badge.is_empty() else ""]
 	content.visible = _expanded

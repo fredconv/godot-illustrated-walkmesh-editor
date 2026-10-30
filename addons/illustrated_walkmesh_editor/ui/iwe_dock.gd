@@ -8,6 +8,7 @@ const SCALE_ANCHOR_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/d
 const LAYER_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_layer.gd")
 const CALIBRATION_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/data/iwe_perspective_calibration.gd")
 const SCENE_GENERATOR := preload("res://addons/illustrated_walkmesh_editor/data/iwe_scene_generator.gd")
+const CANVAS_SCRIPT := preload("res://addons/illustrated_walkmesh_editor/ui/iwe_canvas.gd")
 
 @onready var _import_button: Button = %ImportButton
 @onready var _create_group_button: Button = %CreateGroupButton
@@ -264,6 +265,7 @@ func _ready() -> void:
 		_selected_group_id = _document.groups[0].id
 	_sync_selection("")
 	_refresh_group_options()
+	_apply_tooltips()
 	_refresh_status()
 
 
@@ -2290,6 +2292,7 @@ func _sync_points_mode(enabled: bool) -> void:
 
 
 func _refresh_status() -> void:
+	_refresh_section_badges()
 	if _perspective_mode:
 		_status_label.text = "Perspective calibration  •  Click the preview to place a height reference; adjust FOV, camera and floor controls."
 		if _document != null and _document.perspective_calibration != null:
@@ -2297,6 +2300,10 @@ func _refresh_status() -> void:
 			var game_window := CALIBRATION_SCRIPT.project_viewport_size()
 			if not CALIBRATION_SCRIPT.aspects_match(reference, game_window):
 				_status_label.text += "  •  Reference frame %d×%d differs in shape from the game window %d×%d" % [reference.x, reference.y, game_window.x, game_window.y]
+		return
+	var tool_hint := _tool_hint()
+	if not tool_hint.is_empty():
+		_status_label.text = tool_hint
 		return
 	var mode := "Select"
 	if _template_mode_button.button_pressed:
@@ -2309,11 +2316,11 @@ func _refresh_status() -> void:
 		mode = "Boolean −"
 	elif _add_point_button.button_pressed:
 		mode = "Add point"
-	elif _canvas.get_action_tool() == IWECanvas.ACTION_TOOL_ZONE_DRAW:
+	elif _canvas.get_action_tool() == CANVAS_SCRIPT.ACTION_TOOL_ZONE_DRAW:
 		mode = "Action zone"
-	elif _canvas.get_action_tool() == IWECanvas.ACTION_TOOL_ZONE_SELECT:
+	elif _canvas.get_action_tool() == CANVAS_SCRIPT.ACTION_TOOL_ZONE_SELECT:
 		mode = "Select zone"
-	elif _canvas.get_action_tool() == IWECanvas.ACTION_TOOL_ENTRY:
+	elif _canvas.get_action_tool() == CANVAS_SCRIPT.ACTION_TOOL_ENTRY:
 		mode = "Entry point"
 	var region: IWERegion = _canvas.get_selected_region()
 	if region:
@@ -2535,9 +2542,9 @@ func _is_asset_beside_document(asset_path: String, target_document_path: String 
 
 func _build_action_ui() -> void:
 	_action_panel = IWEActionPanel.new()
-	_action_panel.draw_zone_toggled.connect(func(enabled: bool) -> void: _set_action_tool(IWECanvas.ACTION_TOOL_ZONE_DRAW if enabled else ""))
-	_action_panel.select_zone_toggled.connect(func(enabled: bool) -> void: _set_action_tool(IWECanvas.ACTION_TOOL_ZONE_SELECT if enabled else ""))
-	_action_panel.place_entry_toggled.connect(func(enabled: bool) -> void: _set_action_tool(IWECanvas.ACTION_TOOL_ENTRY if enabled else ""))
+	_action_panel.draw_zone_toggled.connect(func(enabled: bool) -> void: _set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ZONE_DRAW if enabled else ""))
+	_action_panel.select_zone_toggled.connect(func(enabled: bool) -> void: _set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ZONE_SELECT if enabled else ""))
+	_action_panel.place_entry_toggled.connect(func(enabled: bool) -> void: _set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ENTRY if enabled else ""))
 	_action_panel.remove_requested.connect(_remove_action_item)
 	_action_panel.zone_property_requested.connect(_set_zone_property)
 	_action_panel.entry_property_requested.connect(_set_entry_property)
@@ -2556,12 +2563,109 @@ func _build_action_ui() -> void:
 ## Turns one of the action tools on (or all of them off with ""). The region tools are released.
 func _set_action_tool(tool_name: String) -> void:
 	_stop_tools()
+	if not tool_name.is_empty() and not _has_illustration:
+		_action_panel.set_tool_pressed("")
+		_status_label.text = "Import an illustration before drawing zones or placing entry points."
+		return
 	if not tool_name.is_empty():
 		if _perspective_mode:
 			_set_perspective_mode(false)
 		_canvas.set_action_tool(tool_name)
 	_action_panel.set_tool_pressed(tool_name)
 	_refresh_status()
+
+
+## One line of help for the tool that is active, empty when none needs it.
+func _tool_hint() -> String:
+	match _canvas.get_action_tool():
+		CANVAS_SCRIPT.ACTION_TOOL_ZONE_DRAW:
+			return "Action zone  •  click the corners on the floor; click the first corner or press Enter to close; Esc cancels"
+		CANVAS_SCRIPT.ACTION_TOOL_ZONE_SELECT:
+			return "Select zone  •  click a zone to select it, drag to move it, Delete removes it"
+		CANVAS_SCRIPT.ACTION_TOOL_ENTRY:
+			return "Entry point  •  click the floor to place one; click a marker to select it, drag to move it, Delete removes it"
+	if _draw_button != null and _draw_button.button_pressed and not _perspective_mode:
+		return "Polygon  •  click the corners; click the first corner or press Enter to close; Esc cancels"
+	return ""
+
+
+## Counts that stay visible when a section is folded.
+func _refresh_section_badges() -> void:
+	if _document == null or _sections.is_empty():
+		return
+	var layers := get_section("Layers and pictures") as IWECollapsibleSection
+	if layers != null:
+		layers.set_badge("%d picture%s" % [_document.visual_elements.size(), "" if _document.visual_elements.size() == 1 else "s"])
+	var regions := get_section("Regions") as IWECollapsibleSection
+	if regions != null:
+		regions.set_badge("%d" % _document.regions.size())
+	var actions := get_section("Action zones and entry points") as IWECollapsibleSection
+	if actions != null:
+		actions.set_badge("%d zone%s, %d entr%s" % [_document.action_zones.size(), "" if _document.action_zones.size() == 1 else "s", _document.entry_points.size(), "y" if _document.entry_points.size() == 1 else "ies"])
+	var references := get_section("Height references") as IWECollapsibleSection
+	if references != null:
+		references.set_badge("%d" % _document.scale_anchors.size())
+
+
+const TOOLTIPS := {
+	"NewButton": "Start a new empty document. Asks first if the current one has unsaved changes.",
+	"SaveButton": "Save the document as a .tres file. The pictures are copied next to it so the folder can be moved.",
+	"OpenButton": "Open an IWE document.",
+	"ImportButton": "Choose the illustration to build on (PNG, JPG or WebP). Importing another one later replaces the picture and keeps your shapes.",
+	"CreateGroupButton": "Create a group of regions. A group is needed before you can draw a polygon.",
+	"GroupOption": "The group the next polygon is added to.",
+	"ZoomOutButton": "Zoom out (the mouse wheel does the same).",
+	"ZoomInButton": "Zoom in (the mouse wheel does the same).",
+	"UndoButton": "Undo the last change (Ctrl+Z).",
+	"RedoButton": "Redo (Ctrl+Shift+Z or Ctrl+Y).",
+	"PerspectiveButton": "Show the calibrated 3D view of the floor instead of the flat illustration, with the camera settings.",
+	"RenameRegionButton": "Rename the selected region.",
+	"RenameGroupButton": "Rename the selected group.",
+	"RenameCutoutButton": "Rename the selected cutout.",
+	"DuplicateButton": "Duplicate the selected region with its cutouts.",
+	"DeleteButton": "Delete the selected region. Undo brings it back where it was.",
+	"VisibilityButton": "Hide or show the selected region. A hidden region is not exported.",
+	"SelectButton": "Click a region to select it; drag it to move it.",
+	"DrawButton": "Click the corners of a walkable zone; click the first corner or press Enter to close it; Esc cancels.",
+	"PointsButton": "Drag the corners of the selected region.",
+	"SubtractButton": "Draw a cutout (a hole: a rock, a pond) in the selected region.",
+	"AddPointButton": "Click an edge of the selected region to add a corner.",
+	"RemovePointButton": "Remove the selected corner (Delete does the same).",
+	"DeleteTemplateButton": "Delete the selected height reference.",
+	"CameraFovInput": "Vertical field of view of the game camera, in degrees.",
+	"FloorHeightInput": "Height of the floor plane, in world units.",
+	"CharacterHeightInput": "Height of a character standing on the floor, in illustration units. The camera fit uses it, and a character of your own should have this height times the export scale.",
+	"ReferenceViewportWidthInput": "Width of the frame the projection is calibrated for. Only the shape of the frame matters.",
+	"ReferenceViewportHeightInput": "Height of the frame the projection is calibrated for. Only the shape of the frame matters.",
+	"CameraPositionXInput": "Camera position, X (world units).",
+	"CameraPositionYInput": "Camera position, Y: its height (world units).",
+	"CameraPositionZInput": "Camera position, Z (world units).",
+	"CameraRotationXInput": "Camera pitch, in degrees (negative looks down).",
+	"CameraRotationYInput": "Camera yaw, in degrees.",
+	"CameraRotationZInput": "Camera roll, in degrees.",
+	"PerspectiveTopViewButton": "Look at the floor from above instead of through the game camera.",
+	"FitFromReferencesButton": "Solve the camera so that characters of the height references look the right size. Needs two references at different depths.",
+	"AddPlayerInput": "Put a test character in the exported scene. The dock's own test walk is separate.",
+	"ExportPerspectiveButton": "Write the calibrated 3D scene: floor, navigation, walls, camera, action zones and entry points.",
+	"Export2DButton": "Write a flat 2D scene: the illustration and the walkable navigation.",
+	"Export3DButton": "Write a flat 3D stage: the illustration on a plane with the navigation.",
+}
+
+
+## Gives every control a short explanation unless it already has one.
+func _apply_tooltips() -> void:
+	if _base_speed_input != null:
+		_base_speed_input.tooltip_text = "Walking speed of the preview character, in world units per second. It is the same at every depth: the perspective makes it look slower far away."
+	if _pause_button != null:
+		_pause_button.tooltip_text = "Freeze the preview character; press again to continue the same walk."
+	if _reset_walker_button != null:
+		_reset_walker_button.tooltip_text = "Put the preview character back at its start and cancel its walk."
+	for button in _speed_buttons:
+		button.tooltip_text = "Multiply the preview character's speed by %s. It can be changed while it walks. Only the editor preview is affected; nothing is saved or exported." % button.text.trim_prefix("×")
+	for node_name in TOOLTIPS:
+		var control := find_child(node_name, true, false) as Control
+		if control != null and control.tooltip_text.is_empty():
+			control.tooltip_text = TOOLTIPS[node_name]
 
 
 func _refresh_actions() -> void:
