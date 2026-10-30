@@ -936,6 +936,7 @@ func _export_scene(path: String) -> void:
 	if not absolute_path.replace("\\", "/").to_lower().begins_with(absolute_project.to_lower()):
 		push_error("IWE: Export the scene inside this Godot project so its resources remain portable.")
 		return
+	await _ensure_pictures_imported()
 	var texture := _texture_for_export(_pending_image_source)
 	if texture == null:
 		push_error("IWE: The source illustration could not be loaded for scene export.")
@@ -1435,7 +1436,10 @@ static func _same_value(first: Variant, second: Variant) -> bool:
 
 func _set_layer_property(layer_id: String, property: String, value: Variant) -> void:
 	var layer: IWELayer = _document.find_layer(layer_id) if _document != null else null
-	if layer == null or (layer.locked and property != "locked"):
+	if layer == null:
+		return
+	if layer.locked and property != "locked":
+		_refresh_layers()
 		return
 	var previous: Variant = layer.get(property)
 	if _same_value(previous, value):
@@ -1461,6 +1465,8 @@ func _set_element_property(element_id: String, property: String, value: Variant)
 		return
 	var layer: IWELayer = _document.find_layer(element.layer_id)
 	if layer != null and layer.locked:
+		# The field still shows what was typed: put the panel back on the real values.
+		_refresh_layers()
 		return
 	if property == "layer_id" and _document.find_layer(value) == null:
 		return
@@ -1522,8 +1528,15 @@ func _element_source_path(element: IWEVisualElement, document_path: String = "")
 	return _resolve_document_asset_path(element.texture_path, base)
 
 
-func _element_is_beside_document(element: IWEVisualElement) -> bool:
-	return element.texture_path.begins_with("assets/elements/")
+## Whether the picture of an element is already where a document saved in document_folder looks for
+## it. A relative path is only a promise: after Save As into another folder the file is not there.
+func _element_is_beside_document(element: IWEVisualElement, document_folder: String) -> bool:
+	if not element.texture_path.begins_with("assets/elements/"):
+		return false
+	var beside := document_folder.path_join(element.texture_path)
+	if beside.begins_with("res://") or beside.begins_with("user://"):
+		beside = ProjectSettings.globalize_path(beside)
+	return FileAccess.file_exists(beside)
 
 
 ## Copies the pictures of the elements next to the document (assets/elements/<hash>.<ext>), once each,
@@ -1531,9 +1544,11 @@ func _element_is_beside_document(element: IWEVisualElement) -> bool:
 ## and reports the problem when a copy fails.
 func _copy_elements_into_document(document_folder: String) -> bool:
 	for element in _document.visual_elements:
-		if _element_is_beside_document(element):
+		if _element_is_beside_document(element, document_folder):
 			continue
-		var source: String = element.texture_path
+		# The source is where the element is found now: next to the document as it was opened or last
+		# saved (document_path is only updated after this copy), or its absolute path before a first save.
+		var source: String = _element_source_path(element)
 		if source.begins_with("res://") or source.begins_with("user://"):
 			source = ProjectSettings.globalize_path(source)
 		if not FileAccess.file_exists(source):
@@ -1985,6 +2000,8 @@ func _show_name_dialog(title: String, prompt: String, initial_name: String, on_c
 	input.name = "NameInput"
 	input.text = initial_name
 	dialog.add_child(input)
+	# Enter in the field confirms, like the OK button.
+	dialog.register_text_enter(input)
 	_active_name_dialog = dialog
 	_active_name_input = input
 	add_child(dialog)
@@ -2086,6 +2103,39 @@ func _resolve_document_asset_path(asset_path: String, document_path: String) -> 
 		return ProjectSettings.localize_path(asset_path)
 	var resolved := document_path.get_base_dir().path_join(asset_path)
 	return ProjectSettings.localize_path(resolved) if resolved.is_absolute_path() else resolved
+
+
+## In the editor, a picture that was just copied into the project (a save does that) is unknown to
+## the editor until it scans the folder, and an unknown picture is embedded in the exported scene
+## pixel by pixel (14 MB for the village). Ask for a scan and wait for it, then import what is still
+## missing. Outside the editor this returns at once. Seen in the real editor on 2026-10-30.
+func _ensure_pictures_imported() -> void:
+	if not Engine.is_editor_hint():
+		return
+	var sources: Array[String] = [_pending_image_source]
+	if _document != null:
+		for element in _document.visual_elements:
+			sources.append(_element_source_path(element))
+	var missing: Array[String] = []
+	for source in sources:
+		var path := ProjectSettings.localize_path(source) if source.is_absolute_path() else source
+		if path.begins_with("res://") and FileAccess.file_exists(path) and not ResourceLoader.exists(path):
+			missing.append(path)
+	if missing.is_empty():
+		return
+	var filesystem := EditorInterface.get_resource_filesystem()
+	filesystem.scan()
+	var waited := 0
+	await get_tree().process_frame
+	while filesystem.is_scanning() and waited < 900:
+		await get_tree().process_frame
+		waited += 1
+	var still_missing := PackedStringArray()
+	for path in missing:
+		if not ResourceLoader.exists(path):
+			still_missing.append(path)
+	if not still_missing.is_empty():
+		filesystem.reimport_files(still_missing)
 
 
 ## The picture for an exported scene. A picture inside the project is referenced by its path, so

@@ -103,3 +103,23 @@ func test_exports_of_the_flat_scenes_are_small_too() -> void:
 		var size := FileAccess.open(PROJECT_EXPORT, FileAccess.READ).get_length()
 		assert_int(size).override_failure_message("%dD scene is %d bytes" % [dimension, size]).is_less(1000000)
 	dock.queue_free()
+
+
+func test_save_as_into_another_folder_brings_the_pictures_of_the_layers_too() -> void:
+	# Found in the real editor (M12): Save As kept the relative path of a picture and never copied the file.
+	var dock := await _dock_with_picture()
+	var picture := ProjectSettings.globalize_path(VILLAGE.FOREGROUND)
+	var element: IWEVisualElement = dock.import_element(picture)
+	dock._save_document(WORK_FOLDER.path_join("first").path_join("village.tres"))
+	var stored: String = element.texture_path
+	assert_str(stored).starts_with("assets/elements/")
+	dock._save_document(WORK_FOLDER.path_join("second").path_join("village.tres"))
+	assert_str(element.texture_path).is_equal(stored)
+	assert_bool(FileAccess.file_exists(WORK_FOLDER.path_join("second").path_join(stored))).override_failure_message("the second folder has its own copy").is_true()
+	assert_bool(FileAccess.file_exists(WORK_FOLDER.path_join("first").path_join(stored))).is_true()
+	dock.queue_free()
+	await get_tree().process_frame
+	var reopened: Control = await VILLAGE.new_dock(get_tree())
+	reopened._open_document(WORK_FOLDER.path_join("second").path_join("village.tres"))
+	assert_int(reopened._element_textures.size()).override_failure_message("the picture loads from the second folder").is_equal(1)
+	reopened.queue_free()

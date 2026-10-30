@@ -48,3 +48,6 @@ secrets.*
 
 # Local notes for the AI assistant (machine-specific paths); kept out of the repository
 /MCP-CONNECTIONS-FOR-CLAUDE.md
+
+# Output of the Playwright MCP server (page snapshots)
+/.playwright-mcp/

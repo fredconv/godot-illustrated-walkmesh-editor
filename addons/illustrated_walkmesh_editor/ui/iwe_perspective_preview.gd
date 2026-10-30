@@ -29,6 +29,11 @@ var _speed_multiplier := 1.0
 ## Zero keeps the character's own base speed.
 var _base_speed := 0.0
 var _paused := false
+## A plain Control between the aspect frame and this container. A SubViewportContainer that does not
+## stretch reports its viewport size as its minimum size, which made the dock as wide as the frame
+## being shown (1152 px) and pushed the toolbar and the sidebar out of view. A plain Control reports
+## only its own small minimum, whatever its children are.
+var _holder: Control
 
 
 func _ready() -> void:
@@ -45,6 +50,27 @@ func _ready() -> void:
 	add_child(_viewport)
 	resized.connect(_sync_viewport_size)
 	visibility_changed.connect(_sync_viewport_size, CONNECT_DEFERRED)
+	_wrap_in_holder.call_deferred()
+
+
+func _wrap_in_holder() -> void:
+	var frame := get_parent() as AspectRatioContainer
+	if frame == null or _holder != null:
+		return
+	_holder = Control.new()
+	_holder.name = "PreviewHolder"
+	_holder.clip_contents = true
+	_holder.custom_minimum_size = Vector2(MIN_USABLE_SIZE * 2, MIN_USABLE_SIZE * 2)
+	_holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var index := get_index()
+	frame.remove_child(self)
+	_holder.add_child(self)
+	frame.add_child(_holder)
+	frame.move_child(_holder, index)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_holder.resized.connect(_sync_viewport_size)
+	_sync_viewport_size()
 
 
 ## Stretch sizing is not reliable once the container has been hidden (its SubViewport can be
@@ -53,7 +79,8 @@ func _ready() -> void:
 func _sync_viewport_size() -> void:
 	if not is_instance_valid(_viewport) or not is_visible_in_tree():
 		return
-	var target := Vector2i(roundi(size.x), roundi(size.y))
+	var area := _holder.size if is_instance_valid(_holder) else size
+	var target := Vector2i(roundi(area.x), roundi(area.y))
 	if target.x < MIN_USABLE_SIZE or target.y < MIN_USABLE_SIZE or target == _viewport.size:
 		return
 	_viewport.size = target
@@ -174,7 +201,7 @@ func walk_to_image_point(image_position: Vector2) -> bool:
 ## The parent keeps this panel at the reference aspect ratio, so the render matches the
 ## calibrated frame whatever the dock looks like.
 func _apply_reference_aspect() -> void:
-	var frame := get_parent() as AspectRatioContainer
+	var frame := (_holder.get_parent() if is_instance_valid(_holder) else get_parent()) as AspectRatioContainer
 	if frame != null and _reference_size.y > 0:
 		frame.ratio = float(_reference_size.x) / float(_reference_size.y)
 

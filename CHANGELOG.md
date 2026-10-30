@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed (found by the first pass in the real editor, M12)
+- Turning Perspective on no longer makes the dock as wide as the frame being shown (about 1152 px), which pushed the toolbar and the sidebar out of view in a narrow dock.
+- A scene exported right after a save no longer embeds the pictures (14.8 MB): the export asks the editor to scan and import the files it has just copied, and references them (115 KB).
+- Save As into another folder now copies the pictures of the layers too. Before, the new folder kept a path to a file that was not there.
+- Enter confirms the name dialogs.
+- After an edit refused by a locked layer, the picture fields show the real values again.
+
 ### Added
 - `Merge with…` merges the selected region with another into one polygon (union), undoable. A cutout of one region survives only where the other region does not cover it. Regions that neither touch nor overlap, a union that would leave a hole, and a cutout that surrounds the other region are refused with a message.
 - Layers, transparent pictures and foreground occlusion. Every document has a Background and a Foreground layer; `Add image…` places a transparent PNG or WebP on a layer, with a position, a scale, an opacity and a ground point. A picture is drawn behind the character, in front of it, or by depth: the character is hidden behind it when it stands farther from the camera than the ground point and drawn in front when nearer (it walks behind the foreground fountain, then in front of it). Layers can be added, renamed, hidden, locked, faded and removed, all with undo. Pictures are copied once to `assets/elements/` at save. The perspective and 2D exports include them; they never create navigation or collision. **The document format is now version 2.** A version 1 file opens as before and is migrated in memory; it changes on disk only when you save, and a version 1 plugin cannot open a version 2 file.

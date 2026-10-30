@@ -172,3 +172,46 @@ func test_validation_writes_no_file_and_changes_nothing() -> void:
 	assert_str(var_to_str([dock._document.regions, dock._document.scale_anchors, dock._document.layers])).is_equal(before)
 	assert_bool(dock.is_dirty()).is_equal(dirty_before)
 	dock.queue_free()
+
+
+func test_the_perspective_preview_never_decides_the_width_of_the_dock() -> void:
+	# Found in the real editor (M12): turning Perspective on made the dock as wide as the frame being
+	# shown (1152 px), which pushed the toolbar and the sidebar out of view in a narrow dock.
+	var dock := await _dock()
+	VILLAGE.import_background(dock)
+	dock._create_group_named("Paths")
+	dock._canvas.scale_anchor_created.emit(Vector2(300, 900), 200.0)
+	dock._canvas.scale_anchor_created.emit(Vector2(1000, 500), 76.9)
+	dock._fit_camera_to_references()
+	var before := dock.get_combined_minimum_size().x
+	dock._set_perspective_mode(true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var after := dock.get_combined_minimum_size().x
+	assert_float(after).override_failure_message("minimum width %.0f px with Perspective on, %.0f px before" % [after, before]).is_less(before + 150.0)
+	assert_float(after).is_less(700.0)
+	dock.queue_free()
+
+
+func test_enter_in_the_name_dialog_confirms_it() -> void:
+	# Found in the real editor (M12): Enter did nothing, only the OK button confirmed.
+	var dock := await _dock()
+	var received := []
+	dock._show_name_dialog("Name", "Enter a name", "Initial", func(value: String) -> void: received.append(value))
+	dock._active_name_input.text = "Typed"
+	dock._active_name_input.text_submitted.emit("Typed")
+	assert_array(received).is_equal(["Typed"])
+	dock.queue_free()
+
+
+func test_a_refused_edit_on_a_locked_layer_puts_the_fields_back() -> void:
+	# Found in the real editor (M12): the position field kept the rejected value.
+	var dock := await _dock()
+	VILLAGE.import_background(dock)
+	var element: IWEVisualElement = dock.import_element(ProjectSettings.globalize_path(VILLAGE.FOREGROUND))
+	dock._set_layer_property(IWELayer.FOREGROUND_ID, "locked", true)
+	dock._layer_panel.select("element", element.id)
+	dock._layer_panel._element_x.value = 50.0
+	assert_vector(element.position).is_equal(Vector2.ZERO)
+	assert_float(dock._layer_panel._element_x.value).override_failure_message("the field shows the real position again").is_equal(0.0)
+	dock.queue_free()
