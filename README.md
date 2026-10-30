@@ -14,7 +14,17 @@
 
 Illustrated Walkmesh Editor is a Godot 4 editor plugin that turns a painted background into an authored, playable 2.5D space. You draw the walkable areas directly over the illustration, carve out obstacles, calibrate the perspective with character references, and export a Godot scene with navigation and collision that a character can use.
 
-![Perspective demo: walkable zones, cutouts, and a test character on a calibrated stage](assets/screenshots/perspective_demo.png)
+![The Creation tab with the village example open: layers and pictures, regions with their cutouts, and the illustration with the walkable zones](assets/screenshots/dock_creation.png)
+
+![The Test tab: the test character walking in the perspective preview, speed controls, export and validation](assets/screenshots/dock_test.png)
+
+The character is hidden behind the foreground fountain when it stands farther from the camera, and drawn in front of it when nearer (renders of the exported stage):
+
+| Behind the fountain | In front of the fountain |
+|---|---|
+| ![The character is hidden behind the fountain](assets/screenshots/occlusion_behind.png) | ![The character is drawn in front of the fountain](assets/screenshots/occlusion_front.png) |
+
+The screenshots are made from the plugin itself with the village example (`pwsh tests/render_check/readme_shots.ps1`).
 
 ## Documentation
 
@@ -40,7 +50,7 @@ Implemented, covered by automated tests, and exercised in the real Godot 4.7.1 e
 - **Scene export.** Export a standalone 2D scene or a flat 3D stage. Each export contains one navigation region per walkable zone. The 3D stage nests them under their groups.
 - **Save and reopen.** Save an IWE document as a `.tres` file. The illustration is copied next to it, and reopening restores regions, cutouts, and templates.
 - **Floating window.** Open the illustration editor in a large separate window.
-- **Layers and pictures.** A Background and a Foreground layer; place transparent PNG or WebP pictures on them (position, scale, opacity, ground point), hide, lock or fade a layer, with undo. A picture can be drawn behind the character, in front of it, or by depth, so the character walks behind a fountain and in front of it. Pictures never block walking. The perspective and 2D exports include them. The picture is positioned by typing numbers; there is no mouse dragging yet.
+- **Layers and pictures.** A Background and a Foreground layer; place transparent PNG or WebP pictures on them (position, scale, opacity, ground point), hide, lock or fade a layer, with undo. A picture can be drawn behind the character, in front of it, or by depth, so the character walks behind a fountain and in front of it. Pictures never block walking. The perspective and 2D exports include them. In V1 a picture is prepared beforehand at the resolution and framing you want (add transparent pixels around it so it lines up with the background); position, scale, opacity and ground point can be corrected by typing numbers. Moving and resizing it with the mouse is planned for V2.
 - **Dock in two tabs.** *Creation* (layers, regions, tools, references, camera) and *Test* (test character, export, validation), with foldable sections.
 
 ### Experimental
@@ -56,7 +66,7 @@ Implemented, tested headless and tried in the real editor, but newer and less pr
 
 - A picture occludes the character at one depth (its ground point). That suits a fountain or a house, not a long railing seen at an angle.
 - A doorway narrower than the character is reported when you export but the character cannot walk through it (it is wider than the gap).
-- Pictures are positioned by typing numbers, and there is no lock button for a region yet.
+- A layer picture is prepared beforehand to line up with the background (V1); there is no mouse moving or resizing of pictures until V2. Numbers can be typed for small corrections. There is no lock button for a region yet.
 - In a dock narrower than about 400 px the perspective preview is small.
 - Close Godot or disable the plugin with unsaved changes: IWE asks, or writes a recovery copy to `user://iwe_recovery/`.
 
@@ -67,7 +77,8 @@ Not implemented. Do not rely on these yet.
 - Intersection and XOR operations. (Union is available as `Merge with…`.)
 - Explicit connections between regions (bridges with a width and a direction).
 - Region types: connection, collision only, special.
-- Nested layers, layer ordering, rotation, pivot and flip of pictures, mouse dragging of pictures.
+- V2: select, move and resize layer pictures with the mouse (with handles, undo and redo, numeric fields, an optional lock), mainly to adjust occlusion pieces such as a fountain or a bridge railing.
+- Nested layers, layer ordering, rotation, pivot and flip of pictures.
 - Parallax. An occlusion study is in `prototypes/occlusion/`.
 - Nested groups and assisted calibration.
 
@@ -77,7 +88,7 @@ Open `examples/perspective_calibration_demo.tscn` to see a ready-made perspectiv
 
 ## Installation
 
-IWE is pre-release. The Asset Library is not available yet. Download `illustrated_walkmesh_editor-0.1.0-alpha.1.zip` from the GitHub release (it holds only the addon and the licence), or take the folder from the repository.
+IWE is pre-release. The Asset Library is not available yet. Download `illustrated_walkmesh_editor-0.1.0-alpha.2.zip` from the GitHub release (it holds only the addon and the licence), or take the folder from the repository.
 
 1. Unzip into your project, or copy the `addons/illustrated_walkmesh_editor/` folder into the `addons/` folder of your Godot 4.7 project. Create `addons/` if it does not exist.
 2. Open the project in Godot 4.7.
@@ -109,7 +120,7 @@ Third-party addons used during development are not part of this repository. UniB
 
 ## Status
 
-Pre-release (`0.1.0-alpha.1`). Expect breaking changes to the saved document format until a stable version is announced. Do not use it for production data without keeping a backup.
+Pre-release (`0.1.0-alpha.2`). Expect breaking changes to the saved document format until a stable version is announced. Do not use it for production data without keeping a backup.
 
 ## About the Project & AI-Assisted Development
 

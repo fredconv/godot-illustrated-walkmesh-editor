@@ -1,6 +1,6 @@
-# Release checklist for `0.1.0-alpha.1`
+# Release checklist for `0.1.0-alpha.1` and `0.1.0-alpha.2`
 
-State on 2026-10-30: the version is `0.1.0-alpha.1`, the addon-only package was tested in an empty project, and the release steps at the bottom are done in the order listed there. Items that were not performed stay unticked and say why.
+State on 2026-10-30: `0.1.0-alpha.1` is published (tag `v0.1.0-alpha.1`, left as it is). A defect found afterwards changed the addon, so `0.1.0-alpha.2` is prepared in the follow-up pull request (see "Release `0.1.0-alpha.2`" at the bottom). The addon-only package was tested in an empty project for both. Items that were not performed stay unticked and say why.
 
 ## Before the release (owner decisions)
 
@@ -20,8 +20,8 @@ Run on 2026-10-30 in the real Godot 4.7.1 editor, with real mouse and keyboard e
 - [~] Fit camera clicked: residuals shown (-82.6% / -38.1% before the fit, -9.1% / +9.1% after, with the warning), status line updated. Not performed: changing the field of view, reading the horizon line (it is above the picture in this scene).
 - [~] Test walk on; click-to-move in the preview (two destinations); x10 button; Pause (the character stayed put, the button read Resume), Resume (it walked on), Reset position (back at its start). Second pass: the x2, x5 and x1 buttons (effective speed 4.5, 11.3 and then 4.0 after typing a base speed of 4) and the base speed field. Not performed: the presets during a walk, arrow keys while editing.
 - [~] Perspective export from the real dialog, twice. First run: 14.8 MB with the pictures embedded (bug, fixed). After the fix: 115 KB, both pictures referenced, no warning. The exported scene with a player was run from the editor, and click-to-move was sent into the running game. Second pass: 2D export (3.2 KB, three navigation regions, the pictures node) and 3D export (7.7 KB, three navigation regions) from the real dialog; a path typed for a folder that did not exist yet exposed a defect (fixed). Not performed: a zone above the horizon.
-- [~] Plugin unloaded with a modified document (disable then enable): a recovery copy was written, with its warning in the Output panel, and it loaded with the two groups, two regions and the picture. Not performed: closing Godot (the quit dialog): the permission layer of the session refused a click on the editor's close button as interference with the user's running work, and that was respected. This item needs a human.
-- [~] Dock resized by dragging the splitter to about 590 px and about 375 px, in perspective mode: see "Narrow dock" in the results. Second pass: the Window button opened the floating illustration window and its close button gave the canvas back to the dock. Not performed: undocking the dock itself.
+- [~] Plugin unloaded with a modified document (disable then enable): a recovery copy was written, with its warning in the Output panel, and it loaded with the two groups, two regions and the picture. Third pass (below): the quit dialog was driven in a separate, isolated editor.
+- [~] Dock resized by dragging the splitter to about 590 px and about 375 px, in perspective mode: see "Narrow dock" in the results. Second pass: the Window button opened the floating illustration window and its close button gave the canvas back to the dock. Third pass: the dock tab's context menu offers Make Floating, but it is disabled while the editor setting Single Window Mode is on (Godot's own message: "Multi-window support is not available because Interface > Editor > Single Window Mode is enabled in the editor settings"). The setting is global to the owner's editor, so it was not changed and the dock itself was not undocked.
 - [x] Open a file saved with version 3: with unsaved changes the Save / Cancel / Discard Changes question came first (Discard chosen), then the status line said "saved with format version 3, but this plugin only understands up to version 2... The file was not changed"; the open document stayed as it was and the file's checksum was identical before and after.
 - [~] Merge with… menu clicked, "Region 1" chosen: merged into one polygon, then Undo gave both regions back. Second pass: a merge of two regions that do not touch was refused with its message, a real merge was done, then Undo and Redo through the toolbar buttons.
 - [~] Add image… with the real file dialog (foreground_template.png), ground point typed (815, 590), layer hidden then shown, layer opacity 0.4 then 1, layer locked (the picture fields were disabled and a typed position was refused). Second pass: the Drawn selector (Behind, then In front; two Undo clicks returned to By depth).
@@ -49,28 +49,29 @@ Method: Windows MCP for clicks, drags, scrolling and typing into the real dialog
 
 Evidence kept out of the repository (large screenshots of the dock and of the running game): they show the dock tabs, the folded section, the narrow layout, the fountain hiding and showing the character. No unrelated window was recorded, except that one Windows MCP window list taken at the start of the session also listed the titles and content of other applications; none of it is kept.
 
-## Third pass (2026-10-30): what was not repeated and why
+## Third pass (2026-10-30): isolated editor
 
-The owner was using the machine (Windows MCP `ControlStatus` read `user`), so no window was clicked in this pass. The items still marked `[~]` or `[ ]` above stay as they are:
+The owner's own editor was never touched. A separate editor was started on a temporary copy of the project (the addon, the village example and its pictures), its window was moved to a third display with `SetWindowPos`, and Windows MCP clicks and typing went only into that window (`ControlStatus` was `ai` before each batch; when it read `user` the work waited). Screenshots were limited to that window's region, except one full-screen capture taken before the window was moved, which was discarded. The temporary project was deleted afterwards.
 
-- Closing Godot with a modified document, and undocking the dock itself, need a person (the first was refused by the permission layer, the second was not tried).
-- A zone touching half an edge, changing the field of view, and a zone above the horizon at export are covered by headless tests (`test_walkable_connections`, `test_perspective_*`, `test_export_warnings`, `test_fit_report`), not by hand.
-- Arrow keys while editing and the speed presets during a walk were not tried by hand. The presets during a walk are covered headless (`test_preview_walk`).
+- **Real quit dialog, performed.** The village example was opened through the plugin's real `Open` file dialog (4 regions, 2 cutouts, the foreground picture, document clean). `Duplicate region` made it `village *`. A click on the editor window's close button showed Godot's dialog: "Please Confirm... IWE document "village" has unsaved changes." with `Save & Quit`, `Cancel` and `Don't Save`. `Cancel` kept the editor open, the document modified and the file untouched. A second close and `Save & Quit` wrote `village.tres` in place (it then contained "Region 3 Copy"; modification time changed) and the editor exited. `Don't Save` and the never-saved document (recovery copy) were not clicked in the GUI; the recovery path was observed when an editor ended with a modified document (a recovery copy was written for both a never-saved and a saved-with-changes document, and the saved file stayed untouched), and both paths are covered by `test_unsaved_changes`.
+- **Deleting a region and undoing it, performed after a defect was found and fixed.** Reading the code showed that Undo of a deletion put the region back at the end of the list, which changes which zone keeps shared ground and the export order. Fixed (`_insert_region` at its old index) with `test_region_order` (it fails without the fix). In the real editor: `Region 1` deleted, Undo, `Region 1` first again; after Save & Quit the saved order was Region 1, 2, 3, 4, 3 Copy.
+- **Undocking the dock: not possible in this configuration** (see the dock item above).
+- **Not performed by hand** (covered headless only): a zone touching half an edge, changing the field of view, a zone above the horizon at export, arrow keys while editing, the speed presets during a walk, the other foldable sections.
 
 ## Remaining limits (accepted for an alpha)
 
 - A picture occludes at one depth (its ground point).
 - A doorway narrower than the character is reported at export but cannot be crossed.
-- Pictures are positioned by typing; there is no region lock button or properties block.
+- Layer pictures are prepared beforehand in V1 (same canvas as the background, transparent pixels around the object); moving and resizing them with the mouse is V2 by the owner's decision of 2026-10-30. The numeric fields remain. There is no region lock button or properties block.
 - The preview is small in a dock narrower than about 400 px.
-- Closing Godot with a modified document was never driven by hand.
+- Godot's Single Window Mode (an editor setting) disables Make Floating, so the dock cannot be undocked while it is on. The quit dialog was driven in the real editor (Cancel and Save & Quit); Don't Save and the never-saved document were not clicked.
 - Region types, explicit connections, structural clean-up (M6, M11) and triggers are not in this release.
 
 ## Checked without a mouse
 
 Done in this work and reproducible, but not a substitute for the list above:
 
-- 302 headless GdUnit4 tests, including dock operations driven through the same signals the canvas emits.
+- 304 headless GdUnit4 tests, including dock operations driven through the same signals the canvas emits.
 - `tests/editor_selftest/run.ps1`: the dock and the test walk inside the real Godot editor runtime (headless editor).
 - `tests/render_check/run.ps1`: a real GPU render of the village stage. The character is hidden behind the foreground fountain (1 matching pixel) and shown in front of it (2,725 pixels).
 - A real render of the dock itself in a window, read by eye: the two tabs, the foldable sections, the layer panel, the speed controls. No click was made.
@@ -82,12 +83,22 @@ These were the only checks available before M12, when the Godot MCP and Windows 
 - [x] `version` in `addons/illustrated_walkmesh_editor/plugin.cfg` is `0.1.0-alpha.1`; the changelog's entries are under that version and date.
 - [x] Addon-only ZIP built with `git archive` (the addon folder, 38 files, and the licence). `tests/release_check/run.ps1` unpacks it into an empty project with nothing else, enables the plugin in the real editor (headless), then imports a picture, draws two regions, adds a layer picture, saves, reopens and exports 2D, 3D and perspective scenes: no editor error, 0 failures. This found one source of noisy errors (a reimport of a file the editor had not listed), fixed.
 - [x] `examples/village/`: a finished document (four zones, two cutouts, two height references, the fountain on the foreground layer) with its pictures, a README and the script that rebuilds it. A test (`test_village_example`) opens it. It is not inside the addon ZIP, which holds only the addon.
-- [~] Every shipped image is one of the three in `assets/img/` (copied into `examples/village/assets/`), recorded in `assets/README.md` as generated with AI tools by the author and free to use. That is the author's own statement; the wording does not name a licence, so the owner may want to state one. No image is inside the addon ZIP.
+- [x] Every shipped image is one of the three in `assets/img/` (copied into `examples/village/assets/`). `assets/README.md` records them as illustrations created or modified by the project owner, with permission to use and redistribute them confirmed by the owner on 2026-10-30. No image is inside the addon ZIP.
 - [ ] New README screenshots were not made: a rendering of the two dock tabs was started and not run (the command was declined). The README keeps `assets/screenshots/perspective_demo.png`.
 - [~] README status, known limits and install text were rewritten against the checklist; stale lines of `ROADMAP.md` and `DATA_FORMAT.md` fixed. The user guide was read through the workflow section and matched; it was not re-read line by line.
 - [x] CI green on the branch before the merge (headless suite, 302 tests).
 
 ## Release
 
-- [ ] Merge pull request 1 into `develop`, its target branch. `main` is not touched by this.
-- [ ] Tag `v0.1.0-alpha.1` on the merge commit and publish a GitHub pre-release with `illustrated_walkmesh_editor-0.1.0-alpha.1.zip`. The repository has no other publication target (no Asset Library entry, no release workflow).
+- [x] Pull request 1 merged into `develop` (merge commit `6b1331c`, 2026-10-30), CI green on `develop`. `main` is not touched by this.
+- [x] Tag `v0.1.0-alpha.1` on the merge commit and GitHub pre-release published with `illustrated_walkmesh_editor-0.1.0-alpha.1.zip` (77,428 bytes). The repository has no other publication target (no Asset Library entry, no release workflow). The release and its tag are not replaced by later work: a corrected package gets a new alpha number.
+
+## Release `0.1.0-alpha.2`
+
+Why a new number: Undo of a region deletion put the region back at the end of the list (fixed in `iwe_dock.gd`), so the published addon changed. `v0.1.0-alpha.1` and its release are not replaced.
+
+- [x] `plugin.cfg` version `0.1.0-alpha.2`; changelog entry under that version.
+- [x] Follow-up branch `chore/post-alpha-finalization` and a pull request into `develop`; no direct push to a protected branch.
+- [x] Full headless suite and the packaged-addon smoke test (`tests/release_check/run.ps1`) pass on the branch (numbers in the pull request).
+- [x] CI green on the pull request before the merge.
+- [ ] Merge, tag `v0.1.0-alpha.2`, GitHub pre-release with `illustrated_walkmesh_editor-0.1.0-alpha.2.zip` (see the final report for what was done).

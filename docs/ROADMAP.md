@@ -53,7 +53,7 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 | Item | Status | Notes |
 |---|---|---|
 | Import transparent PNG / WebP | Done | Copied once to `assets/elements/<hash>` at save; missing files are kept and reported |
-| Position, scale, opacity, layer, exact coordinates | Done | Typed in the layer panel, undoable. Rotation, pivot, flip and mouse dragging are not done |
+| Position, scale, opacity, layer, exact coordinates | Done (V1) | Typed in the layer panel, undoable. In V1 a picture is prepared beforehand at the wanted resolution and framing (transparent pixels around it when needed); moving and resizing it in the editor is V2 (see "V2 — Visual editing of layer pictures") |
 | Background and foreground layer kinds | Done | Two default layers; more can be added |
 | Visual elements exported as sibling nodes | Done | 2D sprites; camera-facing quads in the perspective stage; never navigation or collision |
 | Layer visibility, lock, and opacity | Done | A locked layer refuses edits |
@@ -81,6 +81,21 @@ Legend: **Done** — implemented and tested · **Partial** — exists but incomp
 | Speed controls in the dock preview | Done | `Test walk` in the perspective panel: character on the preview floor, base speed, x1/x2/x5/x10, pause/resume, reset; settings are preview-only. Verified headless (13 tests) and in the real editor runtime by `tests/editor_selftest` (no mouse) |
 | Environment-only and navigation-only exports | Todo | |
 | Exports include layers and connections | Todo | After steps 2–5 |
+
+## V2 — Visual editing of layer pictures
+
+Decided on 2026-10-30 ([`DECISIONS.md`](DECISIONS.md)). V1 does not depend on any of this: layer pictures are prepared in advance and aligned with the background by the author.
+
+| Item | Status | Notes |
+|---|---|---|
+| Select a picture on the canvas, with a clear selection | Todo | Outline and handles on the selected picture; selection shared with the layer panel |
+| Move a picture with the mouse | Todo | One undo step per drag |
+| Resize a picture with handles | Todo | Keeps the ground point meaningful; one undo step per drag |
+| Position and scale still settable by number | Todo | The V1 fields stay and follow the mouse edits |
+| Undo and redo of every mouse edit | Todo | Same `IWEDocumentHistory` as the other edits |
+| Lock a picture | Todo | Optional; a locked picture ignores the mouse |
+| Persistence in the document | Todo | Position and scale are already saved; add fields only if needed, with a schema version note |
+| Typical use: adjusting an occlusion piece | Todo | A fountain, a bridge railing |
 
 ## Already completed (earlier phases)
 

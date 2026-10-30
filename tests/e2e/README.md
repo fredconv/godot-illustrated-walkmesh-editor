@@ -10,7 +10,7 @@ A reusable validation case for IWE. It is meant to answer one question after any
 | `assets/img/foreground_template.png` | A fountain on a transparent canvas of the same size, used as the foreground object |
 | `tests/e2e/e2e_village_fountain.tscn` | A plain Godot scene that stacks the two images (foreground above background). Open it to see the composite |
 
-Both images are AI-generated and free to use (see `assets/README.md`).
+Both images are illustrations created or modified by the project owner, with permission to use and redistribute them confirmed by the owner (see `assets/README.md`).
 
 ## What the scenario authors
 

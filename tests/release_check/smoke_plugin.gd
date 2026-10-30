@@ -47,7 +47,8 @@ func _run() -> void:
 	dock.set_document(DOCUMENT_SCRIPT.new())
 	EditorInterface.get_base_control().add_child(dock)
 	await get_tree().process_frame
-	_check("plugin version is 0.1.0-alpha.1", ConfigFile.new().load("res://addons/illustrated_walkmesh_editor/plugin.cfg") == OK)
+	var plugin_config := ConfigFile.new()
+	_check("plugin.cfg loads and names a version", plugin_config.load("res://addons/illustrated_walkmesh_editor/plugin.cfg") == OK and str(plugin_config.get_value("plugin", "version", "")) != "")
 
 	dock._load_illustration(FOLDER + "/background.png")
 	dock._create_group_named("Ground")
