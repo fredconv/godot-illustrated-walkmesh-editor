@@ -180,7 +180,8 @@ The character's behaviour depends on Geometry & Navigation. Rendering decides wh
 - Save and reopen of IWE documents.
 - Touching zones are walkable as one network (headless test).
 - Test character with mouse and keyboard, walls, path following.
-- Automated test suite: 141 headless GdUnit4 tests passing.
+- Action zones, entry points and scene travel (section 3.9.1), a character of the developer's own (`docs/INTEGRATION.md`), the whole-interface window.
+- Automated test suite: 392 headless GdUnit4 tests passing, plus a real-GPU render check, a packaged-addon test and an editor self-test.
 
 **Partially implemented**
 - Locked regions: the model and canvas respect the lock, but no button sets it.

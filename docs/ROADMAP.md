@@ -124,7 +124,7 @@ Decided on 2026-10-30 ([`DECISIONS.md`](DECISIONS.md)). V1 does not depend on an
 - Perspective projection and camera views; known-height template placement.
 - Save and reopen of IWE documents, including the copy of the image beside the document.
 - Test character with mouse and keyboard, walls, and path following.
-- Automated suite: 297 headless GdUnit4 tests, including 31 end-to-end tests (`tests/e2e/`).
+- Automated suite: 392 headless GdUnit4 tests, including the end-to-end scenarios (`tests/e2e/`), the transition and integration tests, and the real-GPU render check.
 
 ## Open technical debts
 
