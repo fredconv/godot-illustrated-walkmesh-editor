@@ -81,7 +81,7 @@ Implemented, tested headless and tried in the real editor, but newer and less pr
 - A picture occludes the character at one depth (its ground point). That suits a fountain or a house, not a long railing seen at an angle.
 - A doorway narrower than the character is reported when you export but the character cannot walk through it (it is wider than the gap).
 - A layer picture is prepared beforehand to line up with the background (V1); there is no mouse moving or resizing of pictures until V2. Numbers can be typed for small corrections. There is no lock button for a region yet.
-- The shape of an action zone cannot be edited vertex by vertex (move it as a whole, or delete it and draw it again). Interactions that need a button press and conditions are not built in; a custom event reaches your game by name and it decides what to do.
+- Interactions that need a button press and conditions are not built in; a custom event reaches your game by name and it decides what to do.
 - The camera fit refuses height references that contradict each other (a farther one that is not smaller) and says which; it does not drop an outlier by itself, and a small mistake that keeps the order gives a best-compromise camera with a warning above 5%.
 - The speed keys of the running game (`PageUp`, `PageDown`, `Home`) belong to the stage's test player; turn `debug_speed_keys` off before you ship. The dock's speed buttons act only on the editor preview.
 - Tested with Godot 4.7.1 on Windows. The documents are in format version 3: a plugin of `0.1.0-alpha.2` or earlier refuses them without touching them.

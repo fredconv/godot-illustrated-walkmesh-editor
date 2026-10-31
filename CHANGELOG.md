@@ -6,6 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- **Edit the corners of an action zone.** A new `Edit corners` tool in the action panel moves a corner by dragging it, adds a corner by clicking an edge, and removes the picked corner with `Delete` (a zone keeps three). Each change is one undo step.
+
 ## [0.1.0-alpha.4] — 2026-10-31
 
 ### Added

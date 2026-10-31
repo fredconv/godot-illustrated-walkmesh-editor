@@ -87,7 +87,7 @@ Zones that overlap, or that share only part of an edge, are connected too: the z
 - The test character keeps a clearance from obstacle corners, but a doorway narrower than its diameter cannot be crossed; the export check names it.
 - A foreground picture occludes at one depth, the depth of its ground point. A long railing seen at an angle is not exact.
 - Layer pictures are prepared beforehand in V1 (same canvas as the background, transparent pixels around the object); moving and resizing them with the mouse is planned for V2.
-- The shape of an action zone cannot be edited vertex by vertex: move it as a whole, or delete it and draw it again.
+- To reshape an action zone, turn on `Edit corners`: drag a corner, click an edge to add one, `Delete` removes the picked corner.
 
 - The perspective projection depends on the shape (aspect ratio) of the reference frame, not on the dock. Changing the reference frame width or height changes where every image point lands on the floor; it is undoable and marks the document modified. A frame that differs in shape from the game window is reported in the status line.
 - Locking a region has no button yet. Locked regions are respected when they are locked by data.

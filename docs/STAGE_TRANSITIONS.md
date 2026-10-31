@@ -21,8 +21,9 @@ In the village scene you draw a zone around the end of the bridge and set it to 
    - *Arrive at entry point*: the name of the entry point in the scene that is reached (empty means that scene's default entry point). For a warp it is the entry point of the current scene, with a pick list.
    - *Enabled*: a disabled zone is exported but does nothing until your game enables it.
 3. **Place entry points.** `Place entry point`, click the floor where the character should appear. The first one of a scene is its default entry point. Give each a **name** (unique, no space or slash; this is what zones of other scenes use), optionally a direction to face on arrival, and choose which one is the default.
-4. **Select and move.** `Select zone` picks a zone on the illustration and drags it; click an entry marker to select and drag it. The list selects the same things. `Delete` removes the selected zone or marker when its tool is active. Every step is undoable and one drag is one undo step.
-5. **Check.** *Test → Validation → Check the perspective export* lists problems: a zone with no scene, a scene file that is not in the project, a warp to an entry point the document does not have, two entry points with one name, a zone above the horizon of the calibrated camera.
+4. **Edit corners.** With `Edit corners` on, click a zone to select it, then drag one of its corners to move it, click an edge to add a corner there, or pick a corner and press `Delete` to remove it (a zone keeps three corners). Each change is one undo step.
+5. **Select and move.** `Select zone` picks a zone on the illustration and drags it; click an entry marker to select and drag it. The list selects the same things. `Delete` removes the selected zone or marker when its tool is active. Every step is undoable and one drag is one undo step.
+6. **Check.** *Test → Validation → Check the perspective export* lists problems: a zone with no scene, a scene file that is not in the project, a warp to an entry point the document does not have, two entry points with one name, a zone above the horizon of the calibrated camera.
 
 ## What is saved
 
@@ -148,7 +149,6 @@ func _on_zone_event(event_name: String, zone: Node, body: Node) -> void:
 
 ## Limits of this version
 
-- The shape of a zone cannot be edited vertex by vertex; move it as a whole or delete it and draw it again.
 - Zones react to bodies (physics). A character that moves without physics (changing its position directly without a collision body) does not enter a zone.
 - Only the stage root scenes IWE exports and scenes you prepare with `IWEStageRuntime` receive arrivals.
 - An entry point is a place, not a state: the game decides everything else (inventory, camera cuts, music).
