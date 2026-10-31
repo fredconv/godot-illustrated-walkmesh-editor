@@ -8,6 +8,7 @@ extends VBoxContainer
 
 signal draw_zone_toggled(enabled: bool)
 signal select_zone_toggled(enabled: bool)
+signal edit_zone_points_toggled(enabled: bool)
 signal place_entry_toggled(enabled: bool)
 signal remove_requested(kind: String, id: String)
 signal zone_property_requested(zone_id: String, property: String, value: Variant)
@@ -27,6 +28,7 @@ var _zone_list: ItemList
 var _entry_list: ItemList
 var _draw_zone_button: Button
 var _select_zone_button: Button
+var _edit_points_button: Button
 var _remove_zone_button: Button
 var _place_entry_button: Button
 var _remove_entry_button: Button
@@ -88,6 +90,8 @@ func _build_zone_part() -> void:
 	_draw_zone_button.toggled.connect(func(pressed: bool) -> void: draw_zone_toggled.emit(pressed))
 	_select_zone_button = _toggle(buttons, "SelectZoneButton", "Select zone", "Click a zone on the illustration to select it; drag it to move it.")
 	_select_zone_button.toggled.connect(func(pressed: bool) -> void: select_zone_toggled.emit(pressed))
+	_edit_points_button = _toggle(buttons, "EditZonePointsButton", "Edit corners", "Drag a corner of the selected zone to move it, click an edge to add a corner, and press Delete on a picked corner to remove it (a zone keeps three).")
+	_edit_points_button.toggled.connect(func(pressed: bool) -> void: edit_zone_points_toggled.emit(pressed))
 	_remove_zone_button = _button(buttons, "RemoveZoneButton", "Remove", "Remove the selected zone.")
 	_remove_zone_button.pressed.connect(func() -> void: remove_requested.emit(KIND_ZONE, _selected_id))
 	_zone_box = VBoxContainer.new()
@@ -272,6 +276,7 @@ func select(kind: String, id: String) -> void:
 func set_tool_pressed(tool_name: String) -> void:
 	_draw_zone_button.set_pressed_no_signal(tool_name == "zone_draw")
 	_select_zone_button.set_pressed_no_signal(tool_name == "zone_select")
+	_edit_points_button.set_pressed_no_signal(tool_name == "zone_points")
 	_place_entry_button.set_pressed_no_signal(tool_name == "entry")
 
 

@@ -2547,6 +2547,7 @@ func _build_action_ui() -> void:
 	_action_panel = IWEActionPanel.new()
 	_action_panel.draw_zone_toggled.connect(func(enabled: bool) -> void: _set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ZONE_DRAW if enabled else ""))
 	_action_panel.select_zone_toggled.connect(func(enabled: bool) -> void: _set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ZONE_SELECT if enabled else ""))
+	_action_panel.edit_zone_points_toggled.connect(func(enabled: bool) -> void: _set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ZONE_POINTS if enabled else ""))
 	_action_panel.place_entry_toggled.connect(func(enabled: bool) -> void: _set_action_tool(CANVAS_SCRIPT.ACTION_TOOL_ENTRY if enabled else ""))
 	_action_panel.remove_requested.connect(_remove_action_item)
 	_action_panel.zone_property_requested.connect(_set_zone_property)
@@ -2585,6 +2586,8 @@ func _tool_hint() -> String:
 			return "Action zone  •  click the corners on the floor; click the first corner or press Enter to close; Esc cancels"
 		CANVAS_SCRIPT.ACTION_TOOL_ZONE_SELECT:
 			return "Select zone  •  click a zone to select it, drag to move it, Delete removes it"
+		CANVAS_SCRIPT.ACTION_TOOL_ZONE_POINTS:
+			return "Edit corners  •  click a zone to select it; drag a corner to move it; click an edge to add a corner; Delete removes the picked corner"
 		CANVAS_SCRIPT.ACTION_TOOL_ENTRY:
 			return "Entry point  •  click the floor to place one; click a marker to select it, drag to move it, Delete removes it"
 	if _draw_button != null and _draw_button.button_pressed and not _perspective_mode:

@@ -35,6 +35,9 @@ signal action_tool_changed(tool_name: String)
 const ACTION_TOOL_NONE := ""
 const ACTION_TOOL_ZONE_DRAW := "zone_draw"
 const ACTION_TOOL_ZONE_SELECT := "zone_select"
+## Move, add and remove the corners of the selected zone.
+const ACTION_TOOL_ZONE_POINTS := "zone_points"
+const ZONE_MIN_POINTS := 3
 const ACTION_TOOL_ENTRY := "entry"
 const ZONE_COLOR := Color("ff9f43")
 const ENTRY_COLOR := Color("5ad1ff")
@@ -78,6 +81,7 @@ var _action_tool := ACTION_TOOL_NONE
 var _action_zones: Array[IWEActionZone] = []
 var _entry_points: Array[IWEEntryPoint] = []
 var _selected_zone_id := ""
+var _action_vertex := -1
 var _selected_entry_id := ""
 var _action_dragging := false
 var _action_dragged := false
@@ -244,6 +248,7 @@ func set_action_tool(tool_name: String) -> void:
 	_action_tool = tool_name
 	_action_dragging = false
 	_action_dragged = false
+	_action_vertex = -1
 	_draft.clear()
 	if tool_name != ACTION_TOOL_NONE:
 		_drawing = false
@@ -259,6 +264,8 @@ func set_action_tool(tool_name: String) -> void:
 
 
 func select_action_zone(zone_id: String) -> void:
+	if zone_id != _selected_zone_id:
+		_action_vertex = -1
 	_selected_zone_id = zone_id
 	if not zone_id.is_empty():
 		_selected_entry_id = ""
@@ -411,8 +418,13 @@ func _draw_action_overlays() -> void:
 		for index in display.size():
 			draw_line(display[index], display[(index + 1) % display.size()], outline, 4.0 if selected else 2.5, true)
 		if selected:
-			for point in display:
-				draw_circle(point, 5.0, Color.WHITE)
+			var editing_corners := _action_tool == ACTION_TOOL_ZONE_POINTS
+			for corner_index in display.size():
+				if editing_corners:
+					draw_circle(display[corner_index], HANDLE_RADIUS, Color.WHITE)
+					draw_circle(display[corner_index], 5.0, Color("ffbd4a") if corner_index == _action_vertex else ZONE_COLOR)
+				else:
+					draw_circle(display[corner_index], 5.0, Color.WHITE)
 		var label_text := zone.describe() if zone.enabled else "%s (disabled)" % zone.describe()
 		_draw_label(label_text, zone.get_centroid() * _zoom, Color("ffe066") if selected else Color.WHITE)
 	for entry in _entry_points:
@@ -518,6 +530,9 @@ func _gui_input(event: InputEvent) -> void:
 		if _action_tool == ACTION_TOOL_ZONE_SELECT and not _selected_zone_id.is_empty():
 			action_delete_requested.emit("zone", _selected_zone_id)
 			accept_event()
+		elif _action_tool == ACTION_TOOL_ZONE_POINTS and _action_vertex >= 0:
+			remove_selected_zone_vertex()
+			accept_event()
 		elif _action_tool == ACTION_TOOL_ENTRY and not _selected_entry_id.is_empty():
 			action_delete_requested.emit("entry", _selected_entry_id)
 			accept_event()
@@ -549,6 +564,8 @@ func _handle_action_click(image_position: Vector2) -> void:
 			else:
 				_selected_zone_id = ""
 			action_zone_selected.emit(_selected_zone_id)
+		ACTION_TOOL_ZONE_POINTS:
+			_handle_zone_points_click(image_position)
 		ACTION_TOOL_ENTRY:
 			var hit_entry := _find_entry_point_at(image_position)
 			if hit_entry != null:
@@ -562,6 +579,89 @@ func _handle_action_click(image_position: Vector2) -> void:
 			elif _document != null and _document.image_size.x > 0 and _document.image_size.y > 0:
 				entry_point_created.emit(Vector2(clampf(image_position.x, 0.0, _document.image_size.x), clampf(image_position.y, 0.0, _document.image_size.y)))
 	queue_redraw()
+
+
+func _selected_action_zone() -> IWEActionZone:
+	for zone in _action_zones:
+		if zone.id == _selected_zone_id:
+			return zone
+	return null
+
+
+## With the corners tool: a click on a corner of the selected zone picks it up (drag to move it), a click on
+## an edge of the selected zone adds a corner there, a click inside another zone selects that zone, and a
+## click on empty ground clears the selection. Delete removes the picked corner (a zone keeps three).
+func _handle_zone_points_click(image_position: Vector2) -> void:
+	var zone := _selected_action_zone()
+	if zone != null:
+		var corner := _find_zone_vertex(zone, image_position)
+		if corner >= 0:
+			_action_vertex = corner
+			_action_dragging = true
+			_action_dragged = false
+			_action_drag_origin = image_position
+			_action_points_before = zone.points.duplicate()
+			return
+		var edge := _find_zone_edge(zone, image_position)
+		if edge >= 0:
+			var before := zone.points.duplicate()
+			var after := PackedVector2Array()
+			for index in before.size():
+				after.append(before[index])
+				if index == edge:
+					after.append(Geometry2D.get_closest_point_to_segment(image_position, before[edge], before[(edge + 1) % before.size()]))
+			_action_vertex = edge + 1
+			action_zone_moved.emit(zone.id, before, after)
+			return
+	var hit_zone := _find_action_zone_at(image_position)
+	_action_vertex = -1
+	if hit_zone != null:
+		_selected_zone_id = hit_zone.id
+		_selected_entry_id = ""
+	else:
+		_selected_zone_id = ""
+	action_zone_selected.emit(_selected_zone_id)
+
+
+## Removes the corner picked with the corners tool. A zone is never left with fewer than three corners.
+func remove_selected_zone_vertex() -> void:
+	var zone := _selected_action_zone()
+	if zone == null or _action_vertex < 0 or _action_vertex >= zone.points.size() or zone.points.size() <= ZONE_MIN_POINTS:
+		return
+	var before := zone.points.duplicate()
+	var after := PackedVector2Array()
+	for index in before.size():
+		if index != _action_vertex:
+			after.append(before[index])
+	_action_vertex = -1
+	action_zone_moved.emit(zone.id, before, after)
+
+
+func get_selected_zone_vertex() -> int:
+	return _action_vertex
+
+
+func _find_zone_vertex(zone: IWEActionZone, point: Vector2) -> int:
+	var best := -1
+	var best_distance := HANDLE_RADIUS / _zoom
+	for index in zone.points.size():
+		var distance := point.distance_to(zone.points[index])
+		if distance <= best_distance:
+			best_distance = distance
+			best = index
+	return best
+
+
+func _find_zone_edge(zone: IWEActionZone, point: Vector2) -> int:
+	var best := -1
+	var best_distance := SEGMENT_HIT_RADIUS / _zoom * 0.4
+	for index in zone.points.size():
+		var closest := Geometry2D.get_closest_point_to_segment(point, zone.points[index], zone.points[(index + 1) % zone.points.size()])
+		var distance := point.distance_to(closest)
+		if distance <= best_distance:
+			best_distance = distance
+			best = index
+	return best
 
 
 func _find_action_zone_at(point: Vector2) -> IWEActionZone:
@@ -589,6 +689,12 @@ func _drag_action_to(image_position: Vector2) -> void:
 				for point in _action_points_before:
 					moved.append(point + delta)
 				zone.points = moved
+	elif _action_tool == ACTION_TOOL_ZONE_POINTS:
+		var zone := _selected_action_zone()
+		if zone != null and _action_vertex >= 0 and _action_vertex < _action_points_before.size():
+			var moved_corners := _action_points_before.duplicate()
+			moved_corners[_action_vertex] = _action_points_before[_action_vertex] + delta
+			zone.points = moved_corners
 	elif _action_tool == ACTION_TOOL_ENTRY:
 		for entry in _entry_points:
 			if entry.id == _selected_entry_id:
@@ -599,7 +705,7 @@ func _drag_action_to(image_position: Vector2) -> void:
 
 func _finish_action_drag() -> void:
 	if _action_dragged:
-		if _action_tool == ACTION_TOOL_ZONE_SELECT:
+		if _action_tool == ACTION_TOOL_ZONE_SELECT or _action_tool == ACTION_TOOL_ZONE_POINTS:
 			for zone in _action_zones:
 				if zone.id == _selected_zone_id:
 					action_zone_moved.emit(zone.id, _action_points_before, zone.points.duplicate())
